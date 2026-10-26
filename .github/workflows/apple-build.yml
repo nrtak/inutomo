@@ -58,12 +58,12 @@ jobs:
           path = pathlib.Path('export_presets.cfg')
           text = path.read_text()
           team = os.environ.get('APPLE_TEAM_ID') or 'R3233N87DC'
-          bundle = os.environ.get('IOS_BUNDLE_ID') or 'com.inutomo.app'
+          bundle = os.environ.get('IOS_BUNDLE_ID') or 'com.inujima.app'
           if not re.fullmatch(r'[A-Z0-9]{10}', team):
               raise ValueError('APPLE_TEAM_ID must have 10 uppercase letters or digits')
           if not re.fullmatch(r'[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+', bundle):
               raise ValueError('IOS_BUNDLE_ID must be a valid reverse-DNS identifier')
-          text = text.replace('R3233N87DC', team).replace('com.inutomo.app', bundle)
+          text = text.replace('R3233N87DC', team).replace('com.inujima.app', bundle)
           text = text.replace('application/version="1"', 'application/version="' + os.environ['GITHUB_RUN_NUMBER'] + '"')
           path.write_text(text)
           PY
@@ -110,7 +110,7 @@ jobs:
       group: testflight
       cancel-in-progress: false
     env:
-      BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID || 'com.inutomo.app' }}
+      BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID || 'com.inujima.app' }}
       TEAM_ID: ${{ vars.APPLE_TEAM_ID || 'R3233N87DC' }}
     steps:
       - uses: actions/checkout@v6
