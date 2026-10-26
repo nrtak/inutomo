@@ -47,7 +47,9 @@ jobs:
           Godot --headless --path . --editor --quit 2>&1 | tee "$RUNNER_TEMP/import.log"
           if grep -E 'SCRIPT ERROR|Parse Error|Failed to load' "$RUNNER_TEMP/import.log"; then exit 1; fi
       - name: Gameplay and save regression tests
-        run: Godot --headless --path . --script tests/smoke.gd
+        run: |
+          Godot --headless --path . --script tests/smoke.gd
+          Godot --headless --path . --script tests/start_menu.gd
       - name: Configure Apple project identity
         env:
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}

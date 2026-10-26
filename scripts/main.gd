@@ -119,7 +119,7 @@ func _ready() -> void:
 	nav.position = Vector2(margin.get_theme_constant("margin_left"), 150)
 	nav.add_theme_constant_override("separation", 10)
 	add_child(nav)
-	for dest in ["Home", "Island", "Journal", "My Dogs"]:
+	for dest in ["Home", "Island", "Journal", "My Dogs", "Menu"]:
 		var b = UI.button(dest, show_page.bind(dest), Color("fff5e2"))
 		b.custom_minimum_size.x = 150
 		b.custom_minimum_size.y = 72
@@ -175,6 +175,12 @@ func set_scenery(location: String) -> void:
 	world_host.add_child(habitat)
 
 func show_page(dest: String) -> void:
+	if dest == "Menu":
+		if not Game.save_game():
+			_notice(Game.save_error)
+			return
+		get_tree().change_scene_to_file("res://scenes/start_menu.tscn")
+		return
 	page = dest
 	clear_body()
 	update_navigation()
