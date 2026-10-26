@@ -1,0 +1,94 @@
+name: Apple builds
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apple-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.5.1
+
+jobs:
+  validate-and-build:
+    runs-on: macos-14
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Godot and matching export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl --fail --location --retry 3 "$base/Godot_v${GODOT_VERSION}-stable_macos.universal.zip" -o "$RUNNER_TEMP/godot.zip"
+          unzip -q "$RUNNER_TEMP/godot.zip" -d "$RUNNER_TEMP/godot"
+          echo "$RUNNER_TEMP/godot/Godot.app/Contents/MacOS" >> "$GITHUB_PATH"
+          curl --fail --location --retry 3 "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" -o "$RUNNER_TEMP/templates.tpz"
+          unzip -q "$RUNNER_TEMP/templates.tpz" -d "$RUNNER_TEMP/templates"
+          target="$HOME/Library/Application Support/Godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$target"
+          cp -R "$RUNNER_TEMP/templates/templates/." "$target/"
+      - name: Import and check scripts
+        run: |
+          set -euo pipefail
+          Godot --headless --path . --import
+          Godot --headless --path . --editor --quit 2>&1 | tee "$RUNNER_TEMP/import.log"
+          if grep -E 'SCRIPT ERROR|Parse Error|Failed to load' "$RUNNER_TEMP/import.log"; then exit 1; fi
+      - name: Gameplay and save regression tests
+        run: Godot --headless --path . --script tests/smoke.gd
+      - name: Configure Apple project identity
+        env:
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          IOS_BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID }}
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, re
+          path = pathlib.Path('export_presets.cfg')
+          text = path.read_text()
+          team = os.environ.get('APPLE_TEAM_ID') or '0000000000'
+          bundle = os.environ.get('IOS_BUNDLE_ID') or 'com.puppyisland.game'
+          if not re.fullmatch(r'[A-Z0-9]{10}', team):
+              raise ValueError('APPLE_TEAM_ID must have 10 uppercase letters or digits')
+          if not re.fullmatch(r'[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+', bundle):
+              raise ValueError('IOS_BUNDLE_ID must be a valid reverse-DNS identifier')
+          path.write_text(text.replace('0000000000', team).replace('com.puppyisland.game', bundle))
+          PY
+      - name: Build macOS app
+        run: |
+          mkdir -p build/macos
+          Godot --headless --path . --export-release macOS build/macos/PuppyIsland.zip
+      - name: Export iOS Xcode project
+        run: |
+          mkdir -p build/ios
+          Godot --headless --path . --export-release iOS build/ios/PuppyIsland.zip
+      - name: Compile unsigned iPhone app
+        run: |
+          xcodebuild -project build/ios/PuppyIsland.xcodeproj \
+            -scheme PuppyIsland -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/ios-derived \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' build
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/ios-derived/Build/Products/Release-iphoneos/PuppyIsland.app \
+            build/ios/PuppyIsland-unsigned.app.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PuppyIsland-macOS
+          path: build/macos/PuppyIsland.zip
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PuppyIsland-iOS-Xcode-and-unsigned-app
+          path: build/ios/
+          if-no-files-found: error
+      - name: Build summary
+        run: |
+          echo 'macOS app and unsigned iPhone app compiled. iOS artifact includes the Xcode project.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'For device installation or TestFlight, open the project in Xcode and select your Apple Developer team and provisioning profile. APPLE_TEAM_ID and IOS_BUNDLE_ID repository variables customize exported identity.' >> "$GITHUB_STEP_SUMMARY"
