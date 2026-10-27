@@ -4,17 +4,17 @@ var shopping = false
 var location = "Bag"
 var category = "All"
 var wallet: Label
-var feedback: Label
+var feedback: CommandHint
 var needs_summary: Label
 var detail_overlay: Control
 var detail_kind = ""
 var detail_count: Label
 var detail_action: Button
-var detail_notice: Label
+var detail_notice: CommandHint
 var list: GridContainer
 var rows: Dictionary = {}
 var category_buttons: Dictionary = {}
-const CATEGORY_COLORS = {"All": Color("f9d8e2"), "Food": Color("ffdfb5"), "Toys": Color("c8eddd"), "Care": Color("c2ecf4"), "Comfort": Color("e1d9f6")}
+const CATEGORY_COLORS = {"All": Color("f9d8e2"), "Food": Color("ffdfb5"), "Toys": Color("c8eddd"), "Care": Color("c2ecf4"), "Comfort": Color("e1d9f6"), "Accessories": Color("f9d8e2")}
 
 func _ready() -> void:
  location = "Shop" if shopping else "Bag"
@@ -55,14 +55,14 @@ func _ready() -> void:
  var categories = Goods.CATEGORIES if shopping else ["All"] + Goods.CATEGORIES
  category = "Food" if shopping else "All"
  for title in categories:
-  var tab = UI.icon_button(title, Goods.icon({"All": "Treat", "Food": "Treat", "Toys": "Toy", "Care": "Brush", "Comfort": "Bed"}[title]), select_category.bind(title), CATEGORY_COLORS[title])
+  var tab = UI.icon_button(title, Goods.icon({"All": "Treat", "Food": "Treat", "Toys": "Toy", "Care": "Brush", "Comfort": "Bed", "Accessories": "CoralBandana"}[title]), select_category.bind(title), CATEGORY_COLORS[title])
   tab.custom_minimum_size.y = 84
   tab.add_theme_font_size_override("font_size", 23)
   tab.expand_icon = true
   tab.add_theme_constant_override("icon_max_width", 36)
   tabs.add_child(tab)
   category_buttons[title] = tab
- feedback = UI.label("", 21)
+ feedback = UI.hint_label("", 21)
  feedback.visible = false
  content.add_child(feedback)
  if not shopping:
@@ -97,7 +97,10 @@ func rebuild() -> void:
  for child in list.get_children():
   list.remove_child(child)
   child.queue_free()
- for kind in Goods.ITEMS:
+ var display_order: Array = Goods.ITEMS.keys()
+ if category == "Food":
+  display_order = ["PuppyMeal", "AdultMeal", "PicnicPack", "Treat", "TrainingTreat", "CelebrationTreat"]
+ for kind in display_order:
   var item: Dictionary = Goods.ITEMS[kind]
   if category != "All" and item.category != category:
    continue
@@ -150,11 +153,15 @@ func update_item_controls(kind: String, button: Button, count_label: Label) -> v
   if Game.coins < item.price and count < item.limit:
    count_label.text = "Need %d coins" % (item.price - Game.coins)
  else:
-  UI.button_caption(button, "Equipped" if item.limit == 1 else "Use")
-  button.disabled = item.limit == 1 or count == 0 or Game.cooldowns.get("Goods", 0) > 0
+  var placeable = item.category in ["Toys", "Comfort", "Accessories"]
+  UI.button_caption(button, ("Wear" if item.category == "Accessories" else "Place") if placeable else ("Equipped" if item.limit == 1 else "Use"))
+  button.disabled = count == 0 or (not placeable and (item.limit == 1 or Game.cooldowns.get("Goods", 0) > 0))
  UI.button_caption(button, button.text)
 
 func perform(kind: String) -> void:
+ if not shopping and Goods.ITEMS[kind].category in ["Toys", "Comfort", "Accessories"]:
+  host.call_deferred("show_page", "Life:Wardrobe" if Goods.ITEMS[kind].category == "Accessories" else "Life:Home")
+  return
  var before = int(Game.items.get(kind, 0))
  feedback.visible = true
  feedback.text = Game.buy_item(kind) if shopping else Game.use_item(kind)
@@ -168,7 +175,7 @@ func perform(kind: String) -> void:
  refresh()
  if shopping and Game.items.get(kind, 0) > before:
   purchase_feedback(kind)
- elif not shopping and kind in ["Treat", "TrainingTreat"] and Game.items.get(kind, 0) < before:
+ elif not shopping and (kind in ["Treat", "TrainingTreat"] or Goods.ITEMS[kind].has("need")) and Game.items.get(kind, 0) < before:
   host.call_deferred("show_page", "Home")
 
 func purchase_feedback(kind: String) -> void:
@@ -232,12 +239,12 @@ func show_details(kind: String) -> void:
  var description = UI.column(16)
  description.custom_minimum_size.x = 450
  row.add_child(description)
- description.add_child(UI.label(Goods.ITEMS[kind].description, 25))
+ description.add_child(UI.hint_label(Goods.ITEMS[kind].description, 25))
  if shopping:
   description.add_child(UI.label("Price: %d coins" % Goods.ITEMS[kind].price, 25, UI.TEAL))
  detail_count = UI.label("", 24)
  description.add_child(detail_count)
- detail_notice = UI.label("", 21, UI.TEAL)
+ detail_notice = UI.hint_label("", 21, UI.TEAL)
  detail_notice.visible = false
  description.add_child(detail_notice)
  var actions = HBoxContainer.new()

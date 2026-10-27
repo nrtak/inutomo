@@ -4,7 +4,7 @@ signal finished
 var habitat: Habitat
 var bar: ProgressBar
 var progress: Label
-var status: Label
+var status: CommandHint
 var throw_button: Button
 var phase = 0.0
 var busy = false
@@ -40,7 +40,7 @@ func _ready() -> void:
 	panel.add_child(controls)
 	progress = UI.label("Throw 1 of 3", 24, UI.TEAL)
 	controls.add_child(progress)
-	status = UI.label("Tap in the green zone near 70% power.", 24)
+	status = UI.hint_label("Tap in the green zone near 70% power.", 24)
 	controls.add_child(status)
 	bar = ProgressBar.new()
 	bar.custom_minimum_size.y = 32

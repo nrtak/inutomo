@@ -24,7 +24,7 @@ func run() -> void:
  game.points = 0
  game.active_seconds = 0
  game.resting = false
- game.coins = 500
+ game.coins = 5000
  game.cooldowns = {}
  reset_items()
  for kind in Goods.ITEMS:
@@ -57,6 +57,9 @@ func run() -> void:
  game.needs.Energy = 40
  game.resting = true
  game.items.Bed = 0
+ game.items.CloudBed = 0
+ game.items.CoolingMat = 0
+ game.items.Blanket = 0
  game.advance(10)
  var ordinary_rest: float = game.needs.Energy
  game.needs.Energy = 40

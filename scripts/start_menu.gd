@@ -109,11 +109,11 @@ func show_guide() -> void:
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(content)
 	content.add_child(UI.label("Your first little adventure", 34, UI.TEAL))
-	content.add_child(UI.label(Game.personalize("HOME\nFeed, Play, Care and Rest keep Mochi's four needs happy. Higher bars mean better care, including the Hunger bar."), 25))
-	content.add_child(UI.label("ISLAND\nTap a location, preview it, then choose Go. Start Fetch at the Park or a Walk at the Beach. Outings need 15 Energy and an awake puppy. Completed steps save if you take a break.", 25))
-	content.add_child(UI.label("BAG & SHOP\nBrowse June's Food, Toys, Care and Comfort goods. Biscuits boost the next meal; your Bag also lets you give consumable goods directly. Balls, brushes and beds equip automatically. Normal care stays free.", 25))
-	content.add_child(UI.label("GROWTH\nJournal tracks growth and memories. Adulthood needs 40 care moments and 60 minutes together. Walks favor Shiba Inu; Fetch and ties favor Golden Retriever.", 25))
-	content.add_child(UI.label("Progress saves automatically. Open Menu during play, then choose Title screen to return here.", 22))
+	content.add_child(UI.hint_label(Game.personalize("HOME\nFeed, Play, Care and Rest keep Mochi's four needs happy. Higher bars mean better care, including the Hunger bar."), 25))
+	content.add_child(UI.hint_label("ISLAND\nTap a location, preview it, then choose Go. Start Fetch at the Park or a Walk at the Beach. Outings need 15 Energy and an awake puppy. Completed steps save if you take a break.", 25))
+	content.add_child(UI.hint_label("BAG & SHOP\nBrowse Food, Toys, Care, Comfort and Accessories. Give food and treats from your Bag. Choose beds and toys in Decor, and bandanas in Wardrobe. Owned care benefits apply automatically. Normal care stays free.", 25))
+	content.add_child(UI.hint_label("GROWTH\nJournal tracks growth and memories. Adulthood needs 40 care moments and 60 minutes together. Walks favor Shiba Inu; Fetch and ties favor Golden Retriever.", 25))
+	content.add_child(UI.hint_label("Open Journal for Island Life: training, friends, events and decorating. Tap the camera to take a picture; find it in Photos. Progress saves automatically.", 22))
 	content.add_child(UI.button("Got it!", close_guide, Color("bdeab0")))
 
 func close_guide() -> void:

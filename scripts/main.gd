@@ -7,6 +7,11 @@ var tip_overlay: Control
 var arrival_overlay: Control
 var notice_overlay: Control
 var notice_tween: Tween
+var hud: Control
+var camera_button: Button
+var photo_overlay: Control
+var photo_busy = false
+var photo_was_processing = true
 var island_button: Button
 var leave_overlay: Control
 var current_place = "Home"
@@ -17,7 +22,7 @@ var body: VBoxContainer
 var world_host: Control
 var meters: Dictionary = {}
 var meter_labels: Dictionary = {}
-var message: Label
+var message: CommandHint
 var action_buttons: Dictionary = {}
 var bag_button: Button
 var message_card: PanelContainer
@@ -29,7 +34,7 @@ var rest_button: Button
 var actions: HBoxContainer
 var habitat: Habitat
 var intro_step = 0
-var intro_text: Label
+var intro_text: CommandHint
 var intro_progress: Label
 var intro_next: Button
 const INTRO_PAGES = [
@@ -47,6 +52,7 @@ func _ready() -> void:
 	world_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(world_host)
 	var margin = MarginContainer.new()
+	hud = margin
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var safe_edges = UI.safe_insets(20)
@@ -90,6 +96,9 @@ func _ready() -> void:
 	menu_button.expand_icon = true
 	menu_button.add_theme_constant_override("icon_max_width", 28)
 	quick_navigation.add_child(menu_button)
+	camera_button = UI.icon_button("Photo", preload("res://assets/ui/camera.svg"), open_photo_mode, Color("f9d8e2"))
+	camera_button.custom_minimum_size.x = 104
+	quick_navigation.add_child(camera_button)
 	page_label = UI.label("", 30)
 	page_label.visible = false
 	quick_navigation.add_child(page_label)
@@ -146,7 +155,7 @@ func _ready() -> void:
 	message_card = UI.card()
 	message_card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	layout.add_child(message_card)
-	message = UI.label("A little care makes a big world.", 22)
+	message = UI.hint_label("A little care makes a big world.", 22)
 	message.custom_minimum_size.x = 700
 	message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	message_card.add_child(message)
@@ -175,7 +184,7 @@ func _ready() -> void:
 		_notice(Game.save_error)
 
 func _process(delta: float) -> void:
-	if not Game.pending_stage.is_empty() and page == "Home" and not is_instance_valid(intro_overlay) and not is_instance_valid(stage_overlay) and not is_instance_valid(resident_overlay) and not is_instance_valid(tip_overlay) and not is_instance_valid(navigation_overlay):
+	if not Game.pending_stage.is_empty() and page == "Home" and not is_instance_valid(intro_overlay) and not is_instance_valid(stage_overlay) and not is_instance_valid(resident_overlay) and not is_instance_valid(tip_overlay) and not is_instance_valid(navigation_overlay) and not is_instance_valid(photo_overlay):
 		show_growth_moment()
 	status_clock += delta
 	message_card.visible = page == "Home" and (status_clock < 6 or not Game.save_error.is_empty())
@@ -219,8 +228,8 @@ func show_feedback(text: String) -> void:
 	var panel = UI.card()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.add_child(panel)
-	var text_label = UI.label(text, 24)
-	text_label.custom_minimum_size.x = 600
+	var text_label = UI.hint_label(text, 24)
+	text_label.custom_minimum_size.x = clampf(text.length() * 11.5, 300, 600)
 	text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(text_label)
 	notice_tween = create_tween()
@@ -245,6 +254,7 @@ func clear_body() -> void:
 			child.queue_free()
 
 func update_navigation() -> void:
+	camera_button.visible = page in ["Home", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse"]
 	identity_card.visible = page != "Island"
 	bag_button.visible = false
 	island_button.visible = page != "Island"
@@ -277,6 +287,9 @@ func show_page(dest: String) -> void:
 		current_place = dest
 	clear_body()
 	update_navigation()
+	if dest.begins_with("Life"):
+		life_page(dest.get_slice(":", 1) if ":" in dest else "Dog")
+		return
 	match dest:
 		"Home":
 			set_scenery("Home")
@@ -349,6 +362,7 @@ func page_panel() -> VBoxContainer:
 func journal_page() -> void:
 	var col = page_panel()
 	col.add_child(UI.label(Game.puppy_name + "'s Growth Journey", 30))
+	col.add_child(UI.button("Island life: training, friends and keepsakes", show_page.bind("Life"), Color("c8eddd")))
 	var scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(scroll)
@@ -399,6 +413,7 @@ func journal_page() -> void:
 func dogs_page() -> void:
 	var col = page_panel()
 	col.add_child(UI.label("My Dogs", 30))
+	col.add_child(UI.button("Personality, Wardrobe and Photos", show_page.bind("Life"), Color("f9d8e2")))
 	var row = HBoxContainer.new()
 	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(row)
@@ -428,6 +443,7 @@ func show_intro() -> void:
 		return
 	intro_step = 0
 	Game.set_process(false)
+	hud.visible = false
 	intro_overlay = Control.new()
 	intro_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(intro_overlay)
@@ -435,25 +451,15 @@ func show_intro() -> void:
 	shade.color = Color(0.1, 0.18, 0.22, 0.5)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	intro_overlay.add_child(shade)
-	var center = CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	intro_overlay.add_child(center)
-	var panel = UI.card()
-	panel.custom_minimum_size = Vector2(1000, 510)
-	center.add_child(panel)
-	var row = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 24)
-	panel.add_child(row)
-	row.add_child(UI.character_portrait(Art.NORA, "Nora", "Puppy Club organizer"))
-	var col = UI.column(18)
-	col.custom_minimum_size.x = 470
-	row.add_child(col)
+	var col = UI.conversation_body(intro_overlay, Art.NORA, "Nora")
 	intro_progress = UI.label("", 21, UI.TEAL)
 	col.add_child(intro_progress)
-	intro_text = UI.label("", 27)
-	intro_text.custom_minimum_size.y = 155
+	intro_text = UI.hint_label("", 27)
+	intro_text.custom_minimum_size.y = 100
 	col.add_child(intro_text)
 	intro_next = UI.button("Next", advance_intro, Color("bdeab0"))
+	intro_next.custom_minimum_size = Vector2(230, 68)
+	intro_next.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	col.add_child(intro_next)
 	update_intro()
 
@@ -471,6 +477,7 @@ func advance_intro() -> void:
 	Game.save_game()
 	intro_overlay.queue_free()
 	intro_overlay = null
+	hud.visible = true
 	Game.set_process(true)
 	show_page("Home")
 
@@ -526,7 +533,10 @@ func location_page(location: String) -> void:
 func show_resident(texture: Texture2D, character_name: String, role: String, text: String) -> void:
 	if is_instance_valid(resident_overlay):
 		return
+	IslandLife.talk(Game, character_name)
 	var was_processing = Game.is_processing()
+	var hud_was_visible = hud.visible
+	hud.visible = false
 	Game.set_process(false)
 	resident_overlay = Control.new()
 	resident_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -535,27 +545,19 @@ func show_resident(texture: Texture2D, character_name: String, role: String, tex
 	shade.color = Color(0.1, 0.18, 0.22, 0.5)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	resident_overlay.add_child(shade)
-	var center = CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	resident_overlay.add_child(center)
-	var panel = UI.card()
-	panel.custom_minimum_size = Vector2(850, 390)
-	center.add_child(panel)
-	var row = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 24)
-	panel.add_child(row)
-	row.add_child(UI.character_portrait(texture, character_name, role))
-	var content = UI.column(18)
-	content.custom_minimum_size.x = 520
-	row.add_child(content)
-	var speech = UI.label(text, 25)
-	speech.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var content = UI.conversation_body(resident_overlay, texture, character_name)
+	var speech = UI.hint_label(text, 25)
+	speech.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	content.add_child(speech)
-	content.add_child(UI.button("See you soon!", func():
+	var close_button = UI.button("Close", func():
 		resident_overlay.queue_free()
 		resident_overlay = null
+		hud.visible = hud_was_visible
 		Game.set_process(was_processing)
-	, Color("bdeab0")))
+	, Color("bdeab0"))
+	close_button.custom_minimum_size = Vector2(150, 68)
+	close_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	content.add_child(close_button)
 
 func goods_page(shop: bool) -> void:
 	set_scenery("Shop" if shop else "Home")
@@ -648,6 +650,84 @@ func close_navigation() -> void:
 		navigation_overlay.queue_free()
 	navigation_overlay = null
 
+func life_page(section: String) -> void:
+	set_scenery("Home")
+	var browser = load("res://scripts/life_browser.gd").new()
+	browser.host = self
+	browser.mode = section if section in browser.MODES else "Dog"
+	browser.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_child(browser)
+
+func open_photo_mode() -> void:
+	if is_instance_valid(photo_overlay):
+		return
+	if page not in ["Home", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse"]:
+		show_page("Home")
+	photo_was_processing = Game.is_processing()
+	if is_instance_valid(arrival_overlay):
+		arrival_overlay.queue_free()
+	Game.set_process(false)
+	hud.visible = false
+	photo_overlay = Control.new()
+	photo_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	photo_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(photo_overlay)
+	var row = HBoxContainer.new()
+	row.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	var safe = UI.safe_insets()
+	row.offset_left = safe.left
+	row.offset_right = -safe.right
+	row.offset_top = -110 - safe.bottom
+	row.offset_bottom = -safe.bottom
+	photo_overlay.add_child(row)
+	row.add_child(UI.icon_button("Back", UI.place_icon("Home"), close_photo_mode, Color("ffdfb5")))
+	row.add_child(UI.icon_button("Capture", preload("res://assets/ui/camera.svg"), capture_photo, Color("f9d8e2")))
+	row.add_child(UI.icon_button("Album", preload("res://assets/ui/menu_journal.svg"), func():
+		if photo_busy:
+			return
+		close_photo_mode()
+		show_page("Life:Photos")
+	))
+
+func close_photo_mode() -> void:
+	if photo_busy:
+		return
+	if is_instance_valid(photo_overlay):
+		photo_overlay.queue_free()
+	photo_overlay = null
+	hud.visible = true
+	Game.set_process(photo_was_processing)
+
+func capture_photo() -> void:
+	if photo_busy:
+		return
+	if Game.life.photos.size() >= 20:
+		show_feedback("Your album has 20 memories. All your photos are kept safely on this device.")
+		return
+	photo_busy = true
+	photo_overlay.visible = false
+	if is_instance_valid(notice_overlay):
+		notice_overlay.visible = false
+	await RenderingServer.frame_post_draw
+	if not is_inside_tree():
+		return
+	var image = get_viewport().get_texture().get_image()
+	var directory = ProjectSettings.globalize_path("user://photos")
+	var result = DirAccess.make_dir_recursive_absolute(directory)
+	var filename = "puppy_photo_" + str(int(Time.get_unix_time_from_system())) + "_" + str(Time.get_ticks_usec()) + ".png"
+	if result == OK:
+		result = image.save_png("user://photos/" + filename)
+	if result == OK:
+		Game.life.photos.push_front(filename)
+		if not Game.save_game():
+			photo_overlay.visible = true
+			photo_busy = false
+			show_feedback("Photo saved on this device. " + Game.save_error)
+			return
+	photo_overlay.visible = true
+	photo_busy = false
+	show_feedback("Photo saved to your island album." if result == OK else "Photo could not be saved. Please try again.")
+
 func show_need_tip(key: String) -> void:
 	if is_instance_valid(tip_overlay):
 		return
@@ -669,7 +749,7 @@ func show_need_tip(key: String) -> void:
 	content.custom_minimum_size.x = 580
 	panel.add_child(content)
 	content.add_child(UI.label(key, 32, UI.TEAL))
-	content.add_child(UI.label(tips[key], 27))
+	content.add_child(UI.hint_label(tips[key], 27))
 	content.add_child(UI.label("Fuller bars mean your puppy feels better.", 23))
 	content.add_child(UI.button("Got it", func():
 		tip_overlay.queue_free()

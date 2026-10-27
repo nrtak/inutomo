@@ -4,7 +4,7 @@ signal finished
 var habitat: Habitat
 var progress: Label
 var souvenir: TextureRect
-var status: Label
+var status: CommandHint
 var next_button: Button
 var step = 0
 var busy = false
@@ -49,7 +49,7 @@ func _ready() -> void:
 	souvenir.custom_minimum_size = Vector2(0, 78)
 	controls.add_child(souvenir)
 	habitat.set_walk_stop(mini(step, 2))
-	status = UI.label("Find three little treasures.", 22)
+	status = UI.hint_label("Find three little treasures.", 22)
 	controls.add_child(status)
 	next_button = UI.icon_button("Head back" if step == 3 else "Explore", load("res://assets/ui/leaf.svg"), _next, Color("bdeab0"))
 	next_button.get_meta("picture").texture = preload("res://assets/ui/home.svg") if step == 3 else souvenir.texture
@@ -77,6 +77,7 @@ func _next() -> void:
 		return
 	status.text = Game.personalize(MOMENTS[step])
 	Game.remember(MOMENTS[step])
+	IslandLife.discover(Game, step)
 	habitat.discovery.visible = false
 	step += 1
 	Game.checkpoint_outing(step)

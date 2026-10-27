@@ -106,7 +106,7 @@ func select(place: String) -> void:
  Daylight.apply_to(preview, place)
  detail.text = PLACES[place].text
  var outing = "Fetch" if place == "Park" else ("Walk" if place == "Beach" else "")
- if not outing.is_empty() and Game.active_outing.get("kind", "") == outing:
+ if not outing.is_empty() and Game.has_outing(outing):
   detail.text += " Your outing checkpoint is saved here."
  go_button.tooltip_text = "View Lighthouse preview" if place == "Lighthouse" else "Go to " + place
  UI.button_caption(go_button, "Preview" if place == "Lighthouse" else "Go")

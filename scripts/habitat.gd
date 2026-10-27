@@ -7,6 +7,7 @@ var world: Node2D
 var background: TextureRect
 var discovery: Sprite2D
 var ball: Polygon2D
+var view_offset = Vector2.ZERO
 
 func _ready() -> void:
 	Sound.set_location(location)
@@ -22,11 +23,15 @@ func _ready() -> void:
 	world = Node2D.new()
 	add_child(world)
 	world.add_child(background)
+	if location == "Home":
+		add_home_decor()
 	puppy = PuppyActor.new()
 	world.add_child(puppy)
 	Game.nap_actor = weakref(puppy)
 	puppy.walk_area = WalkArea.AREAS.get(location, WalkArea.AREAS.Home)
 	puppy.position = WalkArea.SPAWNS.get(location, WalkArea.SPAWNS.Home)
+	if location == "Home" and Game.resting and not Game.life.bed.is_empty():
+		puppy.position.x = [550.0, 650.0, 760.0][Game.life.spot]
 	puppy.target = puppy.position
 	puppy.bounds = Rect2(puppy.walk_area[0], Vector2.ZERO)
 	for point in puppy.walk_area:
@@ -45,13 +50,34 @@ func _ready() -> void:
 	resized.connect(_resize_world)
 	_resize_world()
 
+func add_home_decor() -> void:
+	if Game.items.get(Game.life.bed, 0) > 0:
+		var bed = Sprite2D.new()
+		bed.texture = Goods.picture(Game.life.bed)
+		bed.scale = Vector2(250.0 / bed.texture.get_width(), 100.0 / bed.texture.get_height())
+		bed.position = Vector2([550.0, 650.0, 760.0][Game.life.spot], 505)
+		world.add_child(bed)
+	if Game.items.get(Game.life.toy, 0) > 0:
+		var toy = Sprite2D.new()
+		toy.texture = Goods.picture(Game.life.toy)
+		toy.scale = Vector2.ONE * (55.0 / toy.texture.get_width())
+		toy.position = Vector2(850, 525)
+		world.add_child(toy)
+	for index in Game.life.keepsakes.size():
+		var keepsake = Sprite2D.new()
+		var kind = IslandLife.KEEPSAKES.find(Game.life.keepsakes[index])
+		keepsake.texture = load("res://assets/ui/" + IslandLife.KEEPSAKE_ICONS[maxi(0, kind)] + ".svg")
+		keepsake.scale = Vector2.ONE * 0.35
+		keepsake.position = Vector2(1050 + index * 18, 400)
+		world.add_child(keepsake)
+
 func _resize_world() -> void:
 	if world:
 		var zoom = 1.42 if location == "Home" else 1.0
 		var factor = maxf(size.x / 1280.0, size.y / 720.0) * zoom
 		world.scale = Vector2.ONE * factor
 		var focus = Vector2(650, 410) if location == "Home" else Vector2(640, 360)
-		world.position = size * 0.5 - focus * factor
+		world.position = size * 0.5 - focus * factor + view_offset
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and not puppy.controlled:

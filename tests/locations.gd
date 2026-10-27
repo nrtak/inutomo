@@ -61,17 +61,15 @@ func run() -> void:
 		check(main.habitat.background.texture == Art.BACKGROUNDS[place], place + " uses its own art")
 		var hub = main.body.get_child(0)
 		check(hub.location == place, "Location actions match the scene")
-	for resident in ["Ben", "Owen"]:
-		main.show_page("Park" if resident == "Ben" else "Beach")
+	for resident in ["Nora", "Ben", "June", "Leah", "Owen"]:
+		main.show_page({"Nora": "Puppy Club", "Ben": "Park", "June": "Shop", "Leah": "Vet Clinic", "Owen": "Beach"}[resident])
 		var hub = main.body.get_child(0)
-		if resident == "Ben":
-			hub.talk_to_ben()
-		else:
-			hub.talk_to_owen()
+		hub.call({"Nora": "talk_to_nora", "Ben": "talk_to_ben", "June": "talk_to_june", "Leah": "checkup", "Owen": "talk_to_owen"}[resident])
 		check(is_instance_valid(main.resident_overlay), resident + " opens a resident dialogue")
-		check(main.resident_overlay.find_children("CharacterPortraitFrame", "PanelContainer", true, false).size() == 1, "Residents use a grounded portrait frame")
+		check(main.resident_overlay.find_children("ConversationCharacter", "Control", true, false).size() == 1, "Residents use a large borderless portrait stage")
+		check(main.resident_overlay.find_children("ConversationText", "PanelContainer", true, false).size() == 1 and not main.hud.visible, "Each conversation has one text panel and hides the HUD")
 		for button in main.resident_overlay.find_children("*", "Button", true, false):
-			if button.text == "See you soon!":
+			if button.text == "Close":
 				button.pressed.emit()
 				break
 		await process_frame

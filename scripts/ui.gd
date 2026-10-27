@@ -57,6 +57,19 @@ static func button(text: String, action: Callable, color: Color = TEAL) -> Butto
 	b.pressed.connect(action)
 	return b
 
+static func hint_label(text: String, font_size: int = 24, color: Color = INK) -> CommandHint:
+	var hint = CommandHint.new()
+	hint.bbcode_enabled = true
+	hint.fit_content = true
+	hint.scroll_active = false
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hint.add_theme_font_size_override("normal_font_size", font_size)
+	hint.add_theme_font_size_override("bold_font_size", font_size)
+	hint.add_theme_color_override("default_color", color)
+	hint.set_hint(text)
+	return hint
+
 static func card() -> PanelContainer:
 	var p = PanelContainer.new()
 	p.add_theme_stylebox_override("panel", style(Color("fff6e5")))
@@ -67,53 +80,50 @@ static func column(gap: int = 12) -> VBoxContainer:
 	v.add_theme_constant_override("separation", gap)
 	return v
 
-# Dialogue characters sit inside a framed portrait, with the cutout grounded
-# against its bottom edge rather than suspended over the game world.
-static func character_portrait(texture: Texture2D, character_name: String, role: String) -> VBoxContainer:
-	var column = UI.column(0)
-	column.custom_minimum_size.x = 400
-	var frame = PanelContainer.new()
-	frame.name = "CharacterPortraitFrame"
-	var border = style(Color("d5ece3"), 18)
-	border.content_margin_left = 2
-	border.content_margin_right = 2
-	border.content_margin_top = 2
-	border.content_margin_bottom = 2
-	frame.add_theme_stylebox_override("panel", border)
-	frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(frame)
+# Conversation artwork is bottom-anchored beside one compact text panel.
+static func conversation_body(parent: Control, texture: Texture2D, character_name: String) -> VBoxContainer:
+	var margin = MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var safe = safe_insets(24)
+	for edge in safe:
+		margin.add_theme_constant_override("margin_" + edge, safe[edge])
+	margin.add_theme_constant_override("margin_bottom", 0)
+	parent.add_child(margin)
+	var row = HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 24)
+	margin.add_child(row)
 	var stage = Control.new()
+	stage.name = "ConversationCharacter"
 	stage.clip_contents = true
-	stage.custom_minimum_size.y = 350
-	frame.add_child(stage)
+	stage.custom_minimum_size.x = minf(660, maxf(0, parent.get_viewport_rect().size.x - safe.left - safe.right - 454))
+	row.add_child(stage)
 	var portrait = TextureRect.new()
-	var cropped = AtlasTexture.new()
-	cropped.atlas = texture
-	cropped.region = texture.get_image().get_used_rect()
-	portrait.texture = cropped
+	var cutout = AtlasTexture.new()
+	cutout.atlas = texture
+	cutout.region = texture.get_image().get_used_rect()
+	portrait.texture = cutout
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_SCALE
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.add_child(portrait)
-	var place_portrait = func():
-		var texture_size = Vector2(cropped.get_size())
-		var scale_factor = minf(stage.size.x / texture_size.x, stage.size.y / texture_size.y)
-		portrait.size = texture_size * scale_factor
-		portrait.position = Vector2((stage.size.x - portrait.size.x) * 0.5, stage.size.y - portrait.size.y + 5)
-	stage.resized.connect(place_portrait)
-	var caption = PanelContainer.new()
-	caption.add_theme_stylebox_override("panel", style(Color("fff0cf"), 12))
-	column.add_child(caption)
-	var caption_content = UI.column(2)
-	caption.add_child(caption_content)
-	var name_label = label(character_name, 25, TEAL)
-	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	caption_content.add_child(name_label)
-	var role_label = label(role, 18)
-	role_label.visible = false
-	role_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	caption_content.add_child(role_label)
-	return column
+	stage.resized.connect(func():
+		var image_size = Vector2(cutout.get_size())
+		var factor = minf(stage.size.x / image_size.x, stage.size.y / image_size.y)
+		portrait.size = image_size * factor
+		portrait.position = Vector2((stage.size.x - portrait.size.x) * 0.5, stage.size.y - portrait.size.y)
+	)
+	var panel = card()
+	panel.name = "ConversationText"
+	panel.custom_minimum_size.x = 430
+	panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(panel)
+	var content = column(14)
+	content.custom_minimum_size.x = 390
+	panel.add_child(content)
+	var speaker = label(character_name, 29, TEAL)
+	content.add_child(speaker)
+	return content
 
 static func icon_button(text: String, texture: Texture2D, action: Callable, color: Color = TEAL) -> Button:
 	var tile = button(text, action, color)

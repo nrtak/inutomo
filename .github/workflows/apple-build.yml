@@ -56,6 +56,7 @@ jobs:
           Godot --headless --path . --script tests/player_features.gd
           Godot --headless --path . --script tests/island_moments.gd
           Godot --headless --path . --script tests/daylight.gd
+          Godot --headless --path . --script tests/expansion.gd
           Godot --headless --path . --script tests/locations.gd
           Godot --headless --path . --script tests/mobile_regression.gd
       - name: Configure Apple project identity

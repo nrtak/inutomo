@@ -21,12 +21,15 @@ var sound_enabled = true
 var effects_volume = 0.7
 var ambience_volume = 0.45
 var active_outing: Dictionary = {}
+var saved_outings: Dictionary = {}
 var nap_actor: WeakRef
 var pending_home_reaction = ""
 var pending_stage = ""
 var coins = 50
 var items: Dictionary = {"Treat": 0, "Toy": 0, "Brush": 0, "TrainingTreat": 0, "Shampoo": 0, "Bed": 0}
-const PRICES = {"Treat": 10, "Toy": 25, "Brush": 20, "TrainingTreat": 8, "Shampoo": 12, "Bed": 40}
+var PRICES = Goods.prices()
+var life = IslandLife.fresh()
+var last_food = ""
 var breed = "Puppy"
 var points = 0
 var fetches = 0
@@ -66,7 +69,8 @@ func advance(seconds: float, active: bool = true) -> void:
 		var key: String = NEEDS[i]
 		needs[key] = clampf(float(needs[key]) - seconds * DECAY[i] * (1.0 if active else OFFLINE_DECAY_FACTOR), 0, 100)
 	if resting:
-		needs.Energy = minf(100.0, float(needs.Energy) + seconds * (0.85 if items.get("Bed", 0) > 0 else 0.65))
+		var comfortable = items.get("Bed", 0) > 0 or items.get("CloudBed", 0) > 0 or items.get("CoolingMat", 0) > 0 or items.get("Blanket", 0) > 0
+		needs.Energy = minf(100.0, float(needs.Energy) + seconds * (0.85 if comfortable else 0.65))
 		if needs.Energy >= 100.0:
 			resting = false
 	elif active and nap_actor != null and is_instance_valid(nap_actor.get_ref()) and nap_actor.get_ref().napping:
@@ -87,7 +91,19 @@ func action(kind: String) -> void:
 		if target == "":
 			return
 		if float(needs[target]) >= 99.0:
-			say("Mochi already feels great! Try another activity.")
+			if kind == "Feed":
+				say("Mochi is full. Try Play or Care for a little bonding time.")
+			elif kind == "Play" and not can_explore():
+				say("A little rest first. Mochi needs at least 15 energy.")
+			else:
+				resting = false
+				cooldowns[kind] = 6.0
+				first_day.Care = true
+				IslandLife.record(self, kind)
+				care_performed.emit(kind)
+				say("A little Play, just for fun!" if kind == "Play" else "A gentle brush, just for the cuddles!")
+				changed.emit()
+				save_game()
 			return
 		if kind == "Play" and not can_explore():
 			say("A little rest first. Mochi needs at least 15 energy.")
@@ -97,7 +113,7 @@ func action(kind: String) -> void:
 		if kind == "Feed" and items.Treat > 0 and needs.Hunger < 78.0:
 			items.Treat -= 1
 			bonus = 8.0
-		elif kind == "Play" and items.Toy > 0:
+		elif kind == "Play" and (items.get("Toy", 0) > 0 or items.get(life.toy, 0) > 0):
 			bonus = 4.0
 		elif kind == "Care" and items.Brush > 0:
 			bonus = 4.0
@@ -107,6 +123,7 @@ func action(kind: String) -> void:
 		cooldowns[kind] = 6.0
 		grow("A little " + kind.to_lower() + " made today brighter.")
 		first_day.Care = true
+		IslandLife.record(self, kind)
 		say({"Feed": "Yum! A fresh bowl and a happy tummy.", "Play": "Happy paws, happy heart!", "Care": "All clean and fluffy!"}[kind])
 	care_performed.emit(kind)
 	changed.emit()
@@ -128,6 +145,7 @@ func pet_puppy() -> bool:
 	cooldowns.Pet = 12.0
 	needs.Happiness = minf(100, needs.Happiness + 2)
 	care_performed.emit("Pet")
+	IslandLife.record(self, "Pet")
 	say("Mochi leans into your hand. A little moment together.")
 	changed.emit()
 	save_game()
@@ -166,6 +184,7 @@ func can_explore() -> bool:
 
 func finish_activity(kind: String, score: int = 0) -> void:
 	first_day.Outing = true
+	IslandLife.record(self, kind)
 	if kind == "Fetch":
 		fetches += 1
 		needs.Happiness = minf(100, needs.Happiness + 12 + score * 2)
@@ -195,6 +214,8 @@ func buy_item(kind: String) -> String:
 	return Goods.ITEMS[kind].name + " added to your Bag. " + Goods.ITEMS[kind].description
 
 func use_item(kind: String) -> String:
+	if Goods.ITEMS.has(kind) and Goods.ITEMS[kind].has("need"):
+		return use_extra_food(kind)
 	if kind not in ["Treat", "TrainingTreat", "Shampoo"] or items.get(kind, 0) <= 0:
 		return "That item is not available."
 	if cooldowns.get("Goods", 0) > 0:
@@ -203,6 +224,7 @@ func use_item(kind: String) -> String:
 	if needs[need] >= 99:
 		return "Already feeling great. Your item stays in the Bag."
 	items[kind] -= 1
+	last_food = kind
 	needs[need] = minf(100, needs[need] + {"Treat": 8, "TrainingTreat": 12, "Shampoo": 25}[kind])
 	if kind == "Treat":
 		needs.Happiness = minf(100, needs.Happiness + 4)
@@ -217,24 +239,60 @@ func use_item(kind: String) -> String:
 	save_game()
 	return Goods.ITEMS[kind].name + " used. " + need + " restored."
 
+func use_extra_food(kind: String) -> String:
+	var item: Dictionary = Goods.ITEMS[kind]
+	if items.get(kind, 0) <= 0:
+		return "Your Bag has none left."
+	if cooldowns.get("Goods", 0) > 0:
+		return "Give those paws a moment before another snack."
+	if needs[item.need] >= 99:
+		return "Already feeling great. Your item stays in the Bag."
+	items[kind] -= 1
+	last_food = kind
+	needs[item.need] = minf(100, needs[item.need] + item.amount)
+	if kind == "PicnicPack" or kind == IslandLife.favorite(self, "Food"):
+		needs.Happiness = minf(100, needs.Happiness + 4)
+	cooldowns.Goods = 12.0
+	pending_home_reaction = "Treat"
+	IslandLife.record(self, "Feed" if item.need == "Hunger" else "Pet")
+	care_performed.emit("Treat")
+	remember("Enjoyed " + item.name.to_lower() + ".")
+	changed.emit()
+	save_game()
+	return "A favorite!" if kind == IslandLife.favorite(self, "Food") else "A tasty little moment together."
+
 func begin_outing(kind: String) -> Dictionary:
+	if kind not in ["Fetch", "Walk"]:
+		return {}
 	if active_outing.get("kind", "") != kind:
-		active_outing = {"kind": kind, "checkpoint": 0, "score": 0}
+		if not active_outing.is_empty():
+			saved_outings[active_outing.kind] = active_outing.duplicate()
+		active_outing = saved_outings.get(kind, {"kind": kind, "checkpoint": 0, "score": 0}).duplicate()
+		saved_outings[kind] = active_outing.duplicate()
 		save_game()
 	return active_outing.duplicate()
+
+func has_outing(kind: String) -> bool:
+	return active_outing.get("kind", "") == kind or saved_outings.has(kind)
 
 func checkpoint_outing(checkpoint: int, score: int = 0) -> void:
 	if active_outing.is_empty():
 		return
+	var candidate = {"kind": active_outing.kind, "checkpoint": checkpoint, "score": score}
+	if not valid_outing(candidate) or checkpoint < int(active_outing.checkpoint) or score < int(active_outing.score):
+		return
 	active_outing.checkpoint = checkpoint
 	active_outing.score = score
+	saved_outings[active_outing.kind] = active_outing.duplicate()
 	save_game()
 
 func complete_outing(kind: String, score: int = 0) -> bool:
 	if active_outing.get("kind", "") != kind or int(active_outing.get("checkpoint", 0)) < 3:
 		return false
+	var earned_score = int(active_outing.score) if kind == "Fetch" else 0
+	saved_outings.erase(kind)
 	active_outing = {}
-	finish_activity(kind, score)
+	finish_activity(kind, earned_score)
 	return true
 
 func clinic_checkup() -> String:
@@ -314,12 +372,15 @@ func update_growth() -> void:
 func save_game() -> bool:
 	var data = {"version": 1, "needs": needs, "name": puppy_name, "breed": breed,
 		"first_day": first_day,
-		"coins": coins, "items": items, "cooldowns": cooldowns, "active_outing": active_outing,
+		"coins": coins, "items": items, "cooldowns": cooldowns, "active_outing": active_outing, "saved_outings": saved_outings, "life": life,
 		"effects_volume": effects_volume, "ambience_volume": ambience_volume,
 		"name_chosen": name_chosen, "sound_enabled": sound_enabled, "pending_stage": pending_stage,
 		"active_seconds": active_seconds, "points": points, "fetches": fetches, "walks": walks, "intro_seen": intro_seen,
 		"resting": resting, "age_seconds": age_seconds, "collection": collection,
 		"journal": journal, "saved_at": Time.get_unix_time_from_system()}
+	if not valid_save(data):
+		save_error = "Could not save the current progress. Your previous save is preserved."
+		return false
 	var file = FileAccess.open(storage_path + ".tmp", FileAccess.WRITE)
 	if file == null:
 		save_error = "Could not save. Your progress is still in memory."
@@ -348,6 +409,8 @@ func read_data(path: String) -> Variant:
 
 func valid_save(data: Variant) -> bool:
 	if not data is Dictionary or data.get("version") != 1:
+		return false
+	if not IslandLife.valid(data.get("life", {})):
 		return false
 	if not data.get("needs") is Dictionary:
 		return false
@@ -390,20 +453,16 @@ func valid_save(data: Variant) -> bool:
 		return false
 	for key in saved_cooldowns:
 		var remaining = saved_cooldowns[key]
-		if key not in ["Feed", "Play", "Care", "Goods", "Pet", "IslandMoment"] or not (remaining is float or remaining is int) or not is_finite(float(remaining)) or remaining < 0 or remaining > (30 if key == "IslandMoment" else 12):
+		if key not in ["Feed", "Play", "Care", "Goods", "Pet", "IslandMoment", "Training"] or not (remaining is float or remaining is int) or not is_finite(float(remaining)) or remaining < 0 or remaining > (30 if key in ["IslandMoment", "Training"] else 12):
 			return false
-	var outing = data.get("active_outing", {})
-	if not outing is Dictionary:
+	var outings = data.get("saved_outings", {})
+	if not outings is Dictionary:
 		return false
-	if not outing.is_empty():
-		if outing.get("kind") not in ["Fetch", "Walk"]:
+	for kind in outings:
+		if kind not in ["Fetch", "Walk"] or not valid_outing(outings[kind]) or outings[kind].get("kind", "") != kind:
 			return false
-		for key in ["checkpoint", "score"]:
-			var number = outing.get(key)
-			if not (number is float or number is int) or not is_finite(float(number)) or number < 0 or number > 3 or float(number) != floorf(number):
-				return false
-		if outing.score > outing.checkpoint or (outing.kind == "Walk" and outing.score != 0):
-			return false
+	if not valid_outing(data.get("active_outing", {})):
+		return false
 	var active_time = data.get("active_seconds", 0.0)
 	if not (active_time is float or active_time is int) or not is_finite(float(active_time)) or active_time < 0:
 		return false
@@ -419,6 +478,20 @@ func valid_save(data: Variant) -> bool:
 			return false
 	return data.get("name") is String
 
+func valid_outing(outing: Variant) -> bool:
+	if not outing is Dictionary:
+		return false
+	if not outing.is_empty():
+		if outing.get("kind") not in ["Fetch", "Walk"]:
+			return false
+		for key in ["checkpoint", "score"]:
+			var number = outing.get(key)
+			if not (number is float or number is int) or not is_finite(float(number)) or number < 0 or number > 3 or float(number) != floorf(number):
+				return false
+		if outing.score > outing.checkpoint or (outing.kind == "Walk" and outing.score != 0):
+			return false
+	return true
+
 func load_game() -> void:
 	var data = read_data(storage_path)
 	if not valid_save(data):
@@ -430,12 +503,19 @@ func load_game() -> void:
 	for key in NEEDS:
 		needs[key] = clampf(float(data.needs[key]), 0, 100)
 	puppy_name = data.name.left(16)
+	life = IslandLife.normalized(data.get("life", {}))
 	coins = int(data.get("coins", 50))
 	items = {}
 	for kind in PRICES:
 		items[kind] = int(data.get("items", {}).get(kind, 0))
+	for slot in ["accessory", "bed", "toy"]:
+		if items.get(life[slot], 0) <= 0:
+			life[slot] = ""
 	cooldowns = data.get("cooldowns", {}).duplicate()
 	active_outing = data.get("active_outing", {}).duplicate()
+	saved_outings = data.get("saved_outings", {}).duplicate(true)
+	if not active_outing.is_empty():
+		saved_outings[active_outing.kind] = active_outing.duplicate()
 	effects_volume = float(data.get("effects_volume", 0.7))
 	ambience_volume = float(data.get("ambience_volume", 0.45))
 	name_chosen = data.get("name_chosen", data.intro_seen)

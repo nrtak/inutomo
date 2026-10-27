@@ -31,6 +31,9 @@ var reaction_duration = 2.4
 var reaction_icon: Sprite2D
 var sleepy_reaction = false
 var sleep_material: ShaderMaterial
+var style_material: ShaderMaterial
+var preview_accessory = ""
+var settling_for_rest = false
 
 func _ready() -> void:
 	shadow = Sprite2D.new()
@@ -41,6 +44,8 @@ func _ready() -> void:
 	sprite = Sprite2D.new()
 	sleep_material = ShaderMaterial.new()
 	sleep_material.shader = preload("res://scripts/sleep_cutout.gdshader")
+	style_material = ShaderMaterial.new()
+	style_material.shader = preload("res://scripts/dog_style.gdshader")
 	add_child(sprite)
 	reaction_icon = Sprite2D.new()
 	reaction_icon.position = Vector2(125, -180)
@@ -61,6 +66,12 @@ func set_breed() -> void:
 func set_pose(asleep: bool) -> void:
 	var texture: Texture2D = Art.SLEEP_TEXTURES[Game.breed] if asleep else Art.PUPPIES[Game.breed]
 	sprite.material = sleep_material if asleep and Game.breed != "Puppy" else null
+	var accessory: String = preview_accessory if not preview_accessory.is_empty() else Game.life.accessory
+	if Goods.ITEMS.has(accessory) and Goods.ITEMS[accessory].has("color") and (not preview_accessory.is_empty() or Game.items.get(accessory, 0) > 0):
+		style_material.set_shader_parameter("bandana", Goods.ITEMS[accessory].color)
+		style_material.set_shader_parameter("recolor", true)
+		style_material.set_shader_parameter("sleeping_cutout", asleep and Game.breed != "Puppy")
+		sprite.material = style_material
 	if sprite.texture != texture:
 		sprite.texture = texture
 		if not pose_bounds.has(texture):
@@ -96,6 +107,8 @@ func wake_briefly() -> void:
 func _process(delta: float) -> void:
 	if Game.paused_at > 0:
 		return
+	if settling_for_rest and (not Game.resting or position.distance_to(target) < 1):
+		settling_for_rest = false
 	clock += delta
 	decision -= delta
 	if current_breed != Game.breed:
@@ -117,7 +130,7 @@ func _process(delta: float) -> void:
 				napping = true
 	else:
 		napping = false
-	var asleep = not controlled and (Game.resting or (baby and napping))
+	var asleep = not controlled and not settling_for_rest and (Game.resting or (baby and napping))
 	set_pose(asleep)
 	if asleep:
 		target = position
@@ -149,7 +162,7 @@ func _process(delta: float) -> void:
 				sprite.rotation = sin(reaction_time * 5) * 0.035
 				reaction_icon.position = Vector2(60, -12)
 			"Play":
-				sprite.position.y = -bounce * 14
+				sprite.position.y = -bounce * (18 if IslandLife.personality(Game) == "Playful" else 14)
 				sprite.rotation = sin(reaction_time * 8) * 0.05
 				reaction_icon.position = Vector2(75 + sin(reaction_time * 5) * 15, -20 - bounce * 35)
 			"Care":
@@ -185,7 +198,12 @@ func _process(delta: float) -> void:
 			mood = "Looking for a tasty snack"
 		else:
 			target = Vector2(randf_range(bounds.position.x, bounds.end.x), randf_range(bounds.position.y, bounds.end.y))
-			mood = ["Sniffing the sea breeze", "Chasing a sunbeam", "Exploring with happy paws"].pick_random()
+			if IslandLife.personality(Game) == "Cuddly":
+				target = position + Vector2(randf_range(-45, 45), randf_range(-8, 8))
+				decision = randf_range(6, 10)
+			elif IslandLife.personality(Game) == "Playful":
+				decision = randf_range(2.5, 4)
+			mood = {"Curious": "Sniffing for a new discovery", "Cuddly": "Looking for a gentle pat", "Playful": "Looking for a favorite toy"}[IslandLife.personality(Game)]
 	var distance = position.distance_to(target)
 	var moving = distance > 1
 	if moving:
@@ -240,18 +258,39 @@ func set_walk_pose() -> void:
 func react_to_care(kind: String) -> void:
 	if controlled:
 		return
+	if kind == "Rest":
+		settling_for_rest = false
+		if Game.resting and Game.items.get(Game.life.bed, 0) > 0:
+			target = WalkArea.nearest(walk_area, Vector2([550.0, 650.0, 760.0][Game.life.spot], 505))
+			settling_for_rest = position.distance_to(target) > 1
+			if settling_for_rest:
+				wake_briefly()
+				reaction_time = 0
+				decision = 20
+				return
 	sleepy_reaction = kind in ["Pet", "Treat"] and ((Game.breed == "Puppy" and napping) or Game.resting)
 	if not sleepy_reaction:
 		wake_briefly()
 	reaction_kind = kind
 	reaction_duration = 3.2 if kind == "Feed" else (3.0 if kind == "Care" else 2.4)
+	if kind == "Pet" and IslandLife.personality(Game) == "Cuddly":
+		reaction_duration = 3.5
 	reaction_time = reaction_duration
 	decision = 4.0
 	target = position
-	var icon_name: String = {"Pet": "heart", "Treat": "treat", "Sniff": "shell", "Sit": "training_treat"}.get(kind, kind.to_lower())
+	var icon_name: String = {"Pet": "heart", "Treat": "treat", "Sniff": "shell", "Sit": "training_treat", "Come": "heart"}.get(kind, kind.to_lower())
+	if kind == "Treat" and Game.last_food == IslandLife.favorite(Game, "Food"):
+		icon_name = "heart"
+	if kind == "Play" and Game.life.toy == IslandLife.favorite(Game, "Toys") and Game.items.get(Game.life.toy, 0) > 0:
+		icon_name = "heart"
 	reaction_icon.texture = load("res://assets/ui/" + icon_name + ".svg")
+	if kind == "Play" and icon_name != "heart" and Game.items.get(Game.life.toy, 0) > 0:
+		reaction_icon.texture = Goods.picture(Game.life.toy)
 	reaction_icon.scale = Vector2.ONE * (58.0 / reaction_icon.texture.get_width())
 	mood = {"Feed": "Enjoying a tasty snack", "Play": "Wiggling with excitement", "Care": "Feeling fresh and loved", "Rest": "Settling in for a nap", "Pet": "Leaning into a gentle pat", "Treat": "Savoring a little reward", "Sniff": "Sniffing the salty breeze", "Sit": "Trying a patient little sit"}.get(kind, "Enjoying island life")
+	if kind == "Come":
+		mood = "Coming when you call"
+		target = WalkArea.nearest(walk_area, position + Vector2(45, 0))
 	if kind == "Rest" and not Game.resting:
 		mood = "Ready for a new adventure"
 
