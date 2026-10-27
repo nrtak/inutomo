@@ -15,8 +15,12 @@ func run() -> void:
 	game = root.get_node("Game")
 	game.set_process(false)
 	game.storage_path = "user://test_puppy_island.json"
+	game.puppy_name = "Mochi"
+	game.items = {"Treat": 0, "Toy": 0, "Brush": 0}
+	game.coins = 50
 	game.needs = {"Hunger": 40.0, "Happiness": 40.0, "Energy": 70.0, "Cleanliness": 40.0}
 	game.points = 0
+	game.active_seconds = 0
 	game.breed = "Puppy"
 	game.walks = 0
 	game.fetches = 0
@@ -38,7 +42,8 @@ func run() -> void:
 	game.finish_activity("Fetch", 3)
 	check(game.prediction() == "Golden Retriever", "Fetch and tie favor Golden")
 	game.walks = 10
-	game.points = 11
+	game.points = game.EVOLUTION_POINTS - 1
+	game.active_seconds = game.EVOLUTION_SECONDS
 	game.finish_activity("Walk")
 	check(game.breed == "Shiba Inu" and game.collection.size() == 1, "Evolution enters collection once")
 	game.finish_activity("Walk")
@@ -56,7 +61,8 @@ func run() -> void:
 	game.load_game()
 	check(game.points == saved_points, "Corrupt save recovers from backup")
 	game.breed = "Puppy"
-	game.points = 11
+	game.points = game.EVOLUTION_POINTS - 1
+	game.active_seconds = game.EVOLUTION_SECONDS
 	game.walks = 0
 	game.fetches = 3
 	game.finish_activity("Fetch", 1)
@@ -68,6 +74,7 @@ func run() -> void:
 	check(not game.can_explore(), "Low energy blocks outings")
 	game.needs.Energy = 90
 	game.resting = false
+	game.pending_stage = ""
 	var main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 	await process_frame
@@ -78,6 +85,18 @@ func run() -> void:
 		main.show_page(page)
 		await process_frame
 		check(main.body.get_child_count() > 0, page + " scene renders")
+	game.needs.Hunger = 40.0
+	game.cooldowns.clear()
+	game.action("Feed")
+	await process_frame
+	check(main.habitat.puppy.reaction_kind == "Feed" and main.habitat.puppy.reaction_time > 0, "Successful care triggers puppy reaction")
+	check(main.action_buttons.Feed.disabled, "Care cooldown is visible on the button")
+	var care_points: int = game.points
+	game.action("Feed")
+	check(game.points == care_points, "Repeated care during cooldown awards no growth")
+	game.advance(7)
+	await process_frame
+	check(not main.action_buttons.Feed.disabled, "Care button becomes available after cooldown")
 	main.start_activity("Fetch")
 	await process_frame
 	var fetch = main.body.get_child(0)
@@ -91,7 +110,18 @@ func run() -> void:
 	for i in 3:
 		walk._next()
 		await create_timer(2.7).timeout
-	check(walk.complete, "Walk completes all stops")
+	check(not walk.complete, "Walk waits for the return trip before awarding completion")
+	var before_return: Vector2 = main.habitat.puppy.position
+	walk._next()
+	await create_timer(2.7).timeout
+	check(walk.complete, "Walk completes all stops and the return trip")
+	check(main.habitat.puppy.position.y < before_return.y, "Dog walks back up the coastal path")
+	var discoveries = 0
+	for memory in game.journal:
+		for moment in walk.MOMENTS:
+			if moment in memory:
+				discoveries += 1
+	check(discoveries == 3, "All three Walk discoveries enter the Journal")
 	# Leaving an outing during an await must not access freed UI or award growth.
 	main.start_activity("Fetch")
 	await process_frame

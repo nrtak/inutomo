@@ -11,4 +11,36 @@ const PUPPIES = {
 	"Shiba Inu": preload("res://assets/puppies/shiba_anime.png"),
 	"Golden Retriever": preload("res://assets/puppies/golden_anime.png")
 }
+const PUPPY_SLEEP = preload("res://assets/puppies/puppy_sleep_anime.png")
 const NORA = preload("res://assets/characters/nora_anime.png")
+
+const WALKS = {
+	"Puppy": preload("res://assets/puppies/puppy_walk_anime.png"),
+	"Shiba Inu": preload("res://assets/puppies/shiba_walk_anime.png"),
+	"Golden Retriever": preload("res://assets/puppies/golden_walk_anime.png")
+}
+
+# Ground bounds and body anchors keep the eight walk phases aligned.
+const WALK_REGIONS = {
+	"Puppy": [Rect2(21, 75, 402, 337), Rect2(452, 75, 414, 338), Rect2(895, 75, 414, 338), Rect2(1337, 75, 416, 338), Rect2(17, 496, 406, 338), Rect2(460, 496, 407, 337), Rect2(894, 495, 416, 338), Rect2(1345, 495, 409, 338)],
+	"Shiba Inu": [Rect2(30, 35, 413, 383), Rect2(443, 35, 443, 383), Rect2(913, 35, 416, 383), Rect2(1341, 37, 430, 381), Rect2(34, 474, 409, 383), Rect2(443, 474, 443, 382), Rect2(903, 474, 426, 382), Rect2(1345, 475, 425, 382)],
+	"Golden Retriever": [Rect2(23, 76, 409, 322), Rect2(462, 76, 406, 324), Rect2(903, 76, 408, 328), Rect2(1342, 77, 411, 320), Rect2(21, 503, 407, 323), Rect2(459, 503, 409, 326), Rect2(901, 502, 410, 331), Rect2(1347, 503, 412, 323)],
+}
+const WALK_ANCHORS = {
+	"Puppy": [207.44, 223.14, 225.04, 223.87, 216.5, 213.07, 226.99, 212.49],
+	"Shiba Inu": [207.9, 233.16, 204.3, 221.75, 202.66, 235.88, 216.97, 219.26],
+	"Golden Retriever": [205.78, 207.29, 207.41, 210.94, 207.99, 211.44, 209.41, 208.26],
+}
+const WALK_HEIGHTS = {"Puppy": 338.0, "Shiba Inu": 382.5, "Golden Retriever": 323.5}
+
+const BACKGROUNDS = {"Home": HOME, "Park": PARK, "Beach": BEACH,
+	"Puppy Club": preload("res://assets/backgrounds/club_anime.png"),
+	"Shop": preload("res://assets/backgrounds/shop_anime.png"),
+	"Vet Clinic": preload("res://assets/backgrounds/vet_anime.png"),
+	"Lighthouse": preload("res://assets/backgrounds/lighthouse_anime.png"),
+}
+const JUNE = preload("res://assets/characters/june_anime.png")
+const LEAH = preload("res://assets/characters/leah_anime.png")
+
+const BEN = preload("res://assets/characters/ben_anime.png")
+const OWEN = preload("res://assets/characters/owen_anime.png")

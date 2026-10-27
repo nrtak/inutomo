@@ -3,6 +3,7 @@ extends VBoxContainer
 signal finished
 var habitat: Habitat
 var bar: ProgressBar
+var progress: Label
 var status: Label
 var throw_button: Button
 var phase = 0.0
@@ -22,8 +23,11 @@ func _ready() -> void:
 		habitat.location = "Park"
 		add_child(habitat)
 	habitat.puppy.controlled = true
-	habitat.puppy.position = Vector2(500, 550)
+	habitat.puppy.position = WalkArea.SPAWNS.Park
 	habitat.puppy.target = habitat.puppy.position
+	var checkpoint = Game.begin_outing("Fetch")
+	rounds = int(checkpoint.checkpoint)
+	score = int(checkpoint.score)
 	var spacer = Control.new()
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -34,17 +38,31 @@ func _ready() -> void:
 	add_child(panel)
 	var controls = UI.column(8)
 	panel.add_child(controls)
-	status = UI.label("Three throws! Tap near 70% power.", 24)
+	progress = UI.label("Throw 1 / 3", 24, UI.TEAL)
+	controls.add_child(progress)
+	status = UI.label("Tap in the green zone near 70% power.", 24)
 	controls.add_child(status)
 	bar = ProgressBar.new()
 	bar.custom_minimum_size.y = 32
 	bar.show_percentage = true
 	bar.add_theme_stylebox_override("fill", UI.style(UI.PINK, 12))
 	controls.add_child(bar)
+	var sweet_zone = ColorRect.new()
+	sweet_zone.color = Color(0.3, 0.8, 0.4, 0.35)
+	sweet_zone.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sweet_zone.anchor_left = 0.52
+	sweet_zone.anchor_right = 0.88
+	sweet_zone.anchor_bottom = 1
+	bar.add_child(sweet_zone)
+	progress.text = "Throw %d / 3" % mini(3, rounds + 1)
 	throw_button = UI.button("Throw the ball", _throw, Color("bdeab0"))
 	controls.add_child(throw_button)
+	if rounds >= 3:
+		call_deferred("finish_fetch")
 
 func _process(delta: float) -> void:
+	if Game.paused_at > 0:
+		return
 	if not busy and not complete:
 		phase += delta * 2.2
 		bar.value = (sin(phase) + 1) * 50
@@ -58,28 +76,45 @@ func _throw() -> void:
 	if good:
 		score += 1
 	rounds += 1
-	status.text = "Great throw! Go, Mochi!" if good else "A little wobbly, but Mochi is on it!"
+	progress.text = "Retrieving / throw %d of 3" % rounds
+	status.text = Game.personalize("Great throw! Go, Mochi!" if good else "A little wobbly, but Mochi is on it!")
 	habitat.ball.visible = true
-	habitat.ball.position = Vector2(300 + bar.value * 3.3, 530)
+	habitat.ball.position = WalkArea.nearest(habitat.puppy.walk_area, Vector2(370 + bar.value * 3.3, 565))
 	habitat.puppy.target = habitat.ball.position
 	timer.start(3.0)
 	await timer.timeout
 	if not is_inside_tree():
 		return
 	habitat.ball.visible = false
-	habitat.puppy.target = Vector2(500, 550)
+	habitat.puppy.target = WalkArea.SPAWNS.Park
 	timer.start(2.5)
 	await timer.timeout
 	if not is_inside_tree():
 		return
+	Game.checkpoint_outing(rounds, score)
 	if rounds >= 3:
-		complete = true
-		Game.finish_activity("Fetch", score)
-		status.text = "%d / 3 great throws! Happiness up. Golden Retriever affinity up." % score
-		throw_button.text = "Back home"
-		throw_button.pressed.disconnect(_throw)
-		throw_button.pressed.connect(func(): finished.emit())
+		finish_fetch()
 	else:
-		status.text = "Throw %d of 3. Aim for 70%% power!" % (rounds + 1)
+		progress.text = "Throw %d / 3" % (rounds + 1)
+		status.text = "Aim for the green zone near 70% power!"
 	busy = false
 	throw_button.disabled = false
+
+func finish_fetch() -> void:
+	if complete:
+		return
+	complete = true
+	Game.complete_outing("Fetch", score)
+	progress.text = "Fetch complete / %d of 3 great throws" % score
+	status.text = "Happiness restored, +1 care moment and %d coins. Golden Retriever affinity up." % (10 + score)
+	throw_button.text = "Back home"
+	throw_button.pressed.disconnect(_throw)
+	throw_button.pressed.connect(func(): finished.emit())
+
+func _notification(what: int) -> void:
+	if not is_instance_valid(timer):
+		return
+	if what == NOTIFICATION_APPLICATION_PAUSED:
+		timer.paused = true
+	elif what == NOTIFICATION_APPLICATION_RESUMED:
+		timer.paused = false

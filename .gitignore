@@ -21,3 +21,5 @@ docs/
 __pycache__/
 *.p8
 *.pem
+
+output/

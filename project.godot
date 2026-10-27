@@ -9,6 +9,7 @@ config/icon="res://assets/icon.svg"
 
 [autoload]
 Game="*res://scripts/game.gd"
+Sound="*res://scripts/sound.gd"
 
 [display]
 window/size/viewport_width=1280
