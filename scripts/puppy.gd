@@ -29,6 +29,8 @@ var settle_time = 0.0
 var footfall_distance = 0.0
 var reaction_duration = 2.4
 var reaction_icon: Sprite2D
+var sleepy_reaction = false
+var sleep_material: ShaderMaterial
 
 func _ready() -> void:
 	shadow = Sprite2D.new()
@@ -37,6 +39,8 @@ func _ready() -> void:
 	shadow.scale = Vector2(1.5, 1)
 	add_child(shadow)
 	sprite = Sprite2D.new()
+	sleep_material = ShaderMaterial.new()
+	sleep_material.shader = preload("res://scripts/sleep_cutout.gdshader")
 	add_child(sprite)
 	reaction_icon = Sprite2D.new()
 	reaction_icon.position = Vector2(125, -180)
@@ -55,11 +59,12 @@ func set_breed() -> void:
 	set_pose(false)
 
 func set_pose(asleep: bool) -> void:
-	var texture: Texture2D = Art.PUPPY_SLEEP if asleep and Game.breed == "Puppy" else Art.PUPPIES[Game.breed]
+	var texture: Texture2D = Art.SLEEP_TEXTURES[Game.breed] if asleep else Art.PUPPIES[Game.breed]
+	sprite.material = sleep_material if asleep and Game.breed != "Puppy" else null
 	if sprite.texture != texture:
 		sprite.texture = texture
 		if not pose_bounds.has(texture):
-			pose_bounds[texture] = texture.get_image().get_used_rect()
+			pose_bounds[texture] = Art.SLEEP_REGIONS[Game.breed] if asleep else texture.get_image().get_used_rect()
 		var visible_rect: Rect2i = pose_bounds[texture]
 		sprite.region_enabled = true
 		sprite.region_rect = visible_rect
@@ -67,7 +72,10 @@ func set_pose(asleep: bool) -> void:
 		sprite.offset.y = -visible_rect.size.y * 0.5
 		visible_size = visible_rect.size
 	var growth = Game.growth_fraction()
-	base_scale = (lerpf(200, 290, growth) / visible_size.x) if asleep and Game.breed == "Puppy" else ((lerpf(180, 280, growth) if Game.breed == "Puppy" else 320.0) / visible_size.y)
+	if asleep:
+		base_scale = (lerpf(200, 290, growth) if Game.breed == "Puppy" else 390.0) / visible_size.x
+	else:
+		base_scale = (lerpf(180, 280, growth) if Game.breed == "Puppy" else 320.0) / visible_size.y
 	sprite.scale = Vector2.ONE * base_scale
 
 func request_move(point: Vector2) -> void:
@@ -93,7 +101,9 @@ func _process(delta: float) -> void:
 	if current_breed != Game.breed:
 		set_breed()
 	var baby = Game.breed == "Puppy"
-	if baby and not controlled and not Game.resting and reaction_time <= 0:
+	if sleepy_reaction and reaction_time > 0:
+		napping = true
+	elif baby and not controlled and not Game.resting and reaction_time <= 0:
 		if nap_remaining > 0:
 			nap_remaining = maxf(0, nap_remaining - delta)
 			napping = nap_remaining > 0
@@ -116,8 +126,15 @@ func _process(delta: float) -> void:
 		sprite.position.y = 0
 		sprite.rotation = 0
 		sprite.scale = Vector2(1, 1 + sin(clock * 2) * 0.015) * base_scale
-		reaction_time = 0
-		reaction_icon.visible = false
+		reaction_time = maxf(0, reaction_time - delta)
+		reaction_icon.visible = sleepy_reaction and reaction_time > 0
+		if reaction_icon.visible:
+			reaction_icon.position = Vector2(35, -125 - sin(clock * 3) * 5)
+			reaction_icon.modulate.a = minf(1, reaction_time * 2)
+			sprite.rotation = sin(clock * 4) * 0.018
+			mood = "A sleepy little nuzzle" if reaction_kind == "Pet" else "A sleepy nibble, then back to dreaming"
+		else:
+			sleepy_reaction = false
 		return
 	reaction_time = maxf(0, reaction_time - delta)
 	queue_redraw()
@@ -139,6 +156,14 @@ func _process(delta: float) -> void:
 				sprite.position.y = 0
 				reaction_icon.position = Vector2(70, -100)
 				queue_redraw()
+			"Pet", "Treat":
+				sprite.position.y = -bounce * 2
+				sprite.rotation = sin(reaction_time * 5) * 0.025
+				reaction_icon.position = Vector2(50, -120 - bounce * 8)
+			"Sniff", "Sit":
+				sprite.position.y = bounce * 2
+				sprite.rotation = sin(reaction_time * 3) * 0.02
+				reaction_icon.position = Vector2(65, -90)
 			_:
 				sprite.position.y = 0
 				reaction_icon.position = Vector2(70, -100)
@@ -215,15 +240,18 @@ func set_walk_pose() -> void:
 func react_to_care(kind: String) -> void:
 	if controlled:
 		return
-	wake_briefly()
+	sleepy_reaction = kind in ["Pet", "Treat"] and ((Game.breed == "Puppy" and napping) or Game.resting)
+	if not sleepy_reaction:
+		wake_briefly()
 	reaction_kind = kind
 	reaction_duration = 3.2 if kind == "Feed" else (3.0 if kind == "Care" else 2.4)
 	reaction_time = reaction_duration
 	decision = 4.0
 	target = position
-	reaction_icon.texture = load("res://assets/ui/" + kind.to_lower() + ".svg")
+	var icon_name: String = {"Pet": "heart", "Treat": "treat", "Sniff": "shell", "Sit": "training_treat"}.get(kind, kind.to_lower())
+	reaction_icon.texture = load("res://assets/ui/" + icon_name + ".svg")
 	reaction_icon.scale = Vector2.ONE * (58.0 / reaction_icon.texture.get_width())
-	mood = {"Feed": "Enjoying a tasty snack", "Play": "Wiggling with excitement", "Care": "Feeling fresh and loved", "Rest": "Settling in for a nap"}[kind]
+	mood = {"Feed": "Enjoying a tasty snack", "Play": "Wiggling with excitement", "Care": "Feeling fresh and loved", "Rest": "Settling in for a nap", "Pet": "Leaning into a gentle pat", "Treat": "Savoring a little reward", "Sniff": "Sniffing the salty breeze", "Sit": "Trying a patient little sit"}.get(kind, "Enjoying island life")
 	if kind == "Rest" and not Game.resting:
 		mood = "Ready for a new adventure"
 

@@ -26,7 +26,7 @@ func _ready() -> void:
   var voice = AudioStreamPlayer.new()
   add_child(voice)
   voices.append(voice)
- Game.care_performed.connect(func(kind: String): play_effect(kind.to_lower(), -19))
+ Game.care_performed.connect(func(kind: String): play_effect({"Pet": "care", "Treat": "feed", "Sniff": "care", "Sit": "play"}.get(kind, kind.to_lower()), -19))
  if DisplayServer.get_name() != "headless":
   set_enabled(Game.sound_enabled, false)
 

@@ -14,6 +14,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	background = TextureRect.new()
 	background.texture = Art.BACKGROUNDS.get(location, Art.HOME)
+	Daylight.apply_to(background, location)
 	background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -46,19 +47,25 @@ func _ready() -> void:
 
 func _resize_world() -> void:
 	if world:
-		var factor = maxf(size.x / 1280.0, size.y / 720.0)
+		var zoom = 1.42 if location == "Home" else 1.0
+		var factor = maxf(size.x / 1280.0, size.y / 720.0) * zoom
 		world.scale = Vector2.ONE * factor
-		world.position = (size - Vector2(1280, 720) * factor) * 0.5
+		var focus = Vector2(650, 410) if location == "Home" else Vector2(640, 360)
+		world.position = size * 0.5 - focus * factor
 
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and not puppy.controlled and not Game.resting:
+	if event is InputEventMouseButton and event.pressed and not puppy.controlled:
 		var point = (event.position - world.position) / world.scale
+		var puppy_point = puppy.sprite.to_local(world.to_global(point))
+		if puppy.sprite.get_rect().has_point(puppy_point):
+			Game.pet_puppy()
+			accept_event()
+			return
 		# Ignore taps on furniture, railings, water and other non-walkable scenery.
 		if WalkArea.contains(puppy.walk_area, point):
 			puppy.request_move(point)
 
 func set_walk_stop(index: int) -> void:
-	background.modulate = [Color.WHITE, Color("edfaff"), Color("ffe4ce")][index]
 	discovery.texture = load("res://assets/ui/" + ["leaf", "shell", "sunset"][index] + ".svg")
 	discovery.position = WalkArea.WALK_STOPS[index] + Vector2(0, -8)
 	discovery.scale = Vector2.ONE * 0.7

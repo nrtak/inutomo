@@ -38,7 +38,7 @@ func _ready() -> void:
 	add_child(panel)
 	var controls = UI.column(8)
 	panel.add_child(controls)
-	progress = UI.label("Throw 1 / 3", 24, UI.TEAL)
+	progress = UI.label("Throw 1 of 3", 24, UI.TEAL)
 	controls.add_child(progress)
 	status = UI.label("Tap in the green zone near 70% power.", 24)
 	controls.add_child(status)
@@ -54,8 +54,8 @@ func _ready() -> void:
 	sweet_zone.anchor_right = 0.88
 	sweet_zone.anchor_bottom = 1
 	bar.add_child(sweet_zone)
-	progress.text = "Throw %d / 3" % mini(3, rounds + 1)
-	throw_button = UI.button("Throw the ball", _throw, Color("bdeab0"))
+	progress.text = "Throw %d of 3" % mini(3, rounds + 1)
+	throw_button = UI.icon_button("Throw the ball", preload("res://assets/ui/play.svg"), _throw, Color("c8eddd"))
 	controls.add_child(throw_button)
 	if rounds >= 3:
 		call_deferred("finish_fetch")
@@ -76,7 +76,7 @@ func _throw() -> void:
 	if good:
 		score += 1
 	rounds += 1
-	progress.text = "Retrieving / throw %d of 3" % rounds
+	progress.text = "Bringing back throw %d of 3" % rounds
 	status.text = Game.personalize("Great throw! Go, Mochi!" if good else "A little wobbly, but Mochi is on it!")
 	habitat.ball.visible = true
 	habitat.ball.position = WalkArea.nearest(habitat.puppy.walk_area, Vector2(370 + bar.value * 3.3, 565))
@@ -95,7 +95,7 @@ func _throw() -> void:
 	if rounds >= 3:
 		finish_fetch()
 	else:
-		progress.text = "Throw %d / 3" % (rounds + 1)
+		progress.text = "Throw %d of 3" % (rounds + 1)
 		status.text = "Aim for the green zone near 70% power!"
 	busy = false
 	throw_button.disabled = false
@@ -105,9 +105,10 @@ func finish_fetch() -> void:
 		return
 	complete = true
 	Game.complete_outing("Fetch", score)
-	progress.text = "Fetch complete / %d of 3 great throws" % score
-	status.text = "Happiness restored, +1 care moment and %d coins. Golden Retriever affinity up." % (10 + score)
-	throw_button.text = "Back home"
+	progress.text = "Fetch complete! %d of 3 great throws" % score
+	status.text = "Happy paws! You earned %d coins." % (10 + score)
+	UI.button_caption(throw_button, "Back home")
+	throw_button.get_meta("picture").texture = UI.place_icon("Home")
 	throw_button.pressed.disconnect(_throw)
 	throw_button.pressed.connect(func(): finished.emit())
 

@@ -121,7 +121,9 @@ func run() -> void:
  main.start_activity("Walk")
  await process_frame
  var walk = main.body.get_child(0)
- check(walk.step == 3 and "back up" in walk.next_button.text, "A Walk resumes at the return trip")
+ check(walk.step == 3 and walk.next_button.text == "Head back", "A Walk resumes at the return trip")
+ check(walk.next_button.get_meta("picture").texture == UI.place_icon("Home"), "A resumed return trip shows the Home icon")
+ check(main.habitat.background.modulate == Color.WHITE, "Walk discoveries preserve the device-time lighting")
  walk._notification(NOTIFICATION_APPLICATION_PAUSED)
  check(walk.timer.paused, "Outing timers pause when the app is backgrounded")
  var time_before: float = game.active_seconds
@@ -173,6 +175,20 @@ func run() -> void:
   main.show_page("Bag")
   await process_frame
   check(not main.bag_button.visible, "The Bag does not repeat its own navigation button")
+  for place in ["Puppy Club", "Park", "Beach", "Vet Clinic", "Lighthouse"]:
+   main.show_page(place)
+   await process_frame
+   await process_frame
+   var hub = main.body.get_child(0)
+   for button in hub.choices.get_children():
+    var bounds: Rect2 = button.get_global_rect()
+    check(bounds.position.x >= 105 and bounds.end.x <= mobile_view.size.x - 105, place + " buttons clear screen cutouts")
+    check(bounds.position.y >= 20 and bounds.end.y <= 695, place + " buttons fit the screen height")
+  main.show_page("Beach")
+  game.resting = true
+  main.start_activity("Walk")
+  check(is_instance_valid(main.notice_overlay) and main.page == "Beach", "An unavailable outing explains why it cannot start")
+  game.resting = false
   for destination in ["Home", "Island", "Bag", "Journal", "My Dogs"]:
    main.open_navigation()
    var choices = main.navigation_overlay.find_children("*", "Button", true, false)

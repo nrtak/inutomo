@@ -22,6 +22,7 @@ func _ready() -> void:
 	Sound.set_location("Home")
 	var background = TextureRect.new()
 	background.texture = Art.HOME
+	Daylight.apply_to(background)
 	background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -247,7 +248,7 @@ func show_sound_settings() -> void:
 	var levels: Dictionary = {}
 	for kind in ["effects", "waves"]:
 		var value = Game.effects_volume if kind == "effects" else Game.ambience_volume
-		var label = UI.label(("Care and footsteps" if kind == "effects" else "Ocean ambience") + " / %d%%" % int(value * 100), 25)
+		var label = UI.label(("Care and footsteps" if kind == "effects" else "Ocean ambience") + ": %d%%" % int(value * 100), 25)
 		content.add_child(label)
 		var slider = HSlider.new()
 		slider.min_value = 0
@@ -262,7 +263,7 @@ func show_sound_settings() -> void:
 				Sound.set_levels(number / 100, Game.ambience_volume, false)
 			else:
 				Sound.set_levels(Game.effects_volume, number / 100, false)
-			label.text = ("Care and footsteps" if kind == "effects" else "Ocean ambience") + " / %d%%" % int(number)
+			label.text = ("Care and footsteps" if kind == "effects" else "Ocean ambience") + ": %d%%" % int(number)
 		)
 		slider.drag_ended.connect(func(_changed: bool): Game.save_game())
 	content.add_child(UI.button("Try a care sound", Sound.play_effect.bind("care", -19), Color("b7def4")))

@@ -14,6 +14,7 @@ var detail_notice: Label
 var list: GridContainer
 var rows: Dictionary = {}
 var category_buttons: Dictionary = {}
+const CATEGORY_COLORS = {"All": Color("f9d8e2"), "Food": Color("ffdfb5"), "Toys": Color("c8eddd"), "Care": Color("c2ecf4"), "Comfort": Color("e1d9f6")}
 
 func _ready() -> void:
  location = "Shop" if shopping else "Bag"
@@ -29,8 +30,24 @@ func _ready() -> void:
  wallet = UI.label("", 26, UI.TEAL)
  wallet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  header.add_child(wallet)
- var visit = UI.button("Talk to June" if shopping else "Visit Shop", talk_to_june if shopping else host.show_page.bind("Shop"), Color("ffe0b0"))
- visit.custom_minimum_size.x = 220
+ var purse = HBoxContainer.new()
+ header.add_child(purse)
+ var coin = TextureRect.new()
+ coin.texture = preload("res://assets/ui/coin.svg")
+ coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+ coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+ coin.custom_minimum_size = Vector2(34, 34)
+ purse.add_child(coin)
+ var balance = UI.label("", 25)
+ balance.autowrap_mode = TextServer.AUTOWRAP_OFF
+ purse.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+ balance.name = "CoinBalance"
+ balance.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+ purse.add_child(balance)
+ wallet.set_meta("balance", balance)
+ var visit = UI.icon_button("Talk to June" if shopping else "Visit Shop", UI.resident_icon(Art.JUNE) if shopping else UI.place_icon("Shop"), talk_to_june if shopping else host.show_page.bind("Shop"), Color("ffdfb5"))
+ visit.size_flags_horizontal = Control.SIZE_SHRINK_END
+ visit.custom_minimum_size = Vector2(180, 84)
  header.add_child(visit)
  var tabs = HBoxContainer.new()
  tabs.add_theme_constant_override("separation", 8)
@@ -38,9 +55,9 @@ func _ready() -> void:
  var categories = Goods.CATEGORIES if shopping else ["All"] + Goods.CATEGORIES
  category = "Food" if shopping else "All"
  for title in categories:
-  var tab = UI.button(title, select_category.bind(title), Color("b7def4"))
+  var tab = UI.icon_button(title, Goods.icon({"All": "Treat", "Food": "Treat", "Toys": "Toy", "Care": "Brush", "Comfort": "Bed"}[title]), select_category.bind(title), CATEGORY_COLORS[title])
+  tab.custom_minimum_size.y = 84
   tab.add_theme_font_size_override("font_size", 23)
-  tab.icon = Goods.icon({"All": "Treat", "Food": "Treat", "Toys": "Toy", "Care": "Brush", "Comfort": "Bed"}[title])
   tab.expand_icon = true
   tab.add_theme_constant_override("icon_max_width", 36)
   tabs.add_child(tab)
@@ -72,7 +89,10 @@ func select_category(value: String) -> void:
 
 func rebuild() -> void:
  for title in category_buttons:
-  category_buttons[title].add_theme_stylebox_override("normal", UI.style(Color("ffe0a0") if title == category else Color("b7def4"), 20))
+  var box = UI.style(CATEGORY_COLORS[title], 20)
+  box.set_border_width_all(4 if title == category else 2)
+  box.border_color = UI.TEAL if title == category else Color("b88b59")
+  category_buttons[title].add_theme_stylebox_override("normal", box)
  rows.clear()
  for child in list.get_children():
   list.remove_child(child)
@@ -95,14 +115,15 @@ func rebuild() -> void:
   var owned = UI.label("", 23)
   owned.size_flags_horizontal = Control.SIZE_EXPAND_FILL
   owned.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-  actions.add_child(owned)
-  var action = UI.button("", perform.bind(kind), Color("bdeab0"))
+  var information = UI.column(4)
+  information.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  actions.add_child(information)
+  information.add_child(owned)
+  if shopping:
+   information.add_child(UI.label("%d coins" % item.price, 24, UI.TEAL))
+  var action = UI.icon_button("", UI.place_icon("Shop") if shopping else Goods.icon(kind), perform.bind(kind), Color("c8eddd"))
   action.custom_minimum_size = Vector2(190, 84)
   action.add_theme_font_size_override("font_size", 23)
-  if shopping:
-   action.icon = preload("res://assets/ui/coin.svg")
-   action.expand_icon = true
-   action.add_theme_constant_override("icon_max_width", 28)
   actions.add_child(action)
   rows[kind] = {"count": owned, "button": action}
  if rows.is_empty():
@@ -110,9 +131,10 @@ func rebuild() -> void:
  refresh()
 
 func refresh() -> void:
- wallet.text = ("June's Shop" if shopping else Game.puppy_name + "'s Bag") + " / %d coins" % Game.coins
+ wallet.text = "June's Shop" if shopping else Game.puppy_name + "'s Bag"
+ wallet.get_meta("balance").text = "%d coins" % Game.coins
  if is_instance_valid(needs_summary):
-  needs_summary.text = "Hunger %d / Happiness %d / Cleanliness %d" % [Game.needs.Hunger, Game.needs.Happiness, Game.needs.Cleanliness]
+  needs_summary.text = "Hunger: %d    Happiness: %d    Cleanliness: %d" % [Game.needs.Hunger, Game.needs.Happiness, Game.needs.Cleanliness]
  for kind in rows:
   update_item_controls(kind, rows[kind].button, rows[kind].count)
  if is_instance_valid(detail_overlay):
@@ -121,17 +143,19 @@ func refresh() -> void:
 func update_item_controls(kind: String, button: Button, count_label: Label) -> void:
  var item: Dictionary = Goods.ITEMS[kind]
  var count = int(Game.items.get(kind, 0))
- count_label.text = "%d / %d in Bag" % [count, item.limit] if item.limit > 1 else "Reusable"
+ count_label.text = "%d of %d in Bag" % [count, item.limit] if item.limit > 1 else ("Owned" if count > 0 else "Reusable")
  if shopping:
-  button.text = ("Full" if item.limit > 1 else "Owned") if count >= item.limit else "Buy %d" % item.price
+  UI.button_caption(button, ("Bag full" if item.limit > 1 else "Owned") if count >= item.limit else "Buy")
   button.disabled = count >= item.limit or Game.coins < item.price
   if Game.coins < item.price and count < item.limit:
    count_label.text = "Need %d coins" % (item.price - Game.coins)
  else:
-  button.text = "Equipped" if item.limit == 1 else "Use"
+  UI.button_caption(button, "Equipped" if item.limit == 1 else "Use")
   button.disabled = item.limit == 1 or count == 0 or Game.cooldowns.get("Goods", 0) > 0
+ UI.button_caption(button, button.text)
 
 func perform(kind: String) -> void:
+ var before = int(Game.items.get(kind, 0))
  feedback.visible = true
  feedback.text = Game.buy_item(kind) if shopping else Game.use_item(kind)
  if not Game.save_error.is_empty():
@@ -142,9 +166,38 @@ func perform(kind: String) -> void:
  if not shopping and Game.items.get(kind, 0) == 0:
   rebuild()
  refresh()
+ if shopping and Game.items.get(kind, 0) > before:
+  purchase_feedback(kind)
+ elif not shopping and kind in ["Treat", "TrainingTreat"] and Game.items.get(kind, 0) < before:
+  host.call_deferred("show_page", "Home")
+
+func purchase_feedback(kind: String) -> void:
+ var item = TextureRect.new()
+ item.texture = Goods.picture(kind)
+ item.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+ item.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+ item.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ item.size = Vector2(110, 110)
+ host.add_child(item)
+ item.global_position = rows[kind].button.global_position - Vector2(0, 90)
+ var bag = TextureRect.new()
+ bag.texture = preload("res://assets/ui/menu_bag.svg")
+ bag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+ bag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+ bag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ bag.size = Vector2(70, 70)
+ bag.position = Vector2(host.size.x - UI.safe_insets().right - 80, 145)
+ host.add_child(bag)
+ var animation = host.create_tween()
+ animation.tween_property(item, "global_position", bag.global_position, 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+ animation.parallel().tween_property(item, "size", Vector2(45, 45), 0.55)
+ animation.tween_property(item, "modulate:a", 0.0, 0.15)
+ animation.parallel().tween_property(bag, "modulate:a", 0.0, 0.3)
+ animation.tween_callback(item.queue_free)
+ animation.tween_callback(bag.queue_free)
 
 func talk_to_june() -> void:
- host.show_resident(Art.JUNE, "June", "Shopkeeper", "Welcome! Pick a category to browse. Treats and shampoo are used up; the ball, brush and bed stay with you.\n\nYour Bag shows what you own and what each good does. Ordinary care at Home is always free.")
+ host.show_resident(Art.JUNE, "June", "Shopkeeper", "Welcome! Tap a picture to learn about an item.\n\nTreats and shampoo are used up. Toys, brushes and beds stay with you.")
 
 func show_details(kind: String) -> void:
  if is_instance_valid(detail_overlay):
@@ -180,6 +233,8 @@ func show_details(kind: String) -> void:
  description.custom_minimum_size.x = 450
  row.add_child(description)
  description.add_child(UI.label(Goods.ITEMS[kind].description, 25))
+ if shopping:
+  description.add_child(UI.label("Price: %d coins" % Goods.ITEMS[kind].price, 25, UI.TEAL))
  detail_count = UI.label("", 24)
  description.add_child(detail_count)
  detail_notice = UI.label("", 21, UI.TEAL)
@@ -188,7 +243,7 @@ func show_details(kind: String) -> void:
  var actions = HBoxContainer.new()
  actions.add_theme_constant_override("separation", 16)
  content.add_child(actions)
- detail_action = UI.button("", perform.bind(kind), Color("bdeab0"))
+ detail_action = UI.icon_button("", UI.place_icon("Shop") if shopping else Goods.icon(kind), perform.bind(kind), Color("c8eddd"))
  actions.add_child(detail_action)
  actions.add_child(UI.button("Close", close_details, Color("fff0cf")))
  refresh()

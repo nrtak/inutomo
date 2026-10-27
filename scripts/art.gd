@@ -12,6 +12,17 @@ const PUPPIES = {
 	"Golden Retriever": preload("res://assets/puppies/golden_anime.png")
 }
 const PUPPY_SLEEP = preload("res://assets/puppies/puppy_sleep_anime.png")
+const PUPPY_SLEEP_REGION = Rect2i(12, 290, 1299, 708)
+const SLEEP_TEXTURES = {
+	"Puppy": PUPPY_SLEEP,
+	"Shiba Inu": preload("res://assets/puppies/shiba_sleep_anime.png"),
+	"Golden Retriever": preload("res://assets/puppies/golden_sleep_anime.png")
+}
+const SLEEP_REGIONS = {
+	"Puppy": PUPPY_SLEEP_REGION,
+	"Shiba Inu": Rect2i(43, 79, 1441, 820),
+	"Golden Retriever": Rect2i(24, 210, 1489, 613)
+}
 const NORA = preload("res://assets/characters/nora_anime.png")
 
 const WALKS = {

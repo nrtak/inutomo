@@ -2,7 +2,7 @@ class_name Goods
 extends RefCounted
 const ITEMS = {
  "Treat": {"name": "Puppy biscuits", "category": "Food", "price": 10, "limit": 5, "icon": "treat", "description": "Adds up to 8 Hunger to a meal; saved if the meal would already fill the bar. Or give one as a small snack."},
- "TrainingTreat": {"name": "Training bites", "category": "Food", "price": 8, "limit": 5, "icon": "training_treat", "description": "Give from your Bag for 12 Happiness. No growth points; just a little reward."},
+ "TrainingTreat": {"name": "Training bites", "category": "Food", "price": 8, "limit": 5, "icon": "training_treat", "description": "A little reward that boosts Happiness. Give from your Bag."},
  "Toy": {"name": "Bouncy ball", "category": "Toys", "price": 25, "limit": 1, "icon": "play", "description": "Keep forever. Every Play restores 4 extra Happiness."},
  "Brush": {"name": "Soft brush", "category": "Care", "price": 20, "limit": 1, "icon": "care", "description": "Keep forever. Every Care restores 4 extra Cleanliness."},
  "Shampoo": {"name": "Gentle shampoo", "category": "Care", "price": 12, "limit": 5, "icon": "shampoo", "description": "Use from your Bag for 25 Cleanliness. One bottle per use."},

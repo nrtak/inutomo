@@ -4,6 +4,19 @@ extends RefCounted
 const INK = Color("603e29")
 const TEAL = Color("429f98")
 const PINK = Color("ef8b9b")
+const PLACE_COLORS = {"Home": Color("ffdfb5"), "Puppy Club": Color("f9d8e2"), "Park": Color("c8eddd"), "Shop": Color("ffdfb5"), "Vet Clinic": Color("c2ecf4"), "Beach": Color("c2ecf4"), "Lighthouse": Color("e1d9f6")}
+
+static func place_icon(place: String) -> Texture2D:
+	var file: String = {"Home": "home", "Puppy Club": "club", "Park": "leaf", "Shop": "menu_bag", "Vet Clinic": "clinic", "Beach": "shell", "Lighthouse": "lighthouse"}.get(place, "island")
+	return load("res://assets/ui/" + file + ".svg")
+
+static func resident_icon(texture: Texture2D) -> Texture2D:
+	var icon = AtlasTexture.new()
+	icon.atlas = texture
+	var region = Rect2(texture.get_image().get_used_rect())
+	region.size.y *= 0.52
+	icon.region = region
+	return icon
 
 static func style(color: Color, radius: int = 24) -> StyleBoxFlat:
 	var s = StyleBoxFlat.new()
@@ -58,7 +71,7 @@ static func column(gap: int = 12) -> VBoxContainer:
 # against its bottom edge rather than suspended over the game world.
 static func character_portrait(texture: Texture2D, character_name: String, role: String) -> VBoxContainer:
 	var column = UI.column(0)
-	column.custom_minimum_size.x = 240
+	column.custom_minimum_size.x = 400
 	var frame = PanelContainer.new()
 	frame.name = "CharacterPortraitFrame"
 	var border = style(Color("d5ece3"), 18)
@@ -71,16 +84,19 @@ static func character_portrait(texture: Texture2D, character_name: String, role:
 	column.add_child(frame)
 	var stage = Control.new()
 	stage.clip_contents = true
-	stage.custom_minimum_size.y = 270
+	stage.custom_minimum_size.y = 350
 	frame.add_child(stage)
 	var portrait = TextureRect.new()
-	portrait.texture = texture
+	var cropped = AtlasTexture.new()
+	cropped.atlas = texture
+	cropped.region = texture.get_image().get_used_rect()
+	portrait.texture = cropped
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_SCALE
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.add_child(portrait)
 	var place_portrait = func():
-		var texture_size = Vector2(texture.get_size())
+		var texture_size = Vector2(cropped.get_size())
 		var scale_factor = minf(stage.size.x / texture_size.x, stage.size.y / texture_size.y)
 		portrait.size = texture_size * scale_factor
 		portrait.position = Vector2((stage.size.x - portrait.size.x) * 0.5, stage.size.y - portrait.size.y + 5)
@@ -94,9 +110,72 @@ static func character_portrait(texture: Texture2D, character_name: String, role:
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	caption_content.add_child(name_label)
 	var role_label = label(role, 18)
+	role_label.visible = false
 	role_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	caption_content.add_child(role_label)
 	return column
+
+static func icon_button(text: String, texture: Texture2D, action: Callable, color: Color = TEAL) -> Button:
+	var tile = button(text, action, color)
+	tile.custom_minimum_size = Vector2(100, 110)
+	tile.tooltip_text = text
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color"]:
+		tile.add_theme_color_override(state, Color.TRANSPARENT)
+	var picture = TextureRect.new()
+	picture.texture = texture
+	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	picture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	picture.offset_left = 16
+	picture.offset_right = -16
+	picture.offset_top = 9
+	picture.offset_bottom = -36
+	tile.add_child(picture)
+	var caption = label(text, 22)
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	caption.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	caption.offset_top = -36
+	caption.offset_bottom = -7
+	tile.add_child(caption)
+	tile.set_meta("caption", caption)
+	tile.set_meta("picture", picture)
+	var wait_bar = ProgressBar.new()
+	wait_bar.show_percentage = false
+	wait_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wait_bar.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	wait_bar.offset_left = 18
+	wait_bar.offset_right = -18
+	wait_bar.offset_top = -7
+	wait_bar.offset_bottom = -2
+	var track = style(Color("dfcfb8"), 3)
+	var fill = style(TEAL, 3)
+	for box in [track, fill]:
+		box.set_border_width_all(0)
+		box.content_margin_left = 0
+		box.content_margin_right = 0
+		box.content_margin_top = 0
+		box.content_margin_bottom = 0
+	wait_bar.add_theme_stylebox_override("background", track)
+	wait_bar.add_theme_stylebox_override("fill", fill)
+	wait_bar.visible = false
+	tile.add_child(wait_bar)
+	tile.set_meta("wait_bar", wait_bar)
+	return tile
+
+static func button_wait(tile: Button, remaining: float, duration: float) -> void:
+	if tile.has_meta("wait_bar"):
+		var bar: ProgressBar = tile.get_meta("wait_bar")
+		bar.visible = remaining > 0
+		bar.value = (1.0 - remaining / duration) * 100.0
+		bar.tooltip_text = "Ready when the bar fills"
+
+static func button_caption(tile: Button, text: String) -> void:
+	tile.text = text
+	if tile.has_meta("caption"):
+		tile.get_meta("caption").text = text
+		tile.get_meta("picture").modulate.a = 0.45 if tile.disabled else 1.0
 
 static var safe_override: Dictionary = {}
 static func safe_insets(minimum: int = 20) -> Dictionary:

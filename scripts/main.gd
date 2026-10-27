@@ -2,6 +2,11 @@ extends Control
 
 var navigation_overlay: Control
 var menu_button: Button
+var identity_card: PanelContainer
+var tip_overlay: Control
+var arrival_overlay: Control
+var notice_overlay: Control
+var notice_tween: Tween
 var island_button: Button
 var leave_overlay: Control
 var current_place = "Home"
@@ -28,10 +33,10 @@ var intro_text: Label
 var intro_progress: Label
 var intro_next: Button
 const INTRO_PAGES = [
-	"Welcome to Puppy Island! I’m Nora from the Puppy Club. I’ll help you settle in. Your island story starts right here, with a little friend by your side.",
-	"Meet Mochi! This little puppy is still growing, and their breed is a mystery. Spend time together and discover who they’ll become.",
-	"At Home, use Feed, Play, Care and Rest. Watch the four needs above: fuller bars mean Mochi feels better. There’s no rush—start with a little care.",
-	"Ready to explore? Open Island to play Fetch at the Park or take a Walk at the Beach. Your Journal follows Mochi’s growth. I’ll be at the Puppy Club whenever you want a reminder!"
+	"Welcome! I’m Nora from the Puppy Club. Let’s meet your little friend.",
+	"This is Mochi! A tiny puppy with a big future. Their breed is still a mystery.",
+	"Feed, play, care and rest. Little moments help Mochi grow.",
+	"Open Island to explore. Find me at the Puppy Club, and follow your journey in the Journal!"
 ]
 var intro_overlay: Control
 var status_clock = 0.0
@@ -55,7 +60,8 @@ func _ready() -> void:
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layout.add_child(header)
 	var identity = UI.card()
-	identity.custom_minimum_size.x = 300
+	identity_card = identity
+	identity.custom_minimum_size.x = 240
 	identity.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	header.add_child(identity)
 	var identity_col = UI.column(2)
@@ -74,15 +80,13 @@ func _ready() -> void:
 	var quick_navigation = HBoxContainer.new()
 	quick_navigation.add_theme_constant_override("separation", 12)
 	title_space.add_child(quick_navigation)
-	island_button = UI.button("Island", request_page.bind("Island"), Color("fff5e2"))
-	island_button.custom_minimum_size.x = 160
-	island_button.icon = preload("res://assets/ui/map.svg")
+	island_button = UI.icon_button("Island", preload("res://assets/ui/island.svg"), request_page.bind("Island"), Color("c2ecf4"))
+	island_button.custom_minimum_size.x = 104
 	island_button.expand_icon = true
 	island_button.add_theme_constant_override("icon_max_width", 32)
 	quick_navigation.add_child(island_button)
-	menu_button = UI.button("Menu", open_navigation, Color("fff5e2"))
-	menu_button.custom_minimum_size.x = 160
-	menu_button.icon = preload("res://assets/ui/menu.svg")
+	menu_button = UI.icon_button("Menu", preload("res://assets/ui/menu.svg"), open_navigation, Color("fff5e2"))
+	menu_button.custom_minimum_size.x = 104
 	menu_button.expand_icon = true
 	menu_button.add_theme_constant_override("icon_max_width", 28)
 	quick_navigation.add_child(menu_button)
@@ -93,19 +97,34 @@ func _ready() -> void:
 	bag_button.visible = false
 	quick_navigation.add_child(bag_button)
 	needs_card = UI.card()
-	needs_card.custom_minimum_size.x = 250
+	needs_card.custom_minimum_size.x = 300
 	header.add_child(needs_card)
-	var need_col = UI.column(6)
+	var need_col = GridContainer.new()
+	need_col.columns = 2
+	need_col.add_theme_constant_override("h_separation", 12)
+	need_col.add_theme_constant_override("v_separation", 8)
 	needs_card.add_child(need_col)
 	var colors = [Color("f5ad54"), Color("ef8396"), Color("f5cd55"), Color("65c4e5")]
 	for i in Game.NEEDS.size():
 		var key: String = Game.NEEDS[i]
 		var col = UI.column(2)
 		need_col.add_child(col)
+		var line = HBoxContainer.new()
+		col.add_child(line)
+		var icon = UI.button("", show_need_tip.bind(key), Color("fff0cf"))
+		icon.icon = load("res://assets/ui/" + ["feed", "play", "rest", "care"][i] + ".svg")
+		icon.expand_icon = true
+		icon.add_theme_constant_override("icon_max_width", 30)
+		icon.custom_minimum_size = Vector2(58, 64)
+		icon.tooltip_text = key
+		line.add_child(icon)
 		meter_labels[key] = UI.label(key, 24)
-		col.add_child(meter_labels[key])
+		meter_labels[key].autowrap_mode = TextServer.AUTOWRAP_OFF
+		meter_labels[key].custom_minimum_size.x = 48
+		line.add_child(meter_labels[key])
 		var bar = ProgressBar.new()
-		bar.custom_minimum_size = Vector2(0, 10)
+		bar.custom_minimum_size = Vector2(115, 10)
+		bar.tooltip_text = key
 		bar.show_percentage = false
 		var bg = UI.style(Color("dfcfb8"), 6)
 		bg.set_border_width_all(0)
@@ -137,12 +156,11 @@ func _ready() -> void:
 	var action_colors = [Color("ffe0a0"), Color("bdeab0"), Color("b7def4"), Color("d9c9f6")]
 	for i in 4:
 		var kind: String = ["Feed", "Play", "Care", "Rest"][i]
-		var b = UI.button(kind, Game.action.bind(kind), action_colors[i])
-		b.icon = load("res://assets/ui/" + kind.to_lower() + ".svg")
+		var b = UI.icon_button(kind, load("res://assets/ui/" + kind.to_lower() + ".svg"), Game.action.bind(kind), action_colors[i])
 		b.expand_icon = true
 		b.add_theme_constant_override("icon_max_width", 44)
 		b.add_theme_constant_override("h_separation", 12)
-		b.custom_minimum_size.y = 88
+		b.custom_minimum_size.y = 110
 		actions.add_child(b)
 		action_buttons[kind] = b
 		if kind == "Rest":
@@ -157,7 +175,7 @@ func _ready() -> void:
 		_notice(Game.save_error)
 
 func _process(delta: float) -> void:
-	if not Game.pending_stage.is_empty() and page == "Home" and not is_instance_valid(intro_overlay) and not is_instance_valid(stage_overlay) and not is_instance_valid(resident_overlay):
+	if not Game.pending_stage.is_empty() and page == "Home" and not is_instance_valid(intro_overlay) and not is_instance_valid(stage_overlay) and not is_instance_valid(resident_overlay) and not is_instance_valid(tip_overlay) and not is_instance_valid(navigation_overlay):
 		show_growth_moment()
 	status_clock += delta
 	message_card.visible = page == "Home" and (status_clock < 6 or not Game.save_error.is_empty())
@@ -170,7 +188,8 @@ func _process(delta: float) -> void:
 		var remaining = float(Game.cooldowns.get(kind, 0))
 		button.disabled = remaining > 0
 		if kind != "Rest":
-			button.text = "%s (%ds)" % [kind, ceili(remaining)] if remaining > 0 else kind
+			UI.button_caption(button, kind)
+			UI.button_wait(button, remaining, 6.0)
 	if not Game.save_error.is_empty():
 		message.text = Game.save_error
 
@@ -182,14 +201,41 @@ func home_hint() -> String:
 func _notice(text: String) -> void:
 	message.text = text
 	status_clock = 0
+	if page != "Home":
+		show_feedback(text)
+
+func show_feedback(text: String) -> void:
+	if notice_tween != null and notice_tween.is_valid():
+		notice_tween.kill()
+	if is_instance_valid(notice_overlay):
+		notice_overlay.queue_free()
+	var overlay = CenterContainer.new()
+	notice_overlay = overlay
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	overlay.offset_top = 145
+	overlay.offset_bottom = 235
+	add_child(overlay)
+	var panel = UI.card()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(panel)
+	var text_label = UI.label(text, 24)
+	text_label.custom_minimum_size.x = 600
+	text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(text_label)
+	notice_tween = create_tween()
+	notice_tween.tween_interval(3.5)
+	notice_tween.tween_property(overlay, "modulate:a", 0.0, 0.3)
+	notice_tween.tween_callback(overlay.queue_free)
 
 func _update_needs() -> void:
 	for key in meters:
 		meters[key].value = Game.needs[key]
-		meter_labels[key].text = "%s  %d" % [key, int(Game.needs[key])]
+		meter_labels[key].text = str(int(Game.needs[key]))
+		meter_labels[key].tooltip_text = "%s: %d" % [key, int(Game.needs[key])]
 	name_label.text = Game.puppy_name
 	age_label.text = Game.growth_stage() if Game.breed == "Puppy" else Game.breed
-	rest_button.text = "Wake" if Game.resting else "Rest"
+	UI.button_caption(rest_button, "Wake" if Game.resting else "Rest")
 
 func clear_body() -> void:
 	habitat = null
@@ -199,6 +245,7 @@ func clear_body() -> void:
 			child.queue_free()
 
 func update_navigation() -> void:
+	identity_card.visible = page != "Island"
 	bag_button.visible = false
 	island_button.visible = page != "Island"
 	page_label.text = "Puppy Island" if page == "Home" else page
@@ -214,6 +261,9 @@ func set_scenery(location: String) -> void:
 	habitat.location = location
 	habitat.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	world_host.add_child(habitat)
+	if page == "Home" and not Game.pending_home_reaction.is_empty():
+		habitat.puppy.react_to_care(Game.pending_home_reaction)
+		Game.pending_home_reaction = ""
 
 func show_page(dest: String) -> void:
 	if dest == "Menu":
@@ -256,7 +306,6 @@ func start_activity(kind: String) -> void:
 	scene.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scene.finished.connect(show_page.bind("Home"))
 	body.add_child(scene)
-	_notice("Finish together to earn a growth moment.")
 
 func island() -> void:
 	var map = load("res://scripts/island_map.gd").new()
@@ -275,10 +324,12 @@ func visit(place: String) -> void:
 		"Beach": show_page("Beach")
 		"Puppy Club", "Shop", "Vet Clinic": show_page(place)
 		"Lighthouse (Later)", "Lighthouse": show_page("Lighthouse")
+	show_arrival(place)
 
 func page_panel() -> VBoxContainer:
 	var bg = TextureRect.new()
 	bg.texture = Art.HOME
+	Daylight.apply_to(bg)
 	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	bg.modulate = Color(0.75, 0.78, 0.76)
@@ -305,18 +356,37 @@ func journal_page() -> void:
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(content)
 	content.add_child(UI.label(Game.growth_stage(), 28, UI.TEAL))
+	var puppy_portrait = TextureRect.new()
+	puppy_portrait.texture = Art.PUPPIES[Game.breed]
+	puppy_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	puppy_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	puppy_portrait.custom_minimum_size = Vector2(0, 130)
+	content.add_child(puppy_portrait)
+	content.add_child(UI.label("Your first island day", 26, UI.TEAL))
+	content.add_child(UI.label("Three little moments, at your own pace.", 22))
+	for goal in ["Care", "Nora", "Outing"]:
+		var done: bool = Game.first_day.get(goal, false)
+		var caption: String = {"Care": "Care for your puppy at Home", "Nora": "Meet Nora at the Puppy Club", "Outing": "Finish a Walk or Fetch"}[goal]
+		var destination: String = {"Care": "Home", "Nora": "Puppy Club", "Outing": "Island"}[goal]
+		var button = UI.button(("✓  " if done else "○  ") + caption, request_page.bind(destination), Color("bdeab0") if done else Color("fff5e2"))
+		button.icon = load("res://assets/ui/" + {"Care": "care", "Nora": "play", "Outing": "map"}[goal] + ".svg")
+		button.expand_icon = true
+		button.add_theme_constant_override("icon_max_width", 32)
+		content.add_child(button)
+	if Game.first_day.values().count(true) == 3:
+		content.add_child(UI.label("You're settling in! Keep making little memories together.", 22, UI.TEAL))
 	var progress = ProgressBar.new()
 	progress.custom_minimum_size.y = 24
 	progress.value = Game.growth_fraction() * 100
 	content.add_child(progress)
-	content.add_child(UI.label("Tiny puppy / Young puppy / Growing puppy / Adult", 23))
+	content.add_child(UI.label("Tiny puppy → Young puppy → Growing puppy → Adult", 23))
 	content.add_child(UI.label(Game.next_growth_hint(), 24))
-	content.add_child(UI.label("Care moments: %d / %d    Time together: %d / 60 minutes" % [mini(Game.points, Game.EVOLUTION_POINTS), Game.EVOLUTION_POINTS, mini(60, int(Game.active_seconds / 60))], 22))
+	content.add_child(UI.label("Care moments: %d of %d\nTime together: %d of 60 minutes" % [mini(Game.points, Game.EVOLUTION_POINTS), Game.EVOLUTION_POINTS, mini(60, int(Game.active_seconds / 60))], 22))
 	var prediction = "Breed is still a mystery. Try a Walk or Fetch together."
 	if Game.breed != "Puppy":
 		prediction = "Grown into: " + Game.breed
 	elif Game.walks + Game.fetches > 0:
-		prediction = "Likely breed: " + Game.prediction() + " / still growing!"
+		prediction = "Likely breed: " + Game.prediction() + ". Still growing!"
 	content.add_child(UI.label(prediction, 26, UI.TEAL))
 	content.add_child(UI.label("Walks: %d    Fetch: %d. Walks favor Shiba Inu; Fetch and ties favor Golden Retriever." % [Game.walks, Game.fetches], 22))
 	content.add_child(UI.label("Growth needs care and time in the game. Time away does not rush growth. Memory times show hours and minutes together.", 21))
@@ -328,7 +398,7 @@ func journal_page() -> void:
 
 func dogs_page() -> void:
 	var col = page_panel()
-	col.add_child(UI.label("My Dogs / A growing family", 30))
+	col.add_child(UI.label("My Dogs", 30))
 	var row = HBoxContainer.new()
 	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(row)
@@ -348,7 +418,7 @@ func dogs_page() -> void:
 		portrait.custom_minimum_size = Vector2(0, 130)
 		portrait.modulate = Color.WHITE if unlocked else Color(0.35, 0.35, 0.35, 0.4)
 		dog_col.add_child(portrait)
-		var name_label = UI.label(dog_breed + (" / " + Game.puppy_name if unlocked else " / Undiscovered"), 22)
+		var name_label = UI.label(dog_breed + ("\n" + Game.puppy_name if unlocked else "\nUndiscovered"), 22)
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		dog_col.add_child(name_label)
 	col.add_child(UI.label("One puppy, one growth path. More adoptions will arrive later.", 21))
@@ -369,26 +439,26 @@ func show_intro() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	intro_overlay.add_child(center)
 	var panel = UI.card()
-	panel.custom_minimum_size = Vector2(850, 390)
+	panel.custom_minimum_size = Vector2(1000, 510)
 	center.add_child(panel)
 	var row = HBoxContainer.new()
 	row.add_theme_constant_override("separation", 24)
 	panel.add_child(row)
 	row.add_child(UI.character_portrait(Art.NORA, "Nora", "Puppy Club organizer"))
 	var col = UI.column(18)
-	col.custom_minimum_size.x = 520
+	col.custom_minimum_size.x = 470
 	row.add_child(col)
 	intro_progress = UI.label("", 21, UI.TEAL)
 	col.add_child(intro_progress)
 	intro_text = UI.label("", 27)
-	intro_text.custom_minimum_size.y = 200
+	intro_text.custom_minimum_size.y = 155
 	col.add_child(intro_text)
 	intro_next = UI.button("Next", advance_intro, Color("bdeab0"))
 	col.add_child(intro_next)
 	update_intro()
 
 func update_intro() -> void:
-	intro_progress.text = "Welcome / %d of %d" % [intro_step + 1, INTRO_PAGES.size()]
+	intro_progress.text = "●".repeat(intro_step + 1) + "○".repeat(INTRO_PAGES.size() - intro_step - 1)
 	intro_text.text = Game.personalize(INTRO_PAGES[intro_step])
 	intro_next.text = "Let's go home!" if intro_step == INTRO_PAGES.size() - 1 else "Next"
 
@@ -555,17 +625,77 @@ func open_navigation() -> void:
 	grid.add_theme_constant_override("h_separation", 12)
 	grid.add_theme_constant_override("v_separation", 12)
 	content.add_child(grid)
-	var pictures = {"Home": Art.HOME, "Island": Art.ISLAND, "Bag": preload("res://assets/ui/bag.svg"), "Journal": preload("res://assets/ui/journal.svg"), "My Dogs": Art.PUPPIES[Game.breed], "Menu": preload("res://assets/ui/title.svg")}
+	var pictures = {"Home": preload("res://assets/ui/home.svg"), "Island": preload("res://assets/ui/island.svg"), "Bag": preload("res://assets/ui/menu_bag.svg"), "Journal": preload("res://assets/ui/menu_journal.svg"), "My Dogs": Art.PUPPIES[Game.breed], "Menu": preload("res://assets/ui/title.svg")}
+	var tile_colors = {"Home": Color("ffdfb5"), "Island": Color("c2ecf4"), "Bag": Color("c8eddd"), "Journal": Color("f9d8e2"), "My Dogs": Color("fff0bd"), "Menu": Color("e1d9f6")}
 	for destination in ["Home", "Island", "Bag", "Journal", "My Dogs", "Menu"]:
 		var label = "Title screen" if destination == "Menu" else destination
 		var button = UI.picture_button(label, pictures[destination], func():
 			close_navigation()
 			request_page(destination)
-		, destination in ["Home", "Island"])
+		)
+		for state in ["normal", "hover", "pressed"]:
+			var color: Color = tile_colors[destination]
+			button.add_theme_stylebox_override(state, UI.style(color.lightened(0.1) if state == "hover" else (color.darkened(0.08) if state == "pressed" else color), 22))
 		grid.add_child(button)
-	content.add_child(UI.button("Close", close_navigation, Color("bdeab0")))
+	var close_button = UI.button("Close", close_navigation, Color("bdeab0"))
+	close_button.custom_minimum_size = Vector2(180, 68)
+	close_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	close_button.add_theme_font_size_override("font_size", 24)
+	content.add_child(close_button)
 
 func close_navigation() -> void:
 	if is_instance_valid(navigation_overlay):
 		navigation_overlay.queue_free()
 	navigation_overlay = null
+
+func show_need_tip(key: String) -> void:
+	if is_instance_valid(tip_overlay):
+		return
+	var tips = {"Hunger": "Feed a fresh meal at Home. Treats add a little extra.", "Happiness": "Play, pet your puppy, or enjoy a Walk or Fetch together.", "Energy": "Choose Rest for a cozy nap. Wake when you're ready.", "Cleanliness": "Choose Care at Home, or use shampoo from your Bag."}
+	tip_overlay = Control.new()
+	tip_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(tip_overlay)
+	var shade = ColorRect.new()
+	shade.color = Color(0.1, 0.18, 0.22, 0.5)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	tip_overlay.add_child(shade)
+	var center = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	tip_overlay.add_child(center)
+	var panel = UI.card()
+	panel.custom_minimum_size.x = 620
+	center.add_child(panel)
+	var content = UI.column(16)
+	content.custom_minimum_size.x = 580
+	panel.add_child(content)
+	content.add_child(UI.label(key, 32, UI.TEAL))
+	content.add_child(UI.label(tips[key], 27))
+	content.add_child(UI.label("Fuller bars mean your puppy feels better.", 23))
+	content.add_child(UI.button("Got it", func():
+		tip_overlay.queue_free()
+		tip_overlay = null
+	, Color("bdeab0")))
+
+func show_arrival(place: String) -> void:
+	if is_instance_valid(arrival_overlay):
+		arrival_overlay.queue_free()
+	var overlay = Control.new()
+	arrival_overlay = overlay
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(overlay)
+	var wash = ColorRect.new()
+	wash.color = Color("fff6e5")
+	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(wash)
+	var title = UI.label(place, 38, UI.TEAL)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(title)
+	var transition = create_tween()
+	transition.tween_property(wash, "modulate:a", 0.0, 0.35)
+	transition.tween_interval(0.5)
+	transition.tween_property(overlay, "modulate:a", 0.0, 0.3)
+	transition.tween_callback(overlay.queue_free)

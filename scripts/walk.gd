@@ -35,27 +35,28 @@ func _ready() -> void:
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	add_child(spacer)
 	var panel = UI.card()
-	panel.custom_minimum_size.x = 430
+	panel.custom_minimum_size.x = 310
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_END
 	add_child(panel)
 	var controls = UI.column(10)
 	panel.add_child(controls)
-	progress = UI.label("Stop 1 / 3 / Palm trail", 24, UI.TEAL)
+	progress = UI.label("●○○  Palm trail", 24, UI.TEAL)
 	controls.add_child(progress)
 	souvenir = TextureRect.new()
-	souvenir.texture = load("res://assets/ui/leaf.svg")
+	souvenir.texture = load("res://assets/ui/" + ["leaf", "shell", "sunset"][mini(step, 2)] + ".svg")
 	souvenir.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	souvenir.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	souvenir.custom_minimum_size = Vector2(0, 48)
+	souvenir.custom_minimum_size = Vector2(0, 78)
 	controls.add_child(souvenir)
 	habitat.set_walk_stop(mini(step, 2))
-	status = UI.label("A leafy path, a seashell cove, then a sunset view.", 24)
+	status = UI.label("Find three little treasures.", 22)
 	controls.add_child(status)
-	next_button = UI.button("Walk back up the path" if step == 3 else "Explore " + STOPS[step], _next, Color("bdeab0"))
+	next_button = UI.icon_button("Head back" if step == 3 else "Explore", load("res://assets/ui/leaf.svg"), _next, Color("bdeab0"))
+	next_button.get_meta("picture").texture = preload("res://assets/ui/home.svg") if step == 3 else souvenir.texture
 	controls.add_child(next_button)
 	if step > 0:
-		progress.text = "Resume / %d of 3 discoveries saved" % step
-		status.text = "Your last completed discovery was saved. Let's carry on."
+		progress.text = "%d of 3 discoveries saved" % step
+		status.text = "Ready to carry on?"
 
 func _next() -> void:
 	if busy or complete:
@@ -65,7 +66,7 @@ func _next() -> void:
 	if step == 3:
 		await return_up_path()
 		return
-	progress.text = "Stop %d / 3 / %s" % [step + 1, STOPS[step]]
+	progress.text = "●".repeat(step + 1) + "○".repeat(2 - step) + "  " + STOPS[step]
 	souvenir.texture = load("res://assets/ui/" + ["leaf", "shell", "sunset"][step] + ".svg")
 	habitat.set_walk_stop(step)
 	habitat.puppy.target = WalkArea.WALK_STOPS[step]
@@ -80,15 +81,17 @@ func _next() -> void:
 	step += 1
 	Game.checkpoint_outing(step)
 	if step == 3:
-		progress.text = "Three discoveries / time to head back"
-		next_button.text = "Walk back up the path"
+		progress.text = "●●●  All found!"
+		UI.button_caption(next_button, "Head back")
+		next_button.get_meta("picture").texture = UI.place_icon("Home")
 	else:
-		next_button.text = "Explore " + STOPS[step]
+		UI.button_caption(next_button, "Explore")
+		next_button.get_meta("picture").texture = load("res://assets/ui/" + ["leaf", "shell", "sunset"][step] + ".svg")
 	busy = false
 	next_button.disabled = false
 
 func return_up_path() -> void:
-	progress.text = "Heading back / Palm trail"
+	progress.text = "Heading back to Palm trail"
 	status.text = "A gentle stroll back up the coastal path."
 	habitat.puppy.target = WalkArea.WALK_STOPS[0]
 	timer.start(2.5)
@@ -97,9 +100,10 @@ func return_up_path() -> void:
 		return
 	complete = true
 	Game.complete_outing("Walk")
-	progress.text = "Walk complete / back at Palm trail"
-	status.text = "Three memories saved to Journal. Happiness restored, +1 care moment and 10 coins. Shiba Inu affinity up."
-	next_button.text = "Back home"
+	progress.text = "Walk complete!"
+	status.text = "Three memories saved. +10 coins!"
+	UI.button_caption(next_button, "Home")
+	next_button.get_meta("picture").texture = UI.place_icon("Home")
 	next_button.pressed.disconnect(_next)
 	next_button.pressed.connect(func(): finished.emit())
 	busy = false
