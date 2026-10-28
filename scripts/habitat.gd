@@ -6,7 +6,7 @@ var puppy: PuppyActor
 var world: Node2D
 var background: TextureRect
 var discovery: Sprite2D
-var ball: Polygon2D
+var ball: Sprite2D
 var view_offset = Vector2.ZERO
 
 func _ready() -> void:
@@ -36,12 +36,9 @@ func _ready() -> void:
 	puppy.bounds = Rect2(puppy.walk_area[0], Vector2.ZERO)
 	for point in puppy.walk_area:
 		puppy.bounds = puppy.bounds.expand(point)
-	ball = Polygon2D.new()
-	var shape = PackedVector2Array()
-	for i in 24:
-		shape.append(Vector2.from_angle(TAU * i / 24.0) * 16)
-	ball.polygon = shape
-	ball.color = Color("4cace4")
+	ball = Sprite2D.new()
+	ball.texture = preload("res://assets/ui/play.svg")
+	ball.scale = Vector2.ONE * 0.5
 	ball.visible = false
 	world.add_child(ball)
 	discovery = Sprite2D.new()

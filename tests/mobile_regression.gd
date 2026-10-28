@@ -151,6 +151,17 @@ func run() -> void:
   await process_frame
   main = load("res://scenes/main.tscn").instantiate()
   mobile_view.add_child(main)
+  await process_frame
+  await process_frame
+  var previous_button: Button = null
+  for kind in ["Feed", "Play", "Care", "Rest"]:
+   var action_button: Button = main.action_buttons[kind]
+   var action_rect = action_button.get_global_rect()
+   check(action_rect.position.x >= 105 and action_rect.end.x <= mobile_view.size.x - 105, "Side action buttons clear the iPhone cutouts")
+   check(action_rect.position.y >= main.needs_card.get_global_rect().end.y and action_rect.end.y <= 695, "Side actions fit below needs and above the safe bottom")
+   if previous_button != null:
+    check(previous_button.get_global_rect().end.y < action_rect.position.y, "Care actions form a separated vertical stack")
+   previous_button = action_button
   main.show_page("Island")
   await process_frame
   await process_frame
@@ -162,11 +173,9 @@ func run() -> void:
    check(rect.position.y >= 20 and rect.end.y <= 695, "Map markers stay within the visible screen height")
    for j in range(i + 1, keys.size()):
     check(not rect.intersects(map.pins[keys[j]].get_global_rect()), "Map markers " + str(keys[i]) + " / " + str(keys[j]) + " do not overlap at " + str(screen_size))
-  check(map.go_button.get_global_rect().end.y <= 695, "Travel button stays above the safe bottom edge")
-  map.select("Shop")
-  map.travel()
+  map.pins["Shop"].pressed.emit()
   await process_frame
-  check(main.page == "Shop", "Map travel opens the selected place")
+  check(main.page == "Shop", "One tap on a map pin opens its destination")
   var browser = main.body.get_child(0)
   for category in Goods.CATEGORIES:
    browser.select_category(category)

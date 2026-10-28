@@ -46,6 +46,8 @@ const PICTURE_REGIONS = {
 }
 static var pictures: Dictionary = {}
 static func picture(kind: String) -> Texture2D:
+ if kind == "Toy":
+  return preload("res://assets/ui/play.svg")
  if EXPANDED_REGIONS.has(kind):
   if not pictures.has(kind):
    var expanded = AtlasTexture.new()

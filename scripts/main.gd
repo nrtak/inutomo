@@ -31,7 +31,7 @@ var page_label: Label
 var page = "Home"
 var age_label: Label
 var rest_button: Button
-var actions: HBoxContainer
+var actions: VBoxContainer
 var habitat: Habitat
 var intro_step = 0
 var intro_text: CommandHint
@@ -67,7 +67,7 @@ func _ready() -> void:
 	layout.add_child(header)
 	var identity = UI.card()
 	identity_card = identity
-	identity.custom_minimum_size.x = 240
+	identity.custom_minimum_size.x = 190
 	identity.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	header.add_child(identity)
 	var identity_col = UI.column(2)
@@ -106,10 +106,11 @@ func _ready() -> void:
 	bag_button.visible = false
 	quick_navigation.add_child(bag_button)
 	needs_card = UI.card()
-	needs_card.custom_minimum_size.x = 300
+	needs_card.custom_minimum_size.x = 460
+	needs_card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	header.add_child(needs_card)
 	var need_col = GridContainer.new()
-	need_col.columns = 2
+	need_col.columns = 4
 	need_col.add_theme_constant_override("h_separation", 12)
 	need_col.add_theme_constant_override("v_separation", 8)
 	needs_card.add_child(need_col)
@@ -124,15 +125,15 @@ func _ready() -> void:
 		icon.icon = load("res://assets/ui/" + ["feed", "play", "rest", "care"][i] + ".svg")
 		icon.expand_icon = true
 		icon.add_theme_constant_override("icon_max_width", 30)
-		icon.custom_minimum_size = Vector2(58, 64)
+		icon.custom_minimum_size = Vector2(54, 64)
 		icon.tooltip_text = key
 		line.add_child(icon)
 		meter_labels[key] = UI.label(key, 24)
 		meter_labels[key].autowrap_mode = TextServer.AUTOWRAP_OFF
-		meter_labels[key].custom_minimum_size.x = 48
+		meter_labels[key].custom_minimum_size.x = 40
 		line.add_child(meter_labels[key])
 		var bar = ProgressBar.new()
-		bar.custom_minimum_size = Vector2(115, 10)
+		bar.custom_minimum_size = Vector2(90, 10)
 		bar.tooltip_text = key
 		bar.show_percentage = false
 		var bg = UI.style(Color("dfcfb8"), 6)
@@ -156,12 +157,23 @@ func _ready() -> void:
 	message_card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	layout.add_child(message_card)
 	message = UI.hint_label("A little care makes a big world.", 22)
-	message.custom_minimum_size.x = 700
+	message.custom_minimum_size.x = 300
 	message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	message_card.add_child(message)
-	actions = HBoxContainer.new()
+	actions = VBoxContainer.new()
 	actions.add_theme_constant_override("separation", 12)
-	layout.add_child(actions)
+	var dock_layer = Control.new()
+	dock_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(dock_layer)
+	var action_dock = CenterContainer.new()
+	action_dock.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
+	action_dock.offset_left = -116
+	action_dock.offset_right = 0
+	action_dock.offset_top = -210
+	action_dock.offset_bottom = 242
+	action_dock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dock_layer.add_child(action_dock)
+	action_dock.add_child(actions)
 	var action_colors = [Color("ffe0a0"), Color("bdeab0"), Color("b7def4"), Color("d9c9f6")]
 	for i in 4:
 		var kind: String = ["Feed", "Play", "Care", "Rest"][i]
@@ -169,7 +181,8 @@ func _ready() -> void:
 		b.expand_icon = true
 		b.add_theme_constant_override("icon_max_width", 44)
 		b.add_theme_constant_override("h_separation", 12)
-		b.custom_minimum_size.y = 110
+		b.custom_minimum_size = Vector2(116, 100)
+		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		actions.add_child(b)
 		action_buttons[kind] = b
 		if kind == "Rest":
@@ -187,7 +200,7 @@ func _process(delta: float) -> void:
 	if not Game.pending_stage.is_empty() and page == "Home" and not is_instance_valid(intro_overlay) and not is_instance_valid(stage_overlay) and not is_instance_valid(resident_overlay) and not is_instance_valid(tip_overlay) and not is_instance_valid(navigation_overlay) and not is_instance_valid(photo_overlay):
 		show_growth_moment()
 	status_clock += delta
-	message_card.visible = page == "Home" and (status_clock < 6 or not Game.save_error.is_empty())
+	message_card.visible = false
 	if is_instance_valid(intro_overlay):
 		return
 	if status_clock > 8 and is_instance_valid(habitat) and page == "Home":
@@ -210,8 +223,7 @@ func home_hint() -> String:
 func _notice(text: String) -> void:
 	message.text = text
 	status_clock = 0
-	if page != "Home":
-		show_feedback(text)
+	show_feedback(text)
 
 func show_feedback(text: String) -> void:
 	if notice_tween != null and notice_tween.is_valid():
@@ -228,12 +240,13 @@ func show_feedback(text: String) -> void:
 	var panel = UI.card()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.add_child(panel)
-	var text_label = UI.hint_label(text, 24)
-	text_label.custom_minimum_size.x = clampf(text.length() * 11.5, 300, 600)
+	var text_label = UI.hint_label(text, 22)
+	text_label.custom_minimum_size.x = clampf(text.length() * 9.0, 220, 520)
+	text_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(text_label)
 	notice_tween = create_tween()
-	notice_tween.tween_interval(3.5)
+	notice_tween.tween_interval(2.2)
 	notice_tween.tween_property(overlay, "modulate:a", 0.0, 0.3)
 	notice_tween.tween_callback(overlay.queue_free)
 
@@ -261,7 +274,7 @@ func update_navigation() -> void:
 	page_label.text = "Puppy Island" if page == "Home" else page
 	actions.visible = page == "Home"
 	needs_card.visible = page in ["Home", "Fetch", "Walk"]
-	message_card.visible = page == "Home"
+	message_card.visible = false
 	for key in nav_buttons:
 		nav_buttons[key].visible = page not in ["Fetch", "Walk"] or key == "Home"
 		nav_buttons[key].modulate = Color("ffe3a5") if key == page else Color.WHITE
@@ -276,6 +289,11 @@ func set_scenery(location: String) -> void:
 		Game.pending_home_reaction = ""
 
 func show_page(dest: String) -> void:
+	if notice_tween != null and notice_tween.is_valid():
+		notice_tween.kill()
+	if is_instance_valid(notice_overlay):
+		notice_overlay.queue_free()
+	notice_overlay = null
 	if dest == "Menu":
 		if not Game.save_game():
 			_notice(Game.save_error)
@@ -533,6 +551,8 @@ func location_page(location: String) -> void:
 func show_resident(texture: Texture2D, character_name: String, role: String, text: String) -> void:
 	if is_instance_valid(resident_overlay):
 		return
+	if is_instance_valid(notice_overlay):
+		notice_overlay.visible = false
 	IslandLife.talk(Game, character_name)
 	var was_processing = Game.is_processing()
 	var hud_was_visible = hud.visible

@@ -41,7 +41,7 @@ func run() -> void:
 	main.show_page("Island")
 	await process_frame
 	var map = main.world_host.get_child(0)
-	check(map.map_image.material == lighting.material_for("Island") and map.preview.material == lighting.material_for("Home"), "Map and destination preview use their local lamps with the clock lighting")
+	check(map.map_image.material == lighting.material_for("Island"), "Full-screen map uses its local lamps with clock lighting")
 	main.queue_free()
 	await process_frame
 	print("Daylight checks: ", "PASS" if failures == 0 else "FAIL")

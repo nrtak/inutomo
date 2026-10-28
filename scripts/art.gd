@@ -23,7 +23,7 @@ const SLEEP_REGIONS = {
 	"Shiba Inu": Rect2i(43, 79, 1441, 820),
 	"Golden Retriever": Rect2i(24, 210, 1489, 613)
 }
-const NORA = preload("res://assets/characters/nora_anime.png")
+const NORA = preload("res://assets/characters/nora_casual_anime.png")
 
 const WALKS = {
 	"Puppy": preload("res://assets/puppies/puppy_walk_anime.png"),
@@ -50,7 +50,7 @@ const BACKGROUNDS = {"Home": HOME, "Park": PARK, "Beach": BEACH,
 	"Vet Clinic": preload("res://assets/backgrounds/vet_anime.png"),
 	"Lighthouse": preload("res://assets/backgrounds/lighthouse_anime.png"),
 }
-const JUNE = preload("res://assets/characters/june_anime.png")
+const JUNE = preload("res://assets/characters/june_casual_anime.png")
 const LEAH = preload("res://assets/characters/leah_anime.png")
 
 const BEN = preload("res://assets/characters/ben_anime.png")

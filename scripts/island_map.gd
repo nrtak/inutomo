@@ -3,10 +3,6 @@ var host: Control
 var selected = "Home"
 var canvas: Control
 var map_image: TextureRect
-var preview: TextureRect
-var title: Label
-var detail: Label
-var go_button: Button
 var pins: Dictionary = {}
 var map_rect = Rect2()
 const PLACES = {
@@ -46,7 +42,7 @@ func _ready() -> void:
  map_image.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  canvas.add_child(map_image)
  for place in PLACES:
-  var pin = UI.button(place, select.bind(place), UI.PLACE_COLORS[place])
+  var pin = UI.button(place, travel_to.bind(place), UI.PLACE_COLORS[place])
   pin.custom_minimum_size = Vector2(160 if place in ["Park", "Shop", "Home", "Beach"] else 210, 88)
   pin.add_theme_font_size_override("font_size", 22)
   pin.icon = UI.place_icon(place)
@@ -54,35 +50,8 @@ func _ready() -> void:
   pin.add_theme_constant_override("icon_max_width", 38)
   canvas.add_child(pin)
   pins[place] = pin
- var card = UI.card()
- card.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
- card.offset_left = safe.left
- card.offset_top = -132 - safe.bottom
- card.offset_right = safe.left + 550
- card.offset_bottom = -safe.bottom
- layout.add_child(card)
- var content = HBoxContainer.new()
- content.add_theme_constant_override("separation", 14)
- card.add_child(content)
- var words = UI.column(4)
- words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
- preview = TextureRect.new()
- preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
- preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
- preview.custom_minimum_size = Vector2(110, 90)
- content.add_child(preview)
- content.add_child(words)
- title = UI.label("", 24, UI.TEAL)
- words.add_child(title)
- detail = UI.label("", 23)
- detail.visible = false
- words.add_child(detail)
- go_button = UI.icon_button("Go", preload("res://assets/ui/map.svg"), travel, Color("bdeab0"))
- go_button.custom_minimum_size = Vector2(100, 94)
- content.add_child(go_button)
  canvas.resized.connect(place_pins)
  selected = host.current_place if host.current_place in PLACES else "Home"
- select(selected)
  call_deferred("place_pins")
 
 func place_pins() -> void:
@@ -97,21 +66,10 @@ func place_pins() -> void:
   pin.size = pin.get_combined_minimum_size()
   var center = map_rect.position + PLACES[place].point * map_rect.size
   var safe = UI.safe_insets()
-  pin.position = (center - pin.size * 0.5).clamp(Vector2(safe.left, safe.top + 110), (canvas.size - pin.size - Vector2(safe.right, safe.bottom + 145)).max(Vector2(safe.left, safe.top + 110)))
+  pin.position = (center - pin.size * 0.5).clamp(Vector2(safe.left, safe.top + 110), (canvas.size - pin.size - Vector2(safe.right, safe.bottom + 24)).max(Vector2(safe.left, safe.top + 110)))
 
-func select(place: String) -> void:
+func travel_to(place: String) -> void:
+ if not PLACES.has(place):
+  return
  selected = place
- title.text = place
- preview.texture = Art.BACKGROUNDS[place]
- Daylight.apply_to(preview, place)
- detail.text = PLACES[place].text
- var outing = "Fetch" if place == "Park" else ("Walk" if place == "Beach" else "")
- if not outing.is_empty() and Game.has_outing(outing):
-  detail.text += " Your outing checkpoint is saved here."
- go_button.tooltip_text = "View Lighthouse preview" if place == "Lighthouse" else "Go to " + place
- UI.button_caption(go_button, "Preview" if place == "Lighthouse" else "Go")
- for key in pins:
-  pins[key].modulate = Color("ffe0a0") if key == place else Color.WHITE
-
-func travel() -> void:
- host.visit(selected)
+ host.visit(place)

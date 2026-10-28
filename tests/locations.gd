@@ -68,6 +68,12 @@ func run() -> void:
 		check(is_instance_valid(main.resident_overlay), resident + " opens a resident dialogue")
 		check(main.resident_overlay.find_children("ConversationCharacter", "Control", true, false).size() == 1, "Residents use a large borderless portrait stage")
 		check(main.resident_overlay.find_children("ConversationText", "PanelContainer", true, false).size() == 1 and not main.hud.visible, "Each conversation has one text panel and hides the HUD")
+		await process_frame
+		await process_frame
+		var portrait_stage = main.resident_overlay.find_children("ConversationCharacter", "Control", true, false)[0]
+		var portrait = portrait_stage.get_child(0)
+		check(portrait.get_global_rect().end.y <= main.get_viewport_rect().size.y - UI.safe_insets(24).bottom - 15, resident + " portrait clears the bottom safe area")
+		check(portrait.position.y >= -1 and portrait.position.x >= -1, resident + " artwork fits inside its stage")
 		for button in main.resident_overlay.find_children("*", "Button", true, false):
 			if button.text == "Close":
 				button.pressed.emit()

@@ -87,7 +87,7 @@ static func conversation_body(parent: Control, texture: Texture2D, character_nam
 	var safe = safe_insets(24)
 	for edge in safe:
 		margin.add_theme_constant_override("margin_" + edge, safe[edge])
-	margin.add_theme_constant_override("margin_bottom", 0)
+	margin.add_theme_constant_override("margin_bottom", safe.bottom + 16)
 	parent.add_child(margin)
 	var row = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER

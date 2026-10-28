@@ -110,7 +110,7 @@ func show_guide() -> void:
 	scroll.add_child(content)
 	content.add_child(UI.label("Your first little adventure", 34, UI.TEAL))
 	content.add_child(UI.hint_label(Game.personalize("HOME\nFeed, Play, Care and Rest keep Mochi's four needs happy. Higher bars mean better care, including the Hunger bar."), 25))
-	content.add_child(UI.hint_label("ISLAND\nTap a location, preview it, then choose Go. Start Fetch at the Park or a Walk at the Beach. Outings need 15 Energy and an awake puppy. Completed steps save if you take a break.", 25))
+	content.add_child(UI.hint_label("ISLAND\nTap a location to go there. Start Fetch at the Park or a Walk at the Beach. Outings need 15 Energy and an awake puppy. Completed steps save if you take a break.", 25))
 	content.add_child(UI.hint_label("BAG & SHOP\nBrowse Food, Toys, Care, Comfort and Accessories. Give food and treats from your Bag. Choose beds and toys in Decor, and bandanas in Wardrobe. Owned care benefits apply automatically. Normal care stays free.", 25))
 	content.add_child(UI.hint_label("GROWTH\nJournal tracks growth and memories. Adulthood needs 40 care moments and 60 minutes together. Walks favor Shiba Inu; Fetch and ties favor Golden Retriever.", 25))
 	content.add_child(UI.hint_label("Open Journal for Island Life: training, friends, events and decorating. Tap the camera to take a picture; find it in Photos. Progress saves automatically.", 22))
