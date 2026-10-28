@@ -1,6 +1,8 @@
 class_name Goods
 extends RefCounted
 const ITEMS = {
+ "Medicine": {"name":"Leah’s medicine", "category":"Care", "price":8, "limit":3, "icon":"medicine", "vet_only":true, "description":"For illnesses diagnosed by Leah. One dose starts recovery. No extra dose is needed. Free treatment is available at Vet Clinic."},
+ "Bandage": {"name":"Paw bandages", "category":"Care", "price":6, "limit":3, "icon":"bandage", "vet_only":true, "description":"For a sore paw diagnosed by Leah. One bandage starts recovery. Free treatment is available at Vet Clinic."},
  "Treat": {"name": "Puppy biscuits", "category": "Food", "price": 10, "limit": 5, "icon": "treat", "description": "Adds up to 8 Hunger to a meal; saved if the meal would already fill the bar. Or give one as a small snack."},
  "TrainingTreat": {"name": "Training bites", "category": "Food", "price": 8, "limit": 5, "icon": "training_treat", "description": "A little reward that boosts Happiness. Give from your Bag."},
  "Toy": {"name": "Bouncy ball", "category": "Toys", "price": 25, "limit": 1, "icon": "play", "description": "Keep forever. Every Play restores 4 extra Happiness."},
@@ -21,6 +23,15 @@ const ITEMS = {
  "LavenderBandana": {"name": "Lavender bandana", "category": "Accessories", "price": 18, "limit": 1, "icon": "bandana_lavender", "color": Color("b4a1e1"), "description": "A gentle purple bandana. Preview and wear it in Wardrobe."}
 }
 const CATEGORIES = ["Food", "Toys", "Care", "Comfort", "Accessories"]
+static func featured(date: String = "") -> Array:
+ if date.is_empty():
+  date = Time.get_date_string_from_system(false)
+ var day = int(Time.get_unix_time_from_datetime_string(date) / 86400)
+ var accessories = ["CoralBandana", "SunshineBandana", "LavenderBandana"]
+ var snacks = ["Treat", "TrainingTreat", "CelebrationTreat", "PicnicPack"]
+ var comforts = ["PlushToy", "TugRope", "CloudBed", "CoolingMat", "Blanket"]
+ return [accessories[posmod(day, accessories.size())], snacks[posmod(day, snacks.size())], comforts[posmod(day, comforts.size())]]
+
 static func prices() -> Dictionary:
  var values = {}
  for kind in ITEMS:

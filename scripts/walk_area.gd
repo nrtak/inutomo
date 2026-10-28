@@ -4,6 +4,8 @@ extends RefCounted
 # Convex ground areas in the artwork's 1280 x 720 coordinate space.
 # Straight routes between any two permitted foot positions stay on clear ground.
 static var AREAS = {
+	"Harbor": PackedVector2Array([Vector2(350, 510), Vector2(850, 510), Vector2(850, 620), Vector2(350, 620)]),
+	"Keeper’s Cottage": PackedVector2Array([Vector2(350, 520), Vector2(830, 520), Vector2(830, 620), Vector2(350, 620)]),
 	"Home": PackedVector2Array([Vector2(540, 495), Vector2(800, 495), Vector2(800, 510), Vector2(520, 510)]),
 	"Puppy Club": PackedVector2Array([Vector2(510, 540), Vector2(820, 540), Vector2(820, 600), Vector2(510, 600)]),
 	"Shop": PackedVector2Array([Vector2(510, 540), Vector2(800, 540), Vector2(800, 600), Vector2(510, 600)]),
@@ -12,7 +14,7 @@ static var AREAS = {
 	"Park": PackedVector2Array([Vector2(350, 515), Vector2(900, 515), Vector2(900, 610), Vector2(350, 610)]),
 	"Beach": PackedVector2Array([Vector2(350, 520), Vector2(425, 520), Vector2(760, 625), Vector2(520, 625), Vector2(350, 565)])
 }
-const SPAWNS = {"Puppy Club": Vector2(600, 560), "Shop": Vector2(600, 560), "Vet Clinic": Vector2(600, 560), "Lighthouse": Vector2(600, 560), "Home": Vector2(640, 505), "Park": Vector2(500, 560), "Beach": Vector2(500, 580)}
+const SPAWNS = {"Harbor": Vector2(500, 570), "Keeper’s Cottage": Vector2(500, 575),"Puppy Club": Vector2(600, 560), "Shop": Vector2(600, 560), "Vet Clinic": Vector2(600, 560), "Lighthouse": Vector2(600, 560), "Home": Vector2(640, 505), "Park": Vector2(500, 560), "Beach": Vector2(500, 580)}
 const WALK_STOPS = [Vector2(400, 550), Vector2(640, 615), Vector2(520, 615)]
 
 static func contains(polygon: PackedVector2Array, point: Vector2) -> bool:

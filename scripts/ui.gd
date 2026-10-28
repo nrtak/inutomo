@@ -4,13 +4,14 @@ extends RefCounted
 const INK = Color("603e29")
 const TEAL = Color("429f98")
 const PINK = Color("ef8b9b")
-const PLACE_COLORS = {"Home": Color("ffdfb5"), "Puppy Club": Color("f9d8e2"), "Park": Color("c8eddd"), "Shop": Color("ffdfb5"), "Vet Clinic": Color("c2ecf4"), "Beach": Color("c2ecf4"), "Lighthouse": Color("e1d9f6")}
+const PLACE_COLORS = {"Harbor": Color("c2ecf4"), "Keeper’s Cottage": Color("ffdfb5"),"Home": Color("ffdfb5"), "Puppy Club": Color("f9d8e2"), "Park": Color("c8eddd"), "Shop": Color("ffdfb5"), "Vet Clinic": Color("c2ecf4"), "Beach": Color("c2ecf4"), "Lighthouse": Color("e1d9f6")}
 
 static func place_icon(place: String) -> Texture2D:
-	var file: String = {"Home": "home", "Puppy Club": "club", "Park": "leaf", "Shop": "menu_bag", "Vet Clinic": "clinic", "Beach": "shell", "Lighthouse": "lighthouse"}.get(place, "island")
+	var file: String = {"Harbor": "harbor", "Keeper’s Cottage": "cottage","Home": "home", "Puppy Club": "club", "Park": "leaf", "Shop": "menu_bag", "Vet Clinic": "clinic", "Beach": "shell", "Lighthouse": "lighthouse"}.get(place, "island")
 	return load("res://assets/ui/" + file + ".svg")
 
 static func resident_icon(texture: Texture2D) -> Texture2D:
+	texture = Art.daily_portrait(texture)
 	var icon = AtlasTexture.new()
 	icon.atlas = texture
 	var region = Rect2(texture.get_image().get_used_rect())
@@ -80,24 +81,20 @@ static func column(gap: int = 12) -> VBoxContainer:
 	v.add_theme_constant_override("separation", gap)
 	return v
 
-# Conversation artwork is bottom-anchored beside one compact text panel.
+# Waist-up portraits at the screen edge, with a speech bubble above and beside them.
 static func conversation_body(parent: Control, texture: Texture2D, character_name: String) -> VBoxContainer:
-	var margin = MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	texture = Art.daily_portrait(texture)
 	var safe = safe_insets(24)
-	for edge in safe:
-		margin.add_theme_constant_override("margin_" + edge, safe[edge])
-	margin.add_theme_constant_override("margin_bottom", safe.bottom + 16)
-	parent.add_child(margin)
-	var row = HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 24)
-	margin.add_child(row)
 	var stage = Control.new()
 	stage.name = "ConversationCharacter"
+	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	stage.offset_left = safe.left
+	stage.offset_right = -safe.right
+	stage.offset_top = safe.top
+	stage.offset_bottom = 0
 	stage.clip_contents = true
-	stage.custom_minimum_size.x = minf(660, maxf(0, parent.get_viewport_rect().size.x - safe.left - safe.right - 454))
-	row.add_child(stage)
+	parent.add_child(stage)
 	var portrait = TextureRect.new()
 	var cutout = AtlasTexture.new()
 	cutout.atlas = texture
@@ -107,22 +104,38 @@ static func conversation_body(parent: Control, texture: Texture2D, character_nam
 	portrait.stretch_mode = TextureRect.STRETCH_SCALE
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.add_child(portrait)
-	stage.resized.connect(func():
-		var image_size = Vector2(cutout.get_size())
-		var factor = minf(stage.size.x / image_size.x, stage.size.y / image_size.y)
-		portrait.size = image_size * factor
-		portrait.position = Vector2((stage.size.x - portrait.size.x) * 0.5, stage.size.y - portrait.size.y)
-	)
 	var panel = card()
 	panel.name = "ConversationText"
-	panel.custom_minimum_size.x = 430
-	panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(panel)
-	var content = column(14)
-	content.custom_minimum_size.x = 390
+	var bubble_style = style(Color("fffdf6"), 38)
+	bubble_style.border_color = INK
+	bubble_style.set_border_width_all(3)
+	panel.add_theme_stylebox_override("panel", bubble_style)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	var tail = Polygon2D.new()
+	tail.name = "SpeechTail"
+	tail.polygon = PackedVector2Array([Vector2(0, -3), Vector2(-24, 26), Vector2(44, -3)])
+	tail.color = Color("fffdf6")
+	panel.add_child(tail)
+	panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	panel.offset_right = -safe.right - 56
+	panel.offset_top = safe.top + 20
+	parent.add_child(panel)
+	var content = column(8)
 	panel.add_child(content)
-	var speaker = label(character_name, 29, TEAL)
-	content.add_child(speaker)
+	content.add_child(label(character_name, 29, TEAL))
+	var arrange = func():
+		var image_size = Vector2(cutout.get_size())
+		var factor = minf(stage.size.x * 0.50 / image_size.x, (stage.size.y + 64) / image_size.y)
+		portrait.size = image_size * factor
+		portrait.position = Vector2((stage.size.x * 0.50 - portrait.size.x) * 0.5, stage.size.y - portrait.size.y + 64)
+		var bubble_width = minf(500, stage.size.x * 0.47)
+		panel.offset_left = -safe.right - bubble_width - 56
+		panel.offset_bottom = safe.top + 20 + panel.get_combined_minimum_size().y
+		tail.position = Vector2(40, panel.size.y)
+	stage.resized.connect(arrange)
+	panel.minimum_size_changed.connect(arrange)
+	panel.resized.connect(arrange)
+	content.resized.connect(arrange)
 	return content
 
 static func icon_button(text: String, texture: Texture2D, action: Callable, color: Color = TEAL) -> Button:

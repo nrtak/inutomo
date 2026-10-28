@@ -6,6 +6,8 @@ var map_image: TextureRect
 var pins: Dictionary = {}
 var map_rect = Rect2()
 const PLACES = {
+ "Harbor": {"point": Vector2(0.43, 0.84), "text": "Meet Owen at the ferry office.", "art": "Harbor"},
+ "Keeper’s Cottage": {"point": Vector2(0.90, 0.35), "text": "Meet Ren beside the lighthouse.", "art": "Keeper’s Cottage"},
  "Home": {"point": Vector2(0.23, 0.20), "text": "Meals, play, gentle care and cozy naps.", "art": "Home"},
  "Puppy Club": {"point": Vector2(0.54, 0.20), "text": "Meet Nora and choose your next outing.", "art": "Puppy Club"},
  "Park": {"point": Vector2(0.53, 0.49), "text": "Visit the plaza and play three rounds of Fetch.", "art": "Park"},
@@ -41,9 +43,14 @@ func _ready() -> void:
  map_image.mouse_filter = Control.MOUSE_FILTER_IGNORE
  map_image.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  canvas.add_child(map_image)
- for place in PLACES:
-  var pin = UI.button(place, travel_to.bind(place), UI.PLACE_COLORS[place])
-  pin.custom_minimum_size = Vector2(160 if place in ["Park", "Shop", "Home", "Beach"] else 210, 88)
+ var places = PLACES.keys()
+ for new_place in ["Harbor", "Keeper’s Cottage"]:
+  places.erase(new_place)
+  places.append(new_place)
+ for place in places:
+  var caption = "Cottage" if place == "Keeper’s Cottage" else place
+  var pin = UI.button(caption, travel_to.bind(place), UI.PLACE_COLORS[place])
+  pin.custom_minimum_size = Vector2(160 if place in ["Park", "Shop", "Home", "Beach"] else 210, 80)
   pin.add_theme_font_size_override("font_size", 22)
   pin.icon = UI.place_icon(place)
   pin.expand_icon = true
@@ -67,6 +74,38 @@ func place_pins() -> void:
   var center = map_rect.position + PLACES[place].point * map_rect.size
   var safe = UI.safe_insets()
   pin.position = (center - pin.size * 0.5).clamp(Vector2(safe.left, safe.top + 110), (canvas.size - pin.size - Vector2(safe.right, safe.bottom + 24)).max(Vector2(safe.left, safe.top + 110)))
+
+ var occupied: Array[Rect2] = []
+ for place in pins:
+  var pin: Button = pins[place]
+  var safe = UI.safe_insets()
+  var lower = Vector2(safe.left, safe.top + 110)
+  var upper = canvas.size - pin.size - Vector2(safe.right, safe.bottom + 24)
+  var xs = [pin.position.x, lower.x, upper.x]
+  var ys = [pin.position.y, lower.y, upper.y]
+  for rect in occupied:
+   xs.append(rect.position.x - pin.size.x - 12)
+   xs.append(rect.end.x + 12)
+   ys.append(rect.position.y - pin.size.y - 12)
+   ys.append(rect.end.y + 12)
+  var best = pin.position
+  var distance = INF
+  for x in xs:
+   for y in ys:
+    var candidate = Vector2(x, y)
+    if candidate.x < lower.x or candidate.y < lower.y or candidate.x > upper.x or candidate.y > upper.y:
+     continue
+    var bounds = Rect2(candidate, pin.size)
+    var free = true
+    for rect in occupied:
+     if bounds.grow(5).intersects(rect):
+      free = false
+      break
+    if free and candidate.distance_squared_to(pin.position) < distance:
+     best = candidate
+     distance = candidate.distance_squared_to(pin.position)
+  pin.position = best
+  occupied.append(Rect2(best, pin.size))
 
 func travel_to(place: String) -> void:
  if not PLACES.has(place):

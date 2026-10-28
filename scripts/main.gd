@@ -7,13 +7,19 @@ var tip_overlay: Control
 var arrival_overlay: Control
 var notice_overlay: Control
 var notice_tween: Tween
+var reported_save_error = ""
 var hud: Control
 var camera_button: Button
 var photo_overlay: Control
 var photo_busy = false
 var photo_was_processing = true
+var back_button: Button
+var page_history: Array[String] = []
+var returning_to_page = false
+var home_button: Button
 var island_button: Button
 var leave_overlay: Control
+var outing_pause: Dictionary = {}
 var current_place = "Home"
 var resident_overlay: Control
 var stage_overlay: Control
@@ -29,6 +35,7 @@ var message_card: PanelContainer
 var needs_card: PanelContainer
 var page_label: Label
 var page = "Home"
+var health_badge: Button
 var age_label: Label
 var rest_button: Button
 var actions: VBoxContainer
@@ -78,33 +85,55 @@ func _ready() -> void:
 	identity_col.add_child(name_label)
 	age_label = UI.label("", 24)
 	identity_col.add_child(age_label)
-	var title_space = CenterContainer.new()
-	title_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	title_space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_space.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	header.add_child(title_space)
-	var quick_navigation = HBoxContainer.new()
-	quick_navigation.add_theme_constant_override("separation", 12)
-	title_space.add_child(quick_navigation)
-	island_button = UI.icon_button("Island", preload("res://assets/ui/island.svg"), request_page.bind("Island"), Color("c2ecf4"))
-	island_button.custom_minimum_size.x = 104
-	island_button.expand_icon = true
-	island_button.add_theme_constant_override("icon_max_width", 32)
-	quick_navigation.add_child(island_button)
-	menu_button = UI.icon_button("Menu", preload("res://assets/ui/menu.svg"), open_navigation, Color("fff5e2"))
-	menu_button.custom_minimum_size.x = 104
-	menu_button.expand_icon = true
-	menu_button.add_theme_constant_override("icon_max_width", 28)
-	quick_navigation.add_child(menu_button)
+	health_badge = UI.button("Visit Vet", request_page.bind("Vet Clinic"), Color("f9d8e2"))
+	health_badge.custom_minimum_size.y = 44
+	health_badge.add_theme_font_size_override("font_size", 20)
+	health_badge.visible = false
+	identity_col.add_child(health_badge)
+	var header_space = Control.new()
+	header_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header_space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(header_space)
+	var utility_layer = Control.new()
+	utility_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(utility_layer)
+	var travel = VBoxContainer.new()
+	travel.name = "TravelNavigation"
+	travel.position = Vector2(0, 156)
+	travel.add_theme_constant_override("separation", 16)
+	utility_layer.add_child(travel)
+	home_button = UI.icon_button("Home", UI.place_icon("Home"), request_page.bind("Home"), Color("ffdfb5"))
+	home_button.custom_minimum_size = Vector2(104, 100)
+	home_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	home_button.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	header.add_child(home_button)
+	header.move_child(home_button, 0)
+	back_button = UI.button("‹ Back", go_back, Color("fff5e2"))
+	back_button.custom_minimum_size = Vector2(112, 100)
+	back_button.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	back_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	header.add_child(back_button)
+	header.move_child(back_button, 1)
+	island_button = UI.icon_button("Island", UI.place_icon("Island"), request_page.bind("Island"), Color("c2ecf4"))
+	island_button.custom_minimum_size = Vector2(104, 100)
+	travel.add_child(island_button)
 	camera_button = UI.icon_button("Photo", preload("res://assets/ui/camera.svg"), open_photo_mode, Color("f9d8e2"))
-	camera_button.custom_minimum_size.x = 104
-	quick_navigation.add_child(camera_button)
-	page_label = UI.label("", 30)
+	camera_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	camera_button.offset_top = -100
+	camera_button.offset_right = 104
+	utility_layer.add_child(camera_button)
+	page_label = UI.label("", 26, UI.TEAL)
 	page_label.visible = false
-	quick_navigation.add_child(page_label)
+	page_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	page_label.add_theme_color_override("font_color", UI.INK)
+	page_label.add_theme_color_override("font_outline_color", Color("fff6e5"))
+	page_label.add_theme_constant_override("outline_size", 5)
+	page_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(page_label)
+	header.move_child(page_label, 3)
 	bag_button = UI.button("Bag", request_page.bind("Bag"))
 	bag_button.visible = false
-	quick_navigation.add_child(bag_button)
+	header.add_child(bag_button)
 	needs_card = UI.card()
 	needs_card.custom_minimum_size.x = 460
 	needs_card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -133,7 +162,7 @@ func _ready() -> void:
 		meter_labels[key].custom_minimum_size.x = 40
 		line.add_child(meter_labels[key])
 		var bar = ProgressBar.new()
-		bar.custom_minimum_size = Vector2(90, 10)
+		bar.custom_minimum_size = Vector2(110, 10)
 		bar.tooltip_text = key
 		bar.show_percentage = false
 		var bg = UI.style(Color("dfcfb8"), 6)
@@ -148,7 +177,18 @@ func _ready() -> void:
 		bar.add_theme_stylebox_override("background", bg)
 		bar.add_theme_stylebox_override("fill", fill)
 		col.add_child(bar)
+		var need_name = UI.label(key, 20)
+		need_name.autowrap_mode = TextServer.AUTOWRAP_OFF
+		col.add_child(need_name)
 		meters[key] = bar
+	var menu_gap = Control.new()
+	menu_gap.custom_minimum_size.x = 20
+	header.add_child(menu_gap)
+	menu_button = UI.icon_button("Menu", preload("res://assets/ui/menu.svg"), open_navigation, Color("fff5e2"))
+	menu_button.custom_minimum_size = Vector2(104, 100)
+	menu_button.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	menu_button.size_flags_horizontal = Control.SIZE_SHRINK_END
+	header.add_child(menu_button)
 	body = UI.column(8)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -169,8 +209,8 @@ func _ready() -> void:
 	action_dock.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
 	action_dock.offset_left = -116
 	action_dock.offset_right = 0
-	action_dock.offset_top = -210
-	action_dock.offset_bottom = 242
+	action_dock.offset_top = -190
+	action_dock.offset_bottom = 262
 	action_dock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dock_layer.add_child(action_dock)
 	action_dock.add_child(actions)
@@ -213,7 +253,14 @@ func _process(delta: float) -> void:
 			UI.button_caption(button, kind)
 			UI.button_wait(button, remaining, 6.0)
 	if not Game.save_error.is_empty():
-		message.text = Game.save_error
+		if reported_save_error != Game.save_error or not is_instance_valid(notice_overlay) or not notice_overlay.get_meta("save_error", false):
+			reported_save_error = Game.save_error
+			show_feedback(Game.save_error, true)
+	elif not reported_save_error.is_empty():
+		reported_save_error = ""
+		if is_instance_valid(notice_overlay) and notice_overlay.get_meta("save_error", false):
+			notice_overlay.queue_free()
+			notice_overlay = null
 
 func home_hint() -> String:
 	if Game.resting:
@@ -225,17 +272,18 @@ func _notice(text: String) -> void:
 	status_clock = 0
 	show_feedback(text)
 
-func show_feedback(text: String) -> void:
+func show_feedback(text: String, persistent_save_error: bool = false) -> void:
 	if notice_tween != null and notice_tween.is_valid():
 		notice_tween.kill()
 	if is_instance_valid(notice_overlay):
 		notice_overlay.queue_free()
 	var overlay = CenterContainer.new()
 	notice_overlay = overlay
+	overlay.set_meta("save_error", persistent_save_error)
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	overlay.offset_top = 145
-	overlay.offset_bottom = 235
+	overlay.offset_top = 175
+	overlay.offset_bottom = 255
 	add_child(overlay)
 	var panel = UI.card()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -245,6 +293,8 @@ func show_feedback(text: String) -> void:
 	text_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(text_label)
+	if persistent_save_error:
+		return
 	notice_tween = create_tween()
 	notice_tween.tween_interval(2.2)
 	notice_tween.tween_property(overlay, "modulate:a", 0.0, 0.3)
@@ -256,7 +306,11 @@ func _update_needs() -> void:
 		meter_labels[key].text = str(int(Game.needs[key]))
 		meter_labels[key].tooltip_text = "%s: %d" % [key, int(Game.needs[key])]
 	name_label.text = Game.puppy_name
-	age_label.text = Game.growth_stage() if Game.breed == "Puppy" else Game.breed
+	age_label.text = PuppyHealth.status(Game) if PuppyHealth.unwell(Game) else (Game.growth_stage() if Game.breed == "Puppy" else Game.breed)
+	health_badge.visible = page == "Home" and PuppyHealth.unwell(Game)
+	var travel = hud.find_child("TravelNavigation", true, false)
+	if is_instance_valid(travel):
+		travel.position.y = 196 if health_badge.visible else 156
 	UI.button_caption(rest_button, "Wake" if Game.resting else "Rest")
 
 func clear_body() -> void:
@@ -267,14 +321,19 @@ func clear_body() -> void:
 			child.queue_free()
 
 func update_navigation() -> void:
-	camera_button.visible = page in ["Home", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse"]
-	identity_card.visible = page != "Island"
+	camera_button.visible = page in ["Home", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Harbor", "Keeper’s Cottage"]
+	var scene_page = page in ["Home", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Harbor", "Keeper’s Cottage", "Fetch", "Walk"]
+	identity_card.visible = scene_page
 	bag_button.visible = false
-	island_button.visible = page != "Island"
-	page_label.text = "Puppy Island" if page == "Home" else page
+	island_button.visible = scene_page and page not in ["Fetch", "Walk"]
+	home_button.visible = page != "Home"
+	back_button.visible = not scene_page and page != "Island"
+	page_label.visible = not scene_page
+	page_label.text = {"Life:Health Record": "Health History", "Life:Deliveries": "Harbor Parcels", "Life:Playdate": "Puppy Playdate", "Island": "Island Map", "Shop": "June’s Shop", "Vet Supplies": "Vet Supplies", "Bag": "Your Bag", "Journal": "Puppy Journal", "My Dogs": "My Dogs"}.get(page, "Puppy Playdate" if page == "Life:Playdate" else ("Island Life" if page.begins_with("Life") else page))
 	actions.visible = page == "Home"
 	needs_card.visible = page in ["Home", "Fetch", "Walk"]
 	message_card.visible = false
+	health_badge.visible = page == "Home" and PuppyHealth.unwell(Game)
 	for key in nav_buttons:
 		nav_buttons[key].visible = page not in ["Fetch", "Walk"] or key == "Home"
 		nav_buttons[key].modulate = Color("ffe3a5") if key == page else Color.WHITE
@@ -300,6 +359,12 @@ func show_page(dest: String) -> void:
 			return
 		get_tree().change_scene_to_file("res://scenes/start_menu.tscn")
 		return
+	if dest == "Home":
+		page_history.clear()
+	elif not returning_to_page and page != dest:
+		page_history.append("Home" if page in ["Fetch", "Walk"] else page)
+		if page_history.size() > 20:
+			page_history.pop_front()
 	page = dest
 	if dest in Art.BACKGROUNDS:
 		current_place = dest
@@ -320,12 +385,19 @@ func show_page(dest: String) -> void:
 		"Island": island()
 		"Journal": journal_page()
 		"My Dogs": dogs_page()
-		"Puppy Club", "Shop", "Vet Clinic", "Lighthouse", "Park", "Beach": location_page(dest)
+		"Puppy Club", "Shop", "Vet Clinic", "Lighthouse", "Park", "Beach", "Harbor", "Keeper’s Cottage": location_page(dest)
 		"Bag": goods_page(false)
+		"Vet Supplies": goods_page(true, true)
+
+func go_back() -> void:
+	var destination = page_history.pop_back() if not page_history.is_empty() else "Home"
+	returning_to_page = true
+	show_page(destination)
+	returning_to_page = false
 
 func start_activity(kind: String) -> void:
 	if not Game.can_explore():
-		_notice(Game.personalize("Rest at Home first. Mochi needs to be awake with 15 energy."))
+		_notice(Game.personalize("Mochi needs to recover first. Visit Vet Clinic for a free checkup." if PuppyHealth.unwell(Game) else "Rest at Home first. Mochi needs to be awake with 15 energy."))
 		return
 	clear_body()
 	page = kind
@@ -353,7 +425,7 @@ func visit(place: String) -> void:
 		"Home": show_page("Home")
 		"Park": show_page("Park")
 		"Beach": show_page("Beach")
-		"Puppy Club", "Shop", "Vet Clinic": show_page(place)
+		"Puppy Club", "Shop", "Vet Clinic", "Harbor", "Keeper’s Cottage": show_page(place)
 		"Lighthouse (Later)", "Lighthouse": show_page("Lighthouse")
 	show_arrival(place)
 
@@ -380,6 +452,13 @@ func page_panel() -> VBoxContainer:
 func journal_page() -> void:
 	var col = page_panel()
 	col.add_child(UI.label(Game.puppy_name + "'s Growth Journey", 30))
+	col.add_child(UI.label("Health: " + PuppyHealth.status(Game), 25, UI.TEAL))
+	if PuppyHealth.unwell(Game):
+		col.add_child(UI.button("Visit Vet Clinic", request_page.bind("Vet Clinic"), Color("f9d8e2")))
+	var chapter = IslandStory.next_step(Game)
+	col.add_child(UI.label("A light for the harbor", 27, UI.TEAL))
+	col.add_child(UI.hint_label(chapter.text, 23))
+	col.add_child(UI.button(chapter.button, request_page.bind(chapter.place), Color("c2ecf4")))
 	col.add_child(UI.button("Island life: training, friends and keepsakes", show_page.bind("Life"), Color("c8eddd")))
 	var scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -579,18 +658,47 @@ func show_resident(texture: Texture2D, character_name: String, role: String, tex
 	close_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	content.add_child(close_button)
 
-func goods_page(shop: bool) -> void:
-	set_scenery("Shop" if shop else "Home")
+func goods_page(shop: bool, vet_supplies: bool = false) -> void:
+	set_scenery("Vet Clinic" if vet_supplies else ("Shop" if shop else "Home"))
 	var browser = load("res://scripts/goods_browser.gd").new()
 	browser.host = self
 	browser.shopping = shop
+	browser.vet_supplies = vet_supplies
 	browser.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_child(browser)
+
+func pause_outing_for_dialog() -> void:
+	if not outing_pause.is_empty() or page not in ["Fetch", "Walk"] or body.get_child_count() == 0:
+		return
+	var activity = body.get_child(0)
+	if activity.complete:
+		return
+	outing_pause = {"activity": weakref(activity), "puppy": weakref(habitat.puppy), "game_processing": Game.is_processing(), "activity_processing": activity.is_processing(), "puppy_processing": habitat.puppy.is_processing(), "timer_paused": activity.timer.paused}
+	Game.set_process(false)
+	activity.set_process(false)
+	activity.timer.paused = true
+	activity.set_meta("dialog_paused", true)
+	habitat.puppy.set_process(false)
+
+func resume_outing_after_dialog() -> void:
+	if outing_pause.is_empty():
+		return
+	var activity = outing_pause.activity.get_ref()
+	var puppy = outing_pause.puppy.get_ref()
+	if is_instance_valid(activity):
+		activity.remove_meta("dialog_paused")
+		activity.set_process(outing_pause.activity_processing)
+		activity.timer.paused = outing_pause.timer_paused or Game.paused_at > 0
+	if is_instance_valid(puppy):
+		puppy.set_process(outing_pause.puppy_processing)
+	Game.set_process(outing_pause.game_processing)
+	outing_pause.clear()
 
 func request_page(dest: String) -> void:
 	if page in ["Fetch", "Walk"] and body.get_child_count() > 0 and not body.get_child(0).complete:
 		if is_instance_valid(leave_overlay):
 			return
+		pause_outing_for_dialog()
 		leave_overlay = Control.new()
 		leave_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		add_child(leave_overlay)
@@ -618,13 +726,15 @@ func request_page(dest: String) -> void:
 	show_page(dest)
 
 func close_leave_prompt() -> void:
+	resume_outing_after_dialog()
 	if is_instance_valid(leave_overlay):
 		leave_overlay.queue_free()
 	leave_overlay = null
 
 func open_navigation() -> void:
 	if is_instance_valid(navigation_overlay):
-		return
+			return
+	pause_outing_for_dialog()
 	navigation_overlay = Control.new()
 	navigation_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(navigation_overlay)
@@ -641,16 +751,16 @@ func open_navigation() -> void:
 	var content = UI.column(16)
 	content.custom_minimum_size.x = 880
 	panel.add_child(content)
-	content.add_child(UI.label("Your island", 34, UI.TEAL))
+	content.add_child(UI.label("Your puppy", 34, UI.TEAL))
 	var grid = GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 12)
 	grid.add_theme_constant_override("v_separation", 12)
 	content.add_child(grid)
-	var pictures = {"Home": preload("res://assets/ui/home.svg"), "Island": preload("res://assets/ui/island.svg"), "Bag": preload("res://assets/ui/menu_bag.svg"), "Journal": preload("res://assets/ui/menu_journal.svg"), "My Dogs": Art.PUPPIES[Game.breed], "Menu": preload("res://assets/ui/title.svg")}
-	var tile_colors = {"Home": Color("ffdfb5"), "Island": Color("c2ecf4"), "Bag": Color("c8eddd"), "Journal": Color("f9d8e2"), "My Dogs": Color("fff0bd"), "Menu": Color("e1d9f6")}
-	for destination in ["Home", "Island", "Bag", "Journal", "My Dogs", "Menu"]:
-		var label = "Title screen" if destination == "Menu" else destination
+	var pictures = {"Home": preload("res://assets/ui/home.svg"), "Island": preload("res://assets/ui/island.svg"), "Bag": preload("res://assets/ui/menu_bag.svg"), "Journal": preload("res://assets/ui/menu_journal.svg"), "My Dogs": Art.PUPPIES[Game.breed], "Menu": preload("res://assets/ui/title.svg"), "Life": preload("res://assets/ui/club.svg"), "Life:Events": preload("res://assets/ui/sunset.svg")}
+	var tile_colors = {"Home": Color("ffdfb5"), "Island": Color("c2ecf4"), "Bag": Color("c8eddd"), "Journal": Color("f9d8e2"), "My Dogs": Color("fff0bd"), "Menu": Color("e1d9f6"), "Life": Color("c2ecf4"), "Life:Events": Color("ffdfb5")}
+	for destination in ["Bag", "Journal", "My Dogs", "Life", "Life:Events", "Menu"]:
+		var label = {"Menu": "Title screen", "Life": "Island life", "Life:Events": "Events"}.get(destination, destination)
 		var button = UI.picture_button(label, pictures[destination], func():
 			close_navigation()
 			request_page(destination)
@@ -666,22 +776,23 @@ func open_navigation() -> void:
 	content.add_child(close_button)
 
 func close_navigation() -> void:
+	resume_outing_after_dialog()
 	if is_instance_valid(navigation_overlay):
 		navigation_overlay.queue_free()
 	navigation_overlay = null
 
 func life_page(section: String) -> void:
-	set_scenery("Home")
+	set_scenery("Harbor" if section == "Deliveries" else ("Vet Clinic" if section == "Health Record" else ("Puppy Club" if section == "Playdate" else "Home")))
 	var browser = load("res://scripts/life_browser.gd").new()
 	browser.host = self
-	browser.mode = section if section in browser.MODES else "Dog"
+	browser.mode = section if section in browser.MODES or section in ["Playdate", "Health Record", "Deliveries"] else "Dog"
 	browser.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_child(browser)
 
 func open_photo_mode() -> void:
 	if is_instance_valid(photo_overlay):
 		return
-	if page not in ["Home", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse"]:
+	if page not in ["Home", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Harbor", "Keeper’s Cottage"]:
 		show_page("Home")
 	photo_was_processing = Game.is_processing()
 	if is_instance_valid(arrival_overlay):
@@ -799,3 +910,15 @@ func show_arrival(place: String) -> void:
 	transition.tween_interval(0.5)
 	transition.tween_property(overlay, "modulate:a", 0.0, 0.3)
 	transition.tween_callback(overlay.queue_free)
+
+func location_story_refresh(location: String) -> void:
+	if page != location or not is_instance_valid(habitat):
+		return
+	for child in body.get_children():
+		body.remove_child(child)
+		child.queue_free()
+	var hub = load("res://scripts/location_hub.gd").new()
+	hub.host = self
+	hub.location = location
+	hub.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_child(hub)

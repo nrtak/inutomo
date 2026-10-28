@@ -7,6 +7,10 @@ var world: Node2D
 var background: TextureRect
 var discovery: Sprite2D
 var ball: Sprite2D
+var playmate: Sprite2D
+var playdate_tween: Tween
+var restoration: Node2D
+var decor_targets: Dictionary = {}
 var view_offset = Vector2.ZERO
 
 func _ready() -> void:
@@ -25,7 +29,11 @@ func _ready() -> void:
 	world.add_child(background)
 	if location == "Home":
 		add_home_decor()
+	if location == "Keeper’s Cottage":
+		restoration = load("res://scripts/restoration_visual.gd").new()
+		world.add_child(restoration)
 	puppy = PuppyActor.new()
+	puppy.home_interactions = location == "Home"
 	world.add_child(puppy)
 	Game.nap_actor = weakref(puppy)
 	puppy.walk_area = WalkArea.AREAS.get(location, WalkArea.AREAS.Home)
@@ -52,14 +60,23 @@ func add_home_decor() -> void:
 		var bed = Sprite2D.new()
 		bed.texture = Goods.picture(Game.life.bed)
 		bed.scale = Vector2(250.0 / bed.texture.get_width(), 100.0 / bed.texture.get_height())
-		bed.position = Vector2([550.0, 650.0, 760.0][Game.life.spot], 505)
+		bed.position = IslandLife.home_point(Game, "Rest")
+		decor_targets.Rest = bed.position
 		world.add_child(bed)
 	if Game.items.get(Game.life.toy, 0) > 0:
 		var toy = Sprite2D.new()
 		toy.texture = Goods.picture(Game.life.toy)
 		toy.scale = Vector2.ONE * (55.0 / toy.texture.get_width())
-		toy.position = Vector2(850, 525)
+		toy.position = IslandLife.home_point(Game, "Play")
+		decor_targets.Play = toy.position
 		world.add_child(toy)
+	if Game.life.bowl:
+		var bowl = Sprite2D.new()
+		bowl.texture = preload("res://assets/ui/feed.svg")
+		bowl.scale = Vector2.ONE * (65.0 / bowl.texture.get_width())
+		bowl.position = IslandLife.home_point(Game, "Feed")
+		decor_targets.Feed = bowl.position
+		world.add_child(bowl)
 	for index in Game.life.keepsakes.size():
 		var keepsake = Sprite2D.new()
 		var kind = IslandLife.KEEPSAKES.find(Game.life.keepsakes[index])
@@ -70,7 +87,7 @@ func add_home_decor() -> void:
 
 func _resize_world() -> void:
 	if world:
-		var zoom = 1.42 if location == "Home" else 1.0
+		var zoom = 1.42 if location == "Home" or not is_zero_approx(view_offset.x) else 1.0
 		var factor = maxf(size.x / 1280.0, size.y / 720.0) * zoom
 		world.scale = Vector2.ONE * factor
 		var focus = Vector2(650, 410) if location == "Home" else Vector2(640, 360)
@@ -84,12 +101,81 @@ func _gui_input(event: InputEvent) -> void:
 			Game.pet_puppy()
 			accept_event()
 			return
+		if location == "Home":
+			for action in decor_targets:
+				if point.distance_to(decor_targets[action]) < (65 if action == "Rest" else 36):
+					interact_decor(action)
+					accept_event()
+					return
 		# Ignore taps on furniture, railings, water and other non-walkable scenery.
 		if WalkArea.contains(puppy.walk_area, point):
 			puppy.request_move(point)
+
+func interact_decor(action: String) -> void:
+	if location != "Home" or action not in decor_targets:
+		return
+	if action == "Rest" and Game.resting:
+		Game.say("Already enjoying a cozy rest.")
+		return
+	Game.action(action)
 
 func set_walk_stop(index: int) -> void:
 	discovery.texture = load("res://assets/ui/" + ["leaf", "shell", "sunset"][index] + ".svg")
 	discovery.position = WalkArea.WALK_STOPS[index] + Vector2(0, -8)
 	discovery.scale = Vector2.ONE * 0.7
 	discovery.visible = true
+
+func show_playmate() -> void:
+	if is_instance_valid(playmate):
+		return
+	playmate = Sprite2D.new()
+	playmate.texture = Art.PUPPIES.Puppy
+	var style = ShaderMaterial.new()
+	style.shader = preload("res://scripts/dog_style.gdshader")
+	style.set_shader_parameter("recolor", true)
+	style.set_shader_parameter("bandana", Color("ef8b9b"))
+	playmate.material = style
+	playmate.scale = Vector2.ONE * (170.0 / playmate.texture.get_height())
+	playmate.offset.y = -playmate.texture.get_height() * 0.5
+	playmate.position = Vector2(770, 580)
+	world.add_child(playmate)
+
+func animate_playdate(step: int) -> void:
+	show_playmate()
+	if playdate_tween != null and playdate_tween.is_valid():
+		playdate_tween.kill()
+	ball.visible = false
+	playmate.rotation = 0
+	playmate.modulate = Color.WHITE
+	playmate.region_enabled = false
+	playmate.texture = Art.PUPPIES.Puppy
+	playmate.scale = Vector2.ONE * (170.0 / playmate.texture.get_height())
+	playmate.offset = Vector2(0, -playmate.texture.get_height() * 0.5)
+	playmate.position = Vector2(770, 580)
+	playdate_tween = create_tween()
+	if step == 1:
+		playdate_tween.tween_property(playmate,"position",Vector2(700,580),0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		playdate_tween.tween_property(playmate,"rotation",-0.06,0.3)
+		playdate_tween.tween_property(playmate,"rotation",0.0,0.3)
+	elif step == 2:
+		ball.rotation = 0
+		ball.visible = true
+		ball.position = Vector2(625,580)
+		ball.scale = Vector2.ONE * (38.0 / ball.texture.get_width())
+		playdate_tween.tween_property(ball,"position",Vector2(750,580),0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		playdate_tween.parallel().tween_property(ball,"rotation",TAU,0.9)
+		playdate_tween.tween_property(ball,"position",Vector2(625,580),0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		playdate_tween.parallel().tween_property(playmate,"position:y",574.0,0.3)
+		playdate_tween.tween_property(playmate,"position:y",580.0,0.3)
+		playdate_tween.tween_callback(func(): ball.visible = false)
+	else:
+		playmate.texture = Art.PUPPY_SLEEP
+		playmate.region_enabled = true
+		playmate.region_rect = Rect2(Art.PUPPY_SLEEP_REGION)
+		playmate.offset = Vector2(0,-playmate.region_rect.size.y*0.5)
+		playmate.scale = Vector2.ONE * (110.0 / playmate.region_rect.size.y)
+		playdate_tween.tween_property(playmate,"modulate",Color("fff3da"),0.7)
+
+func _exit_tree() -> void:
+	if playdate_tween != null and playdate_tween.is_valid():
+		playdate_tween.kill()

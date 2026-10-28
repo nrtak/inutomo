@@ -23,7 +23,7 @@ const SLEEP_REGIONS = {
 	"Shiba Inu": Rect2i(43, 79, 1441, 820),
 	"Golden Retriever": Rect2i(24, 210, 1489, 613)
 }
-const NORA = preload("res://assets/characters/nora_casual_anime.png")
+const NORA = preload("res://assets/characters/nora_outdoors_v2.png")
 
 const WALKS = {
 	"Puppy": preload("res://assets/puppies/puppy_walk_anime.png"),
@@ -44,14 +44,33 @@ const WALK_ANCHORS = {
 }
 const WALK_HEIGHTS = {"Puppy": 338.0, "Shiba Inu": 382.5, "Golden Retriever": 323.5}
 
-const BACKGROUNDS = {"Home": HOME, "Park": PARK, "Beach": BEACH,
+const REN = preload("res://assets/characters/ren_redrawn_anime.png")
+const BACKGROUNDS = {"Harbor": preload("res://assets/backgrounds/harbor_anime.png"), "Keeper’s Cottage": preload("res://assets/backgrounds/cottage_anime.png"),"Home": HOME, "Park": PARK, "Beach": BEACH,
 	"Puppy Club": preload("res://assets/backgrounds/club_anime.png"),
 	"Shop": preload("res://assets/backgrounds/shop_anime.png"),
 	"Vet Clinic": preload("res://assets/backgrounds/vet_anime.png"),
 	"Lighthouse": preload("res://assets/backgrounds/lighthouse_anime.png"),
 }
-const JUNE = preload("res://assets/characters/june_casual_anime.png")
+const JUNE = preload("res://assets/characters/june_shop_v2.png")
 const LEAH = preload("res://assets/characters/leah_anime.png")
 
 const BEN = preload("res://assets/characters/ben_anime.png")
 const OWEN = preload("res://assets/characters/owen_anime.png")
+
+const NORA_CORAL = preload("res://assets/characters/nora_coral_braid.png")
+const JUNE_MINT = preload("res://assets/characters/june_mint_parcel.png")
+
+const BEN_TRAINING = preload("res://assets/characters/ben_training.png")
+const LEAH_TUNIC = preload("res://assets/characters/leah_tunic.png")
+const OWEN_PARCEL = preload("res://assets/characters/owen_parcel.png")
+const REN_SWEATER = preload("res://assets/characters/ren_sweater.png")
+
+static func daily_portrait(texture: Texture2D, date: String = "") -> Texture2D:
+	if date.is_empty():
+		date = Time.get_date_string_from_system(false)
+	var day = int(Time.get_unix_time_from_datetime_string(date) / 86400)
+	var wardrobes = [[NORA, NORA_CORAL], [JUNE, JUNE_MINT], [BEN, BEN_TRAINING], [LEAH, LEAH_TUNIC], [OWEN, OWEN_PARCEL], [REN, REN_SWEATER]]
+	for index in wardrobes.size():
+		if texture in wardrobes[index]:
+			return wardrobes[index][posmod(day + index, 2)]
+	return texture

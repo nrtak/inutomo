@@ -79,6 +79,16 @@ func run() -> void:
 	var main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 	current_scene = main
+	game.save_error = "Could not save. Your progress is still in memory."
+	main._process(0)
+	check(is_instance_valid(main.notice_overlay) and main.notice_overlay.get_meta("save_error", false), "Save errors remain visible with the compact interface")
+	main.show_page("Journal")
+	main._process(0)
+	check(is_instance_valid(main.notice_overlay) and main.notice_overlay.get_meta("save_error", false), "Save errors remain visible when changing pages")
+	game.save_error = ""
+	main._process(0)
+	check(not is_instance_valid(main.notice_overlay), "Save warning clears after saving recovers")
+	main.show_page("Home")
 	game.update_growth()
 	await process_frame
 	await process_frame

@@ -89,7 +89,7 @@ func run() -> void:
 	game.cooldowns.clear()
 	game.action("Feed")
 	await process_frame
-	check(main.habitat.puppy.reaction_kind == "Feed" and main.habitat.puppy.reaction_time > 0, "Successful care triggers puppy reaction")
+	check((main.habitat.puppy.reaction_kind == "Feed" and main.habitat.puppy.reaction_time > 0) or (main.habitat.puppy.pending_decor_action == "Feed" and WalkArea.contains(main.habitat.puppy.walk_area, main.habitat.puppy.target)), "Successful care starts a reaction or safe approach to the bowl")
 	check(main.action_buttons.Feed.disabled, "Care cooldown is visible on the button")
 	var care_points: int = game.points
 	game.action("Feed")

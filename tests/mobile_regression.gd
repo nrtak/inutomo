@@ -106,9 +106,25 @@ func run() -> void:
  check(fetch.rounds == 1 and fetch.score == 1, "Fetch resumes its last completed throw")
  var coins_before: int = game.coins
  check(not game.complete_outing("Fetch", 1) and game.coins == coins_before, "An unfinished outing cannot pay a reward")
+ fetch._throw()
+ await create_timer(0.05).timeout
  main.request_page("Island")
+ fetch._notification(NOTIFICATION_APPLICATION_RESUMED)
+ check(fetch.timer.paused, "Returning to the app does not resume an outing behind its dialog")
+ var paused_time = fetch.timer.time_left
+ var paused_position = main.habitat.puppy.position
+ await create_timer(0.15).timeout
+ check(fetch.timer.paused and is_equal_approx(fetch.timer.time_left, paused_time), "Leave confirmation pauses the current outing timer")
+ check(main.habitat.puppy.position == paused_position, "Puppy pauses with the outing while deciding whether to leave")
  check(is_instance_valid(main.leave_overlay), "Leaving an outing asks before interrupting it")
  main.close_leave_prompt()
+ check(not fetch.timer.paused, "Keeping the outing resumes its timer")
+ main.open_navigation()
+ paused_time = fetch.timer.time_left
+ await create_timer(0.15).timeout
+ check(fetch.timer.paused and is_equal_approx(fetch.timer.time_left, paused_time), "Menu also pauses an in-progress outing")
+ main.close_navigation()
+ check(not fetch.timer.paused, "Closing Menu resumes the outing")
  main.show_page("Home")
  game.checkpoint_outing(3, 2)
  main.start_activity("Fetch")
@@ -153,6 +169,13 @@ func run() -> void:
   mobile_view.add_child(main)
   await process_frame
   await process_frame
+  var label_texts = []
+  for label in main.needs_card.find_children("*", "Label", true, false):
+   label_texts.append(label.text)
+  for need in ["Hunger", "Happiness", "Energy", "Cleanliness"]:
+   check(need in label_texts, "Each need has a beginner-readable name")
+  check(not main.island_button.get_global_rect().intersects(main.menu_button.get_global_rect()), "Travel and menu occupy separate areas")
+  check(not main.camera_button.get_global_rect().intersects(main.menu_button.get_global_rect()), "Photo has a separate position")
   var previous_button: Button = null
   for kind in ["Feed", "Play", "Care", "Rest"]:
    var action_button: Button = main.action_buttons[kind]
@@ -187,12 +210,12 @@ func run() -> void:
   main.show_page("Bag")
   await process_frame
   check(not main.bag_button.visible, "The Bag does not repeat its own navigation button")
-  for place in ["Puppy Club", "Park", "Beach", "Vet Clinic", "Lighthouse"]:
+  for place in ["Puppy Club", "Park", "Beach", "Vet Clinic", "Lighthouse", "Harbor", "Keeper’s Cottage"]:
    main.show_page(place)
    await process_frame
    await process_frame
    var hub = main.body.get_child(0)
-   for button in hub.choices.get_children():
+   for button in hub.choices.get_children() + hub.primary_actions.get_children():
     var bounds: Rect2 = button.get_global_rect()
     check(bounds.position.x >= 105 and bounds.end.x <= mobile_view.size.x - 105, place + " buttons clear screen cutouts")
     check(bounds.position.y >= 20 and bounds.end.y <= 695, place + " buttons fit the screen height")
@@ -201,7 +224,7 @@ func run() -> void:
   main.start_activity("Walk")
   check(is_instance_valid(main.notice_overlay) and main.page == "Beach", "An unavailable outing explains why it cannot start")
   game.resting = false
-  for destination in ["Home", "Island", "Bag", "Journal", "My Dogs"]:
+  for destination in ["Bag", "Journal", "My Dogs"]:
    main.open_navigation()
    var choices = main.navigation_overlay.find_children("*", "Button", true, false)
    for choice in choices:
@@ -211,6 +234,16 @@ func run() -> void:
    await process_frame
    check(main.page == destination and not is_instance_valid(main.navigation_overlay), "Compact menu opens " + destination)
 
+  main.show_page("Bag")
+  main.show_page("Shop")
+  check(main.back_button.visible and not main.island_button.visible, "Content pages show Back without a floating map button")
+  main.back_button.pressed.emit()
+  check(main.page == "Bag", "Back returns from Shop to the Bag that opened it")
+  check(main.page_label.visible and main.page_label.text == "Your Bag", "Content pages have a clear heading")
+  main.island_button.pressed.emit()
+  check(main.page == "Island", "Dedicated travel button opens the map")
+  main.home_button.pressed.emit()
+  check(main.page == "Home", "Dedicated Home button returns home")
   main.queue_free()
   await process_frame
   await process_frame

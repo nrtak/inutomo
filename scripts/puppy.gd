@@ -33,6 +33,9 @@ var sleepy_reaction = false
 var sleep_material: ShaderMaterial
 var style_material: ShaderMaterial
 var preview_accessory = ""
+var home_interactions = false
+var pending_decor_action = ""
+var arriving_at_decor = false
 var settling_for_rest = false
 
 func _ready() -> void:
@@ -97,6 +100,7 @@ func request_move(point: Vector2) -> void:
 		target = position + (point - position).limit_length(45)
 	else:
 		target = point
+	pending_decor_action = ""
 	decision = 4.0
 
 func wake_briefly() -> void:
@@ -109,6 +113,12 @@ func _process(delta: float) -> void:
 		return
 	if settling_for_rest and (not Game.resting or position.distance_to(target) < 1):
 		settling_for_rest = false
+	if not pending_decor_action.is_empty() and position.distance_to(target) < 2:
+		var action = pending_decor_action
+		pending_decor_action = ""
+		arriving_at_decor = true
+		react_to_care(action)
+		arriving_at_decor = false
 	clock += delta
 	decision -= delta
 	if current_breed != Game.breed:
@@ -208,6 +218,9 @@ func _process(delta: float) -> void:
 	var moving = distance > 1
 	if moving:
 		var desired_speed = lerpf(45, 100, Game.growth_fraction()) if baby and not controlled else 150.0
+		if not controlled and PuppyHealth.unwell(Game):
+			desired_speed *= 0.55
+			mood = "Taking it gently while recovering"
 		# Ease into each walk and slow down before the last planted step.
 		var braking_speed = sqrt(2.0 * 320.0 * distance)
 		move_speed = move_toward(move_speed, minf(desired_speed, braking_speed), delta * 320)
@@ -258,9 +271,21 @@ func set_walk_pose() -> void:
 func react_to_care(kind: String) -> void:
 	if controlled:
 		return
+	if not arriving_at_decor:
+		pending_decor_action = ""
+	if home_interactions and not arriving_at_decor and ((kind == "Feed" and Game.life.bowl) or (kind == "Play" and Game.items.get(Game.life.toy, 0) > 0)):
+		var destination = WalkArea.nearest(walk_area, IslandLife.home_point(Game, kind))
+		if position.distance_to(destination) > 2:
+			wake_briefly()
+			awake_remaining = maxf(awake_remaining, 30)
+			target = destination
+			pending_decor_action = kind
+			reaction_time = 0
+			decision = 30
+			return
 	if kind == "Rest":
 		settling_for_rest = false
-		if Game.resting and Game.items.get(Game.life.bed, 0) > 0:
+		if home_interactions and Game.resting and Game.items.get(Game.life.bed, 0) > 0:
 			target = WalkArea.nearest(walk_area, Vector2([550.0, 650.0, 760.0][Game.life.spot], 505))
 			settling_for_rest = position.distance_to(target) > 1
 			if settling_for_rest:

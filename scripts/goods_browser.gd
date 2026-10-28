@@ -1,6 +1,8 @@
 extends MarginContainer
 var host: Control
+var featured_day = ""
 var shopping = false
+var vet_supplies = false
 var location = "Bag"
 var category = "All"
 var wallet: Label
@@ -14,10 +16,10 @@ var detail_notice: CommandHint
 var list: GridContainer
 var rows: Dictionary = {}
 var category_buttons: Dictionary = {}
-const CATEGORY_COLORS = {"All": Color("f9d8e2"), "Food": Color("ffdfb5"), "Toys": Color("c8eddd"), "Care": Color("c2ecf4"), "Comfort": Color("e1d9f6"), "Accessories": Color("f9d8e2")}
+const CATEGORY_COLORS = {"Featured": Color("fff0bd"), "All": Color("f9d8e2"), "Food": Color("ffdfb5"), "Toys": Color("c8eddd"), "Care": Color("c2ecf4"), "Comfort": Color("e1d9f6"), "Accessories": Color("f9d8e2")}
 
 func _ready() -> void:
- location = "Shop" if shopping else "Bag"
+ location = "Vet Clinic" if vet_supplies else ("Shop" if shopping else "Bag")
  add_theme_constant_override("margin_left", 0)
  var panel = UI.card()
  panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -45,17 +47,17 @@ func _ready() -> void:
  balance.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
  purse.add_child(balance)
  wallet.set_meta("balance", balance)
- var visit = UI.icon_button("Talk to June" if shopping else "Visit Shop", UI.resident_icon(Art.JUNE) if shopping else UI.place_icon("Shop"), talk_to_june if shopping else host.show_page.bind("Shop"), Color("ffdfb5"))
+ var visit = UI.icon_button("Ask Leah" if vet_supplies else ("Talk to June" if shopping else "Visit Shop"), UI.resident_icon(Art.LEAH if vet_supplies else Art.JUNE) if shopping else UI.place_icon("Shop"), talk_to_leah if vet_supplies else (talk_to_june if shopping else host.show_page.bind("Shop")), Color("ffdfb5"))
  visit.size_flags_horizontal = Control.SIZE_SHRINK_END
  visit.custom_minimum_size = Vector2(180, 84)
  header.add_child(visit)
  var tabs = HBoxContainer.new()
  tabs.add_theme_constant_override("separation", 8)
  content.add_child(tabs)
- var categories = Goods.CATEGORIES if shopping else ["All"] + Goods.CATEGORIES
- category = "Food" if shopping else "All"
+ var categories = ["Care"] if vet_supplies else (["Featured"] + Goods.CATEGORIES if shopping else ["All"] + Goods.CATEGORIES)
+ category = "Care" if vet_supplies else ("Food" if shopping else "All")
  for title in categories:
-  var tab = UI.icon_button(title, Goods.icon({"All": "Treat", "Food": "Treat", "Toys": "Toy", "Care": "Brush", "Comfort": "Bed", "Accessories": "CoralBandana"}[title]), select_category.bind(title), CATEGORY_COLORS[title])
+  var tab = UI.icon_button(title, Goods.icon({"Featured": "CelebrationTreat", "All": "Treat", "Food": "Treat", "Toys": "Toy", "Care": "Brush", "Comfort": "Bed", "Accessories": "CoralBandana"}[title]), select_category.bind(title), CATEGORY_COLORS[title])
   tab.custom_minimum_size.y = 84
   tab.add_theme_font_size_override("font_size", 23)
   tab.expand_icon = true
@@ -81,6 +83,12 @@ func _ready() -> void:
  Game.changed.connect(refresh)
  rebuild()
 
+func _process(_delta: float) -> void:
+ if shopping and not vet_supplies and featured_day != IslandLife.today():
+  featured_day = IslandLife.today()
+  if category == "Featured":
+   rebuild()
+
 func select_category(value: String) -> void:
  category = value
  feedback.visible = false
@@ -98,11 +106,15 @@ func rebuild() -> void:
   list.remove_child(child)
   child.queue_free()
  var display_order: Array = Goods.ITEMS.keys()
- if category == "Food":
+ if category == "Featured":
+  display_order = Goods.featured()
+ elif category == "Food":
   display_order = ["PuppyMeal", "AdultMeal", "PicnicPack", "Treat", "TrainingTreat", "CelebrationTreat"]
  for kind in display_order:
   var item: Dictionary = Goods.ITEMS[kind]
-  if category != "All" and item.category != category:
+  if shopping and item.get("vet_only", false) != vet_supplies:
+   continue
+  if category not in ["All", "Featured"] and item.category != category:
    continue
   if not shopping and Game.items.get(kind, 0) == 0:
    continue
@@ -134,10 +146,12 @@ func rebuild() -> void:
  refresh()
 
 func refresh() -> void:
- wallet.text = "June's Shop" if shopping else Game.puppy_name + "'s Bag"
+ wallet.text = "Leah’s Supplies" if vet_supplies else ("June's Shop" if shopping else Game.puppy_name + "'s Bag")
+ if category == "Featured":
+  wallet.text = "June’s daily picks"
  wallet.get_meta("balance").text = "%d coins" % Game.coins
  if is_instance_valid(needs_summary):
-  needs_summary.text = "Hunger: %d    Happiness: %d    Cleanliness: %d" % [Game.needs.Hunger, Game.needs.Happiness, Game.needs.Cleanliness]
+  needs_summary.text = "Hunger: %d    Happiness: %d    Energy: %d    Cleanliness: %d" % [Game.needs.Hunger, Game.needs.Happiness, Game.needs.Energy, Game.needs.Cleanliness]
  for kind in rows:
   update_item_controls(kind, rows[kind].button, rows[kind].count)
  if is_instance_valid(detail_overlay):
@@ -175,7 +189,7 @@ func perform(kind: String) -> void:
  refresh()
  if shopping and Game.items.get(kind, 0) > before:
   purchase_feedback(kind)
- elif not shopping and (kind in ["Treat", "TrainingTreat"] or Goods.ITEMS[kind].has("need")) and Game.items.get(kind, 0) < before:
+ elif not shopping and (kind in ["Treat", "TrainingTreat", "Medicine", "Bandage"] or Goods.ITEMS[kind].has("need")) and Game.items.get(kind, 0) < before:
   host.call_deferred("show_page", "Home")
 
 func purchase_feedback(kind: String) -> void:
@@ -231,7 +245,13 @@ func show_details(kind: String) -> void:
  row.add_theme_constant_override("separation", 24)
  content.add_child(row)
  var picture = TextureRect.new()
- picture.texture = Goods.picture(kind)
+ picture.texture = Art.PUPPIES[Game.breed] if Goods.ITEMS[kind].category == "Accessories" else Goods.picture(kind)
+ if Goods.ITEMS[kind].category == "Accessories":
+  var preview_material = ShaderMaterial.new()
+  preview_material.shader = preload("res://scripts/dog_style.gdshader")
+  preview_material.set_shader_parameter("bandana", Goods.ITEMS[kind].color)
+  preview_material.set_shader_parameter("recolor", true)
+  picture.material = preview_material
  picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
  picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
  picture.custom_minimum_size = Vector2(260, 220)
@@ -239,6 +259,8 @@ func show_details(kind: String) -> void:
  var description = UI.column(16)
  description.custom_minimum_size.x = 450
  row.add_child(description)
+ if Goods.ITEMS[kind].category == "Accessories":
+  description.add_child(UI.hint_label("Preview on " + Game.puppy_name + ". Your outfit stays unchanged until you choose Wear.", 23, UI.TEAL))
  description.add_child(UI.hint_label(Goods.ITEMS[kind].description, 25))
  if shopping:
   description.add_child(UI.label("Price: %d coins" % Goods.ITEMS[kind].price, 25, UI.TEAL))
@@ -252,8 +274,23 @@ func show_details(kind: String) -> void:
  content.add_child(actions)
  detail_action = UI.icon_button("", UI.place_icon("Shop") if shopping else Goods.icon(kind), perform.bind(kind), Color("c8eddd"))
  actions.add_child(detail_action)
+ if Goods.ITEMS[kind].category == "Accessories":
+  var wear = UI.button("Wear", wear_preview.bind(kind), Color("f9d8e2"))
+  wear.set_meta("wear_preview", true)
+  actions.add_child(wear)
  actions.add_child(UI.button("Close", close_details, Color("fff0cf")))
  refresh()
+
+func wear_preview(kind: String) -> void:
+ if Game.items.get(kind, 0) == 0:
+  detail_notice.text = "Buy this accessory first. Previewing is free."
+  detail_notice.visible = true
+  return
+ Game.life.accessory = kind
+ Game.save_game()
+ detail_notice.text = "Now wearing " + Goods.ITEMS[kind].name.to_lower() + "." if Game.save_error.is_empty() else Game.save_error
+ detail_notice.visible = true
+ Game.changed.emit()
 
 func close_details() -> void:
  if is_instance_valid(detail_overlay):
@@ -262,3 +299,6 @@ func close_details() -> void:
 
 func _exit_tree() -> void:
  close_details()
+
+func talk_to_leah() -> void:
+ host.show_resident(Art.LEAH, "Leah", "Veterinarian", "Get a free checkup before using medicine or bandages. One treatment starts recovery; extra doses do not help. Treatment at my clinic is always free.")

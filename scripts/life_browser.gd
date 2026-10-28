@@ -4,6 +4,9 @@ var host: Control
 var mode = "Dog"
 var feedback = ""
 var training_buttons: Dictionary = {}
+var lesson_command = ""
+var shown_day = ""
+var shown_health = ""
 var content: VBoxContainer
 var album_overlay: Control
 const MODES = ["Dog", "Wardrobe", "Training", "Friends", "Finds", "Home", "Events", "Photos"]
@@ -13,6 +16,15 @@ func _ready() -> void:
 	render()
 
 func _process(_delta: float) -> void:
+	if mode in ["Playdate", "Deliveries", "Events"] and shown_day != IslandLife.today():
+		feedback = ""
+		render()
+	if mode == "Health Record" and shown_health != health_snapshot():
+		render()
+	if mode == "Playdate" and is_instance_valid(content):
+		for button in content.get_children():
+			if button is Button and button.has_meta("playdate"):
+				button.disabled = Game.cooldowns.get("Playdate", 0) > 0
 	for command in training_buttons:
 		var button: Button = training_buttons[command]
 		button.disabled = Game.cooldowns.get("Training", 0) > 0
@@ -25,12 +37,17 @@ func choose(value: String) -> void:
 		host.habitat.puppy.preview_accessory = ""
 	render()
 
+func health_snapshot() -> String:
+	return PuppyHealth.status(Game) + PuppyHealth.advice(Game) + str(Game.health.history.size())
+
 func render() -> void:
+	shown_day = IslandLife.today()
+	shown_health = health_snapshot()
 	training_buttons.clear()
 	for child in get_children():
 		remove_child(child)
 		child.queue_free()
-	var compact = mode in ["Wardrobe", "Home", "Training"]
+	var compact = mode in ["Wardrobe", "Home", "Training", "Playdate"]
 	if is_instance_valid(host.habitat):
 		host.habitat.view_offset.x = -minf(220, host.size.x * 0.16) if compact else 0.0
 		host.habitat._resize_world()
@@ -48,15 +65,12 @@ func render() -> void:
 	panel.add_child(layout)
 	var top = HBoxContainer.new()
 	layout.add_child(top)
-	var title = UI.label(("Decorating" if mode == "Home" else mode) if compact else "Island life", 28, UI.TEAL)
+	var title = UI.label({"Dog": "Your Puppy", "Wardrobe": "Wardrobe", "Home": "Home Décor", "Finds": "Walk Keepsakes", "Photos": "Photo Album"}.get(mode, mode), 28, UI.TEAL)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(title)
-	var back = UI.button("Home", host.show_page.bind("Home"), Color("ffdfb5"))
-	back.size_flags_horizontal = Control.SIZE_SHRINK_END
-	back.custom_minimum_size = Vector2(120, 60)
-	top.add_child(back)
 	var tabs = GridContainer.new()
-	tabs.columns = 4 if compact else 8
+	tabs.visible = mode in MODES
+	tabs.columns = 4
 	tabs.add_theme_constant_override("h_separation", 5)
 	tabs.add_theme_constant_override("v_separation", 5)
 	layout.add_child(tabs)
@@ -87,6 +101,9 @@ func render() -> void:
 		"Dog": dog_page()
 		"Wardrobe": wardrobe()
 		"Training": training()
+		"Playdate": playdate()
+		"Health Record": health_record()
+		"Deliveries": deliveries()
 		"Friends": friends()
 		"Finds": finds()
 		"Home": decorating()
@@ -152,15 +169,103 @@ func wear(kind: String) -> void:
 
 func training() -> void:
 	content.add_child(UI.label("Ben's little lessons", 27, UI.TEAL))
-	content.add_child(UI.label("Five gentle practices teach each command. Take a breather between lessons.", 23))
-	for command in IslandLife.COMMANDS:
-		var button = tile(command, preload("res://assets/ui/training_treat.svg"), func(): respond(IslandLife.train(Game, command)))
-		training_buttons[command] = button
-		content.add_child(UI.label(str(Game.life.training[command]) + " of 5 lessons", 22))
+	if lesson_command == "":
+		content.add_child(UI.hint_label("Choose a command. Five short practices teach it.", 23))
+		for command in IslandLife.COMMANDS:
+			var level = int(Game.life.training[command])
+			tile(command + (" · Learned" if level == 5 else " · " + str(level) + " of 5"), preload("res://assets/ui/training_treat.svg"), select_lesson.bind(command))
+		return
+	var command = lesson_command
+	var tips = {
+		"Sit": "Tap Practice sit. Give a calm cue and let those little paws settle.",
+		"Stay": "Tap Practice stay. Keep the cue gentle while your puppy holds a patient sit.",
+		"Come": "Tap Practice come. Call warmly and welcome your puppy back."
+	}
+	content.add_child(UI.label(command, 28, UI.TEAL))
+	content.add_child(UI.hint_label(tips[command], 23))
+	var level = int(Game.life.training[command])
+	content.add_child(UI.label("Learned! You can practice for fun." if level == 5 else str(level) + " of 5 practices", 23))
+	if not feedback.is_empty():
+		content.add_child(UI.label(feedback, 23, UI.TEAL))
+	var button = tile("Practice " + command.to_lower(), preload("res://assets/ui/training_treat.svg"), practice_lesson)
+	training_buttons[command] = button
+	tile("Choose another lesson", preload("res://assets/ui/menu_journal.svg"), select_lesson.bind(""), Color("ffe0a0"))
+
+func select_lesson(command: String) -> void:
+	lesson_command = command
+	feedback = ""
+	render()
+
+func practice_lesson() -> void:
+	feedback = IslandLife.train(Game, lesson_command)
+	render()
+
+func playdate() -> void:
+	host.habitat.show_playmate()
+
+	var visit: Dictionary = Game.life.playdate
+	var done = visit.claimed >= IslandLife.today()
+	var step = int(visit.step) if visit.day == IslandLife.today() else 0
+	content.add_child(UI.hint_label("A gentle hello, a shared toy, then a quiet rest.", 23))
+	var friend = UI.icon_button("Ask Nora", UI.resident_icon(Art.NORA), func(): host.show_resident(Art.NORA, "Nora", "Puppy Club organizer", "Let the puppies say hello at their own pace. Play together, then finish with a calm rest. A completed playdate earns 5 coins and happiness, once a day."))
+	friend.custom_minimum_size.y = 80
+	content.add_child(friend)
+	content.add_child(UI.label("Playdates together: " + str(visit.visits), 22, UI.TEAL))
+	if not feedback.is_empty():
+		content.add_child(UI.label(feedback, 23))
+	if done:
+		content.add_child(UI.hint_label("All done today! Visit again tomorrow.", 23))
+	else:
+		content.add_child(UI.label("Step " + str(step + 1) + " of 3 · 5 coins on completion", 22))
+		var captions = ["Say hello", "Roll the ball", "Rest together"]
+		var icons = ["heart", "play", "rest"]
+		var button = tile(captions[step], load("res://assets/ui/" + icons[step] + ".svg"), func():
+			var previous_step = int(Game.life.playdate.step) if Game.life.playdate.day == IslandLife.today() else 0
+			feedback = IslandLife.playdate_step(Game)
+			if Game.life.playdate.day == IslandLife.today() and int(Game.life.playdate.step) > previous_step:
+				host.habitat.animate_playdate(int(Game.life.playdate.step))
+			render()
+		)
+		button.disabled = Game.cooldowns.get("Playdate", 0) > 0
+		button.set_meta("playdate", true)
+	tile("Back to Puppy Club", UI.place_icon("Puppy Club"), host.request_page.bind("Puppy Club"))
+
+func health_record() -> void:
+	content.add_child(UI.label(Game.puppy_name + " · " + PuppyHealth.status(Game), 27, UI.TEAL))
+	content.add_child(UI.hint_label(PuppyHealth.advice(Game), 23))
+	var actions = HBoxContainer.new()
+	content.add_child(actions)
+	actions.add_child(UI.icon_button("Ask Leah", UI.resident_icon(Art.LEAH), func(): host.show_resident(Art.LEAH, "Leah", "Veterinarian", PuppyHealth.advice(Game)), Color("c8eddd")))
+	actions.add_child(UI.icon_button("Visit clinic", UI.place_icon("Vet Clinic"), host.request_page.bind("Vet Clinic"), Color("c2ecf4")))
+	content.add_child(UI.label("Recent health history", 25, UI.TEAL))
+	if Game.health.history.is_empty():
+		content.add_child(UI.label("No health records yet. Future diagnoses, treatments and recoveries appear here.", 23))
+	for entry in Game.health.history:
+		content.add_child(UI.label(entry.event + " · " + entry.condition, 24, UI.TEAL))
+		content.add_child(UI.label(entry.date.replace("T", " ").left(16), 21))
+
+func deliveries() -> void:
+	content.add_child(UI.label("Owen's Harbor parcels", 27, UI.TEAL))
+	var info = IslandLife.delivery_info(Game)
+	content.add_child(UI.hint_label(info.text, 24))
+	content.add_child(UI.label("Deliveries completed: " + str(Game.life.delivery.completed), 23))
+	content.add_child(UI.label("Earn 6 coins and a biscuit if your Bag has room. One delivery each day.", 23))
+	if not feedback.is_empty():
+		content.add_child(UI.label(feedback, 23, UI.TEAL))
+	if Game.life.delivery.recipient != "":
+		tile("Visit " + info.person, UI.place_icon(info.place), host.request_page.bind(info.place))
+	elif Game.life.delivery.claimed < IslandLife.today():
+		tile("Collect parcel", preload("res://assets/ui/menu_bag.svg"), func():
+			feedback = IslandLife.collect_delivery(Game)
+			if not Game.save_error.is_empty():
+				feedback = Game.save_error
+			render()
+		)
+	tile("Back to Harbor", UI.place_icon("Harbor"), host.request_page.bind("Harbor"))
 
 func friends() -> void:
 	content.add_child(UI.label("Little favors, growing friendships", 27, UI.TEAL))
-	var residents = {"Nora": Art.NORA, "Ben": Art.BEN, "June": Art.JUNE, "Leah": Art.LEAH, "Owen": Art.OWEN}
+	var residents = {"Nora": Art.NORA, "Ben": Art.BEN, "June": Art.JUNE, "Leah": Art.LEAH, "Owen": Art.OWEN, "Ren": Art.REN}
 	var grid = GridContainer.new()
 	grid.columns = 3
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -191,7 +296,7 @@ func friend_conversation(person: String, portrait: Texture2D, asking_favor: bool
 	IslandLife.talk(Game, person)
 	var reply = IslandLife.favor(Game, person) if asking_favor else "Lovely to see you and " + Game.puppy_name + "! Shall we make another little island memory?"
 	render()
-	host.show_resident(portrait, person, {"Nora": "Puppy Club organizer", "Ben": "Trainer", "June": "Shopkeeper", "Leah": "Veterinarian", "Owen": "Neighbor"}[person], reply)
+	host.show_resident(portrait, person, {"Nora": "Puppy Club organizer", "Ben": "Trainer", "June": "Shopkeeper", "Leah": "Veterinarian", "Owen": "Neighbor", "Ren": "Lighthouse keeper"}[person], reply)
 
 func finds() -> void:
 	content.add_child(UI.label("Beach keepsakes", 27, UI.TEAL))
@@ -217,13 +322,22 @@ func decorating() -> void:
 				button.add_theme_font_size_override("font_size", 18)
 				button.get_meta("caption").add_theme_font_size_override("font_size", 20)
 				choices.add_child(button)
-	var positions = HBoxContainer.new()
-	content.add_child(positions)
-	for index in 3:
-		positions.add_child(UI.button(["Left", "Middle", "Right"][index], move_bed.bind(index), Color("c2ecf4")))
+	for slot in ["spot", "toy_spot", "bowl_spot"]:
+		content.add_child(UI.label({"spot":"Bed position", "toy_spot":"Toy position", "bowl_spot":"Bowl position"}[slot], 23, UI.TEAL))
+		var positions = HBoxContainer.new()
+		content.add_child(positions)
+		for index in 3:
+			positions.add_child(UI.button(["Left", "Middle", "Right"][index], move_decoration.bind(slot, index), Color("ffe0a0") if Game.life[slot] == index else Color("c2ecf4")))
+	tile("Hide bowl" if Game.life.bowl else "Place feeding bowl", preload("res://assets/ui/feed.svg"), func():
+		Game.life.bowl = not Game.life.bowl
+		Game.save_game()
+		host.show_page("Life:Home")
+	)
+	content.add_child(UI.hint_label("At Home, tap the bowl to Feed, the toy to Play, or the bed to Rest.", 22))
 	tile("Clear decorations", preload("res://assets/ui/home.svg"), func():
 		Game.life.bed = ""
 		Game.life.toy = ""
+		Game.life.bowl = false
 		Game.save_game()
 		host.show_page("Life:Home")
 	)
@@ -233,6 +347,13 @@ func decorate(kind: String) -> void:
 	if Game.items.get(kind, 0) <= 0:
 		return
 	Game.life["bed" if Goods.ITEMS[kind].category == "Comfort" else "toy"] = kind
+	Game.save_game()
+	host.show_page("Life:Home")
+
+func move_decoration(slot: String, index: int) -> void:
+	if slot not in ["spot", "toy_spot", "bowl_spot"]:
+		return
+	Game.life[slot] = clampi(index, 0, 2)
 	Game.save_game()
 	host.show_page("Life:Home")
 

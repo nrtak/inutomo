@@ -63,6 +63,10 @@ func run() -> void:
 	check(sleeping_frames > 900, "Baby puppy sleeps most of the time")
 	check(puppy.position.distance_to(nap_position) < 100, "Baby puppy stays near its nap spot")
 	puppy.react_to_care("Feed")
+	for frame in 1200:
+		puppy._process(1.0 / 60)
+		if puppy.pending_decor_action == "":
+			break
 	puppy._process(0.1)
 	check(not puppy.napping and puppy.sprite.texture == Art.PUPPIES.Puppy, "Care briefly wakes the puppy")
 	check(is_equal_approx(puppy.sprite.region_rect.size.y * puppy.base_scale, lerpf(180, 280, game.growth_fraction())), "Baby puppy is much smaller than an adult")

@@ -17,6 +17,8 @@ var clock = 0.0
 var transition: Tween
 var location_materials: Dictionary = {}
 const LIGHTS = {
+	"Harbor": [Vector4(0.08, 0.44, 0.035, 0.07), Vector4(0.235, 0.43, 0.035, 0.07), Vector4.ZERO, Vector4.ZERO],
+	"Keeper’s Cottage": [Vector4(0.235, 0.37, 0.035, 0.07), Vector4(0.50, 0.15, 0.025, 0.04), Vector4.ZERO, Vector4.ZERO],
 	"Home": [Vector4(0.82, 0.52, 0.13, 0.20), Vector4(0.84, 0.77, 0.25, 0.22), Vector4(0.12, 0.42, 0.22, 0.38), Vector4.ZERO],
 	"Puppy Club": [Vector4(0.055, 0.26, 0.055, 0.10), Vector4(0.262, 0.30, 0.055, 0.10), Vector4(0.18, 0.40, 0.095, 0.18), Vector4(0.20, 0.55, 0.16, 0.15)],
 	"Shop": [Vector4(0.20, 0.24, 0.22, 0.33), Vector4(0.27, 0.57, 0.23, 0.25), Vector4(0.90, 0.61, 0.16, 0.27), Vector4(0.50, 0.84, 0.33, 0.16)],

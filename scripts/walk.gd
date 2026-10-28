@@ -116,4 +116,4 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED:
 		timer.paused = true
 	elif what == NOTIFICATION_APPLICATION_RESUMED:
-		timer.paused = false
+		timer.paused = get_meta("dialog_paused", false)

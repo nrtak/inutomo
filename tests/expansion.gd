@@ -106,17 +106,133 @@ func run() -> void:
 	check(game.life.photos.size() == 1 and FileAccess.file_exists("user://photos/" + photo_name), "Deletion refuses photos outside the album")
 	IslandLife.delete_photo(game, photo_name)
 	check(game.life.photos.is_empty() and not FileAccess.file_exists("user://photos/" + photo_name), "Deleting a photo removes its file and frees an album slot")
+	for portrait in [Art.NORA, Art.JUNE, Art.BEN, Art.LEAH, Art.OWEN, Art.REN]:
+		var today_portrait = Art.daily_portrait(portrait, "2026-10-28")
+		check(today_portrait == Art.daily_portrait(portrait, "2026-10-28"), "Character clothing stays consistent during one day")
+		check(today_portrait != Art.daily_portrait(portrait, "2026-10-29"), "Character outfits rotate on consecutive local dates")
+		check(today_portrait == Art.daily_portrait(today_portrait, "2026-10-28"), "Portrait resolution remains consistent between icons and dialogue")
+	check(Art.daily_portrait(Art.HOME, "2026-10-28") == Art.HOME, "Non-character artwork stays unchanged")
+	for portrait in [Art.NORA_CORAL, Art.JUNE_MINT, Art.BEN_TRAINING, Art.LEAH_TUNIC, Art.OWEN_PARCEL, Art.REN_SWEATER]:
+		check(portrait.get_image().get_pixel(0,0).a == 0, "Alternate portraits preserve transparent backgrounds")
 	var main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 	current_scene = main
-	for section in ["Dog", "Wardrobe", "Training", "Friends", "Finds", "Home", "Events", "Photos"]:
+	for section in ["Dog", "Wardrobe", "Training", "Friends", "Finds", "Home", "Events", "Photos", "Playdate", "Health Record", "Deliveries"]:
 		main.show_page("Life:" + section)
 		await process_frame
 		check(main.body.get_child(0).mode == section, "Island life opens " + section)
+	main.show_page("Life:Training")
+	var lessons = main.body.get_child(0)
+	lessons.select_lesson("Stay")
+	await process_frame
+	check(lessons.lesson_command == "Stay" and lessons.training_buttons.has("Stay"), "Selecting a lesson shows its focused practice screen")
+	game.resting = false
+	game.cooldowns.clear()
+	game.needs.Energy = 90
+	game.health = PuppyHealth.fresh()
+	var before_lesson = int(game.life.training.Stay)
+	lessons.practice_lesson()
+	check(game.life.training.Stay == before_lesson + 1, "Guided practice advances the selected command once")
+	lessons.practice_lesson()
+	check(game.life.training.Stay == before_lesson + 1, "Guided practice respects the breather")
+	lessons.select_lesson("")
+	check(lessons.lesson_command == "" and lessons.training_buttons.is_empty(), "Players can return to the lesson picker")
+	game.life.playdate = {"day":"", "step":0, "claimed":"", "visits":0}
+	game.cooldowns.clear()
+	var playdate_coins = game.coins
+	IslandLife.playdate_step(game)
+	IslandLife.playdate_step(game)
+	check(game.life.playdate.step == 1, "Playdate steps cannot be rushed")
+	game.save_game()
+	game.life.playdate = {}
+	game.load_game()
+	check(game.life.playdate.step == 1, "An unfinished playdate survives reload")
+	for turn in 2:
+		game.cooldowns.clear()
+		IslandLife.playdate_step(game)
+	check(game.life.playdate.visits == 1 and game.coins == playdate_coins + 5, "Completing three playdate steps rewards once")
+	game.cooldowns.clear()
+	IslandLife.playdate_step(game)
+	check(game.life.playdate.visits == 1 and game.coins == playdate_coins + 5, "Daily playdate rewards cannot be collected twice")
+	game.life.playdate = {"day":"", "step":0, "claimed":"", "visits":0}
+	PuppyHealth.start(game, "Sore paw")
+	IslandLife.playdate_step(game)
+	check(game.life.playdate.step == 0, "Injured puppies recover before playdates")
+	game.health = PuppyHealth.fresh()
+	main.show_page("Life:Playdate")
+	await process_frame
+	check(main.body.get_child(0).mode == "Playdate", "Puppy Club playdate screen opens")
+	check(is_instance_valid(main.habitat.playmate), "Playdates show a second puppy in the world")
+	main.habitat.ball.rotation = TAU
+	main.habitat.animate_playdate(2)
+	check(is_zero_approx(main.habitat.ball.rotation), "Repeated playdate ball animations start with a fresh roll")
+	check(main.habitat.ball.visible, "Shared play animates a visible ball")
+	main.habitat.animate_playdate(3)
+	check(main.habitat.playmate.texture == Art.PUPPY_SLEEP and not main.habitat.ball.visible, "Resting playmates settle down and put the ball away")
+	var playdate_view = main.body.get_child(0)
+	playdate_view.shown_day = "2000-01-01"
+	playdate_view._process(0)
+	check(playdate_view.shown_day == IslandLife.today(), "Open daily activities refresh after the local date changes")
+	check(not IslandLife.valid({"playdate":{"day":"2026-10-28", "step":3}}), "A finished playdate without its claimed date cannot load")
+
+	check(Goods.featured("2026-10-28") == Goods.featured("2026-10-28"), "Daily picks stay consistent throughout a day")
+	check(Goods.featured("2026-10-28") != Goods.featured("2026-10-29"), "Daily picks rotate on a new local date")
+	main.show_page("Shop")
+	var shop_preview = main.body.get_child(0)
+	shop_preview.select_category("Featured")
+	check(shop_preview.rows.size() == 3, "June offers three featured goods")
+	var original_accessory = game.life.accessory
+	game.items.SunshineBandana = 0
+	var preview_coins = game.coins
+	shop_preview.show_details("SunshineBandana")
+	shop_preview.wear_preview("SunshineBandana")
+	check(game.coins == preview_coins and game.life.accessory == original_accessory and game.items.SunshineBandana == 0, "Unowned accessory previews do not buy or equip")
+	game.coins = 100
+	shop_preview.select_category("Accessories")
+	shop_preview.perform("SunshineBandana")
+	check(game.items.SunshineBandana == 1 and game.life.accessory == original_accessory, "Buying an accessory leaves the current outfit unchanged")
+	shop_preview.wear_preview("SunshineBandana")
+	check(game.life.accessory == "SunshineBandana", "Wear equips the purchased preview")
+	shop_preview.close_details()
+	game.life.accessory = original_accessory
+	game.items.SunshineBandana = 0
+	game.life.delivery = {"recipient":"", "claimed":"", "completed":0}
+	var welcome_before = game.life.story.get("welcome", false)
+	game.life.story.welcome = false
+	IslandLife.collect_delivery(game)
+	check(game.life.delivery.recipient == "", "Parcels require meeting Owen first")
+	game.life.story.welcome = true
+	IslandLife.collect_delivery(game)
+	var recipient = game.life.delivery.recipient
+	var destination = IslandLife.delivery_info(game).place
+	IslandLife.collect_delivery(game)
+	check(game.life.delivery.recipient == recipient, "Collecting again preserves the pending parcel")
+	var delivery_coins = game.coins
+	IslandLife.deliver_parcel(game, "Harbor")
+	check(game.coins == delivery_coins and game.life.delivery.recipient == recipient, "A wrong destination cannot claim delivery rewards")
+	game.save_game()
+	game.life.delivery = {}
+	game.load_game()
+	check(game.life.delivery.recipient == recipient, "Pending parcels survive reload")
+	main.show_page(destination)
+	await process_frame
+	var parcel_hub = main.body.get_child(0)
+	check(parcel_hub.choices.get_child_count() > 0, "Recipient building opens with parcel actions")
+	game.items.Treat = Goods.ITEMS.Treat.limit
+	IslandLife.deliver_parcel(game, destination)
+	check(game.coins == delivery_coins + 6 and game.life.delivery.completed == 1 and game.items.Treat == Goods.ITEMS.Treat.limit, "Delivery pays once without overflowing a full Bag")
+	IslandLife.deliver_parcel(game, destination)
+	IslandLife.collect_delivery(game)
+	check(game.coins == delivery_coins + 6 and game.life.delivery.recipient == "", "Daily delivery rewards cannot repeat")
+	game.life.story.welcome = welcome_before
+	main.show_page("Life:Deliveries")
+	await process_frame
+	check(main.body.get_child(0).mode == "Deliveries", "Harbor parcel board opens")
+	check(not IslandLife.valid({"delivery":{"recipient":"Unknown"}}), "Unknown delivery recipients are rejected")
 	main.show_page("Life:Friends")
 	var friend_browser = main.body.get_child(0)
 	for person in IslandLife.PEOPLE:
-		var portrait = {"Nora": Art.NORA, "Ben": Art.BEN, "June": Art.JUNE, "Leah": Art.LEAH, "Owen": Art.OWEN}[person]
+		var portrait = {"Nora": Art.NORA, "Ben": Art.BEN, "June": Art.JUNE, "Leah": Art.LEAH, "Owen": Art.OWEN, "Ren": Art.REN}[person]
 		for asking in [false, true]:
 			friend_browser.friend_conversation(person, portrait, asking)
 			check(is_instance_valid(main.resident_overlay) and not main.hud.visible, "Friend greetings and favors use the large portrait for " + person)
@@ -145,6 +261,32 @@ func run() -> void:
 		main.habitat.puppy._process(1.0 / 60)
 	check(main.habitat.puppy.position.distance_to(Vector2(760, 505)) < 1, "Rest walks the puppy to the chosen bed spot")
 	check(not main.habitat.puppy.settling_for_rest, "Arriving at the bed finishes settling and allows sleep")
+	game.resting = false
+	game.cooldowns.clear()
+	game.needs.Hunger = 30
+	game.life.bowl = true
+	game.life.bowl_spot = 2
+	game.life.toy_spot = 0
+	game.life.toy = "Toy"
+	game.items.Toy = 1
+	game.save_game()
+	game.load_game()
+	check(game.life.bowl_spot == 2 and game.life.toy_spot == 0 and game.life.bowl, "Bowl and toy positions survive reload")
+	main.show_page("Home")
+	var room = main.habitat
+	check(room.decor_targets.has("Feed") and room.decor_targets.has("Play"), "Placed bowl and toy have Home interactions")
+	room.interact_decor("Feed")
+	check(room.puppy.pending_decor_action == "Feed", "Feeding sends the puppy toward its bowl")
+	for frame in 1500:
+		room.puppy._process(1.0 / 60)
+		if room.puppy.pending_decor_action == "":
+			break
+	check(room.puppy.pending_decor_action == "" and room.puppy.reaction_kind == "Feed", "Puppy reaches the bowl before its feeding reaction")
+	check(WalkArea.contains(room.puppy.walk_area, room.puppy.position), "Bowl approach remains on safe ground")
+	game.resting = true
+	room.interact_decor("Rest")
+	check(game.resting, "Tapping an occupied bed does not wake the puppy")
+	check(not IslandLife.valid({"bowl_spot":4}), "Invalid decoration positions are rejected")
 	main.queue_free()
 	await process_frame
 	UI.safe_override = {"left": 105, "right": 105, "top": 20, "bottom": 25}
@@ -154,12 +296,12 @@ func run() -> void:
 		root.add_child(phone)
 		main = load("res://scenes/main.tscn").instantiate()
 		phone.add_child(main)
-		for section in ["Dog", "Wardrobe", "Training", "Friends", "Finds", "Home", "Events", "Photos"]:
+		for section in ["Dog", "Wardrobe", "Training", "Friends", "Finds", "Home", "Events", "Photos", "Playdate", "Health Record", "Deliveries"]:
 			main.show_page("Life:" + section)
 			await process_frame
 			await process_frame
 			var view = main.body.get_child(0)
-			var compact = section in ["Wardrobe", "Home", "Training"]
+			var compact = section in ["Wardrobe", "Home", "Training", "Playdate"]
 			var panel: Control = view.get_child(1 if compact else 0)
 			var bounds = panel.get_global_rect()
 			check(bounds.position.x >= 105 and bounds.end.x <= width - 105, "Island life clears phone cutouts: " + section)

@@ -29,6 +29,7 @@ var coins = 50
 var items: Dictionary = {"Treat": 0, "Toy": 0, "Brush": 0, "TrainingTreat": 0, "Shampoo": 0, "Bed": 0}
 var PRICES = Goods.prices()
 var life = IslandLife.fresh()
+var health = PuppyHealth.fresh()
 var last_food = ""
 var breed = "Puppy"
 var points = 0
@@ -61,6 +62,7 @@ func _process(delta: float) -> void:
 		save_game()
 
 func advance(seconds: float, active: bool = true) -> void:
+	PuppyHealth.advance(self, seconds, active, resting)
 	age_seconds += seconds
 	if active:
 		active_seconds += seconds
@@ -80,6 +82,9 @@ func advance(seconds: float, active: bool = true) -> void:
 	changed.emit()
 
 func action(kind: String) -> void:
+	if kind == "Play" and PuppyHealth.unwell(self):
+		say("Mochi needs gentle care while recovering. Visit Vet Clinic or Rest at Home.")
+		return
 	if kind == "Rest":
 		resting = not resting
 		say("A cozy nap under the island breeze." if resting else "Mochi is ready to explore!")
@@ -120,6 +125,7 @@ func action(kind: String) -> void:
 		needs[target] = minf(100, needs[target] + 22.0 + bonus)
 		if kind == "Play":
 			needs.Energy = maxf(0, needs.Energy - 6.0)
+			PuppyHealth.exertion(self)
 		cooldowns[kind] = 6.0
 		grow("A little " + kind.to_lower() + " made today brighter.")
 		first_day.Care = true
@@ -180,7 +186,7 @@ func choose_name(text: String) -> void:
 	name_chosen = true
 
 func can_explore() -> bool:
-	return needs.Energy >= 15.0 and not resting
+	return needs.Energy >= 15.0 and not resting and not PuppyHealth.unwell(self)
 
 func finish_activity(kind: String, score: int = 0) -> void:
 	first_day.Outing = true
@@ -193,6 +199,7 @@ func finish_activity(kind: String, score: int = 0) -> void:
 		needs.Happiness = minf(100, needs.Happiness + 15)
 	needs.Energy = maxf(0, needs.Energy - 10)
 	needs.Cleanliness = maxf(0, needs.Cleanliness - 8)
+	PuppyHealth.exertion(self)
 	coins = mini(1000000, coins + 10 + (score if kind == "Fetch" else 0))
 	grow("Finished " + kind + " together.")
 	changed.emit()
@@ -208,12 +215,14 @@ func buy_item(kind: String) -> String:
 		return "A few more coins first. Finish a Walk or Fetch to earn some."
 	coins -= PRICES[kind]
 	items[kind] = items.get(kind, 0) + 1
-	remember("Picked up a " + kind.to_lower() + " at June's shop.")
+	remember("Picked up " + Goods.ITEMS[kind].name.to_lower() + (" at Leah's clinic." if Goods.ITEMS[kind].get("vet_only", false) else " at June's shop."))
 	changed.emit()
 	save_game()
 	return Goods.ITEMS[kind].name + " added to your Bag. " + Goods.ITEMS[kind].description
 
 func use_item(kind: String) -> String:
+	if kind in ["Medicine", "Bandage"]:
+		return PuppyHealth.treat(self, kind)
 	if Goods.ITEMS.has(kind) and Goods.ITEMS[kind].has("need"):
 		return use_extra_food(kind)
 	if kind not in ["Treat", "TrainingTreat", "Shampoo"] or items.get(kind, 0) <= 0:
@@ -296,6 +305,8 @@ func complete_outing(kind: String, score: int = 0) -> bool:
 	return true
 
 func clinic_checkup() -> String:
+	if PuppyHealth.unwell(self):
+		return personalize(PuppyHealth.checkup(self))
 	var lowest = NEEDS[0]
 	for key in NEEDS:
 		if needs[key] < needs[lowest]:
@@ -370,7 +381,7 @@ func update_growth() -> void:
 				remember("A new chapter: " + stage + ".")
 
 func save_game() -> bool:
-	var data = {"version": 1, "needs": needs, "name": puppy_name, "breed": breed,
+	var data = {"version": 1, "health": health, "needs": needs, "name": puppy_name, "breed": breed,
 		"first_day": first_day,
 		"coins": coins, "items": items, "cooldowns": cooldowns, "active_outing": active_outing, "saved_outings": saved_outings, "life": life,
 		"effects_volume": effects_volume, "ambience_volume": ambience_volume,
@@ -409,6 +420,8 @@ func read_data(path: String) -> Variant:
 
 func valid_save(data: Variant) -> bool:
 	if not data is Dictionary or data.get("version") != 1:
+		return false
+	if not PuppyHealth.valid(data.get("health", {})):
 		return false
 	if not IslandLife.valid(data.get("life", {})):
 		return false
@@ -453,7 +466,7 @@ func valid_save(data: Variant) -> bool:
 		return false
 	for key in saved_cooldowns:
 		var remaining = saved_cooldowns[key]
-		if key not in ["Feed", "Play", "Care", "Goods", "Pet", "IslandMoment", "Training"] or not (remaining is float or remaining is int) or not is_finite(float(remaining)) or remaining < 0 or remaining > (30 if key in ["IslandMoment", "Training"] else 12):
+		if key not in ["Feed", "Play", "Care", "Goods", "Pet", "IslandMoment", "Training", "Playdate"] or not (remaining is float or remaining is int) or not is_finite(float(remaining)) or remaining < 0 or remaining > (30 if key in ["IslandMoment", "Training"] else 12):
 			return false
 	var outings = data.get("saved_outings", {})
 	if not outings is Dictionary:
@@ -504,6 +517,7 @@ func load_game() -> void:
 		needs[key] = clampf(float(data.needs[key]), 0, 100)
 	puppy_name = data.name.left(16)
 	life = IslandLife.normalized(data.get("life", {}))
+	health = PuppyHealth.normalized(data.get("health", {}))
 	coins = int(data.get("coins", 50))
 	items = {}
 	for kind in PRICES:
