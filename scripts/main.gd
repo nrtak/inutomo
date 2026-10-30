@@ -39,6 +39,7 @@ var message: CommandHint
 var action_buttons: Dictionary = {}
 var bag_button: Button
 var message_card: PanelContainer
+var activity_origin = "Park"
 var needs_card: PanelContainer
 var page_label: Label
 var page = "Home"
@@ -448,7 +449,7 @@ func show_page(dest: String) -> void:
 	if dest == "Home":
 		page_history.clear()
 	elif not returning_to_page and page != dest:
-		page_history.append(("Park" if page == "Fetch" else "Beach") if page in ["Fetch", "Walk"] else page)
+		page_history.append(activity_origin if page in ["Fetch", "Walk"] else page)
 		if page_history.size() > 20:
 			page_history.pop_front()
 	page = dest
@@ -484,10 +485,12 @@ func go_back() -> void:
 		returning_to_page = false
 		return
 	if page in ["Fetch", "Walk"]:
-		request_page("Park" if page == "Fetch" else "Beach")
+		request_page(activity_origin)
 		return
 	if page in ["Life:Training", "Life:Playdate", "Life:Deliveries", "Life:Health Record", "Vet Supplies", "Shop Goods"]:
 		var origin = {"Life:Training":"Park", "Life:Playdate":"Puppy Club", "Life:Deliveries":"Harbor", "Life:Health Record":"Vet Clinic", "Vet Supplies":"Vet Clinic", "Shop Goods":"Shop"}[page]
+		if not page_history.is_empty():
+			origin = page_history.pop_back()
 		returning_to_page = true
 		request_page(origin)
 		returning_to_page = false
@@ -504,6 +507,7 @@ func start_activity(kind: String) -> void:
 	if not Game.can_explore():
 		_notice(Game.personalize("Mochi needs to recover first. Visit Vet Clinic for a free checkup." if PuppyHealth.unwell(Game) else "Rest at Home first. Mochi needs to be awake with 15 energy."))
 		return
+	activity_origin = page if page in LOCATION_PAGES else ("Park" if kind == "Fetch" else "Beach")
 	clear_body()
 	page = kind
 	current_place = "Park" if kind == "Fetch" else "Beach"
@@ -511,8 +515,9 @@ func start_activity(kind: String) -> void:
 	set_scenery("Park" if kind == "Fetch" else "Beach")
 	var scene = load("res://scenes/" + kind.to_lower() + ".tscn").instantiate()
 	scene.habitat = habitat
+	scene.return_place = activity_origin
 	scene.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scene.finished.connect(show_page.bind("Park" if kind == "Fetch" else "Beach"))
+	scene.finished.connect(show_page.bind(activity_origin))
 	body.add_child(scene)
 
 func island() -> void:
@@ -557,14 +562,6 @@ func page_panel() -> VBoxContainer:
 func journal_page() -> void:
 	var col = page_panel()
 	col.add_child(UI.label(Game.puppy_name + "'s Growth Journey", 30))
-	col.add_child(UI.label("Health: " + PuppyHealth.status(Game), 25, UI.TEAL))
-	if PuppyHealth.unwell(Game):
-		col.add_child(UI.button("Visit Vet Clinic", request_page.bind("Vet Clinic"), Color("f9d8e2")))
-	var chapter = IslandStory.next_step(Game)
-	col.add_child(UI.label("A light for the harbor", 27, UI.TEAL))
-	col.add_child(UI.hint_label(chapter.text, 23))
-	col.add_child(UI.button(chapter.button, request_page.bind(chapter.place), Color("c2ecf4")))
-	col.add_child(UI.button("Island life: training, friends and keepsakes", show_page.bind("Life"), Color("c8eddd")))
 	var scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(scroll)
@@ -572,6 +569,13 @@ func journal_page() -> void:
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(content)
 	content.add_child(UI.label(Game.growth_stage(), 28, UI.TEAL))
+	var milestone = Game.growth_milestone()
+	content.add_child(UI.label("Next milestone: "+milestone.name if Game.breed == "Puppy" else "Your grown-up companion",26,UI.TEAL))
+	var milestone_bar = ProgressBar.new()
+	milestone_bar.custom_minimum_size.y = 24
+	milestone_bar.value = milestone.progress
+	content.add_child(milestone_bar)
+	content.add_child(UI.label(milestone.hint,23))
 	var puppy_portrait = TextureRect.new()
 	puppy_portrait.texture = Art.PUPPIES[Game.breed]
 	puppy_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -591,13 +595,6 @@ func journal_page() -> void:
 		content.add_child(button)
 	if Game.first_day.values().count(true) == 3:
 		content.add_child(UI.label("You're settling in! Keep making little memories together.", 22, UI.TEAL))
-	var progress = ProgressBar.new()
-	progress.custom_minimum_size.y = 24
-	progress.value = Game.growth_fraction() * 100
-	content.add_child(progress)
-	content.add_child(UI.label("Tiny puppy → Young puppy → Growing puppy → Adult", 23))
-	content.add_child(UI.label(Game.next_growth_hint(), 24))
-	content.add_child(UI.label("Care moments: %d of %d\nTime together: %d of 60 minutes" % [mini(Game.points, Game.EVOLUTION_POINTS), Game.EVOLUTION_POINTS, mini(60, int(Game.active_seconds / 60))], 22))
 	var prediction = "Breed is still a mystery. Try a Walk or Fetch together."
 	if Game.breed != "Puppy":
 		prediction = "Grown into: " + Game.breed
@@ -606,6 +603,14 @@ func journal_page() -> void:
 	content.add_child(UI.label(prediction, 26, UI.TEAL))
 	content.add_child(UI.label("Walks: %d    Fetch: %d. Walks favor Shiba Inu; Fetch and ties favor Golden Retriever." % [Game.walks, Game.fetches], 22))
 	content.add_child(UI.label("Growth needs care and time in the game. Time away does not rush growth. Memory times show hours and minutes together.", 21))
+	content.add_child(UI.label("Health: " + PuppyHealth.status(Game), 25, UI.TEAL))
+	if PuppyHealth.unwell(Game):
+		content.add_child(UI.button("Visit Vet Clinic", request_page.bind("Vet Clinic"), Color("f9d8e2")))
+	var chapter = IslandStory.next_step(Game)
+	content.add_child(UI.label("A light for the harbor", 27, UI.TEAL))
+	content.add_child(UI.hint_label(chapter.text, 23))
+	content.add_child(UI.button(chapter.button, request_page.bind(chapter.place), Color("c2ecf4")))
+	content.add_child(UI.button("Island life: training, friends and keepsakes", show_page.bind("Life"), Color("c8eddd")))
 	content.add_child(UI.label("Little memories", 26))
 	if Game.journal.is_empty():
 		content.add_child(UI.label("Your first chapter is waiting. Try a little care at Home.", 22))
@@ -850,7 +855,7 @@ func open_navigation() -> void:
 	var panel = UI.card()
 	panel.custom_minimum_size.x = 920
 	center.add_child(panel)
-	var content = UI.column(16)
+	var content = UI.column(10)
 	content.custom_minimum_size.x = 880
 	panel.add_child(content)
 	content.add_child(UI.label("Your puppy", 34, UI.TEAL))
@@ -867,12 +872,14 @@ func open_navigation() -> void:
 			close_navigation()
 			request_page(destination)
 		)
+		button.custom_minimum_size.y = clampf(get_viewport_rect().size.y*0.18,112,140)
 		for state in ["normal", "hover", "pressed"]:
 			var color: Color = tile_colors[destination]
 			button.add_theme_stylebox_override(state, UI.style(color.lightened(0.1) if state == "hover" else (color.darkened(0.08) if state == "pressed" else color), 22))
 		grid.add_child(button)
+	content.add_child(UI.motion_toggle())
 	var close_button = UI.button("Close", close_navigation, Color("bdeab0"))
-	close_button.custom_minimum_size = Vector2(180, 68)
+	close_button.custom_minimum_size = Vector2(180, 56)
 	close_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	close_button.add_theme_font_size_override("font_size", 24)
 	content.add_child(close_button)
@@ -1063,6 +1070,8 @@ func daily_shortcut(idea: Dictionary) -> void:
 		pulse.tween_property(target,"modulate",Color.WHITE,0.4)
 
 func show_coin_reward(amount: int) -> void:
+	if page in ["Fetch","Walk"]:
+		return
 	reward_total = reward_total + amount if is_instance_valid(reward_notice) else amount
 	if is_instance_valid(reward_notice):
 		reward_notice.queue_free()

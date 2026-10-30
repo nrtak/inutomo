@@ -1,6 +1,7 @@
 extends VBoxContainer
 
 signal finished
+var return_place = "Beach"
 var habitat: Habitat
 var progress: Label
 var souvenir: TextureRect
@@ -86,7 +87,7 @@ func _next() -> void:
 	if step == 3:
 		progress.text = "●●●  All found!"
 		UI.button_caption(next_button, "Head back")
-		next_button.get_meta("picture").texture = UI.place_icon("Home")
+		next_button.get_meta("picture").texture = UI.place_icon(return_place)
 	else:
 		UI.button_caption(next_button, "Explore")
 		next_button.get_meta("picture").texture = load("res://assets/ui/" + ["leaf", "shell", "sunset"][step] + ".svg")
@@ -102,11 +103,12 @@ func return_up_path() -> void:
 	if not is_inside_tree():
 		return
 	complete = true
-	Game.complete_outing("Walk")
+	var before = {"coins":Game.coins,"happiness":Game.needs.Happiness,"points":Game.points}
+	var rewarded = Game.complete_outing("Walk")
 	progress.text = "Walk complete!"
-	status.text = "Three memories saved. +10 coins!"
-	UI.button_caption(next_button, "Home")
-	next_button.get_meta("picture").texture = UI.place_icon("Home")
+	status.text = ("Three discoveries saved.\n"+Game.outing_result(before)) if rewarded else "Progress saved. No additional reward was issued."
+	UI.button_caption(next_button, "Back to "+return_place)
+	next_button.get_meta("picture").texture = UI.place_icon(return_place)
 	next_button.pressed.disconnect(_next)
 	next_button.pressed.connect(func(): finished.emit())
 	busy = false

@@ -13,6 +13,7 @@ uniform vec4 falls_a = vec4(0.0);
 uniform vec4 falls_b = vec4(0.0);
 uniform vec4 falls_c = vec4(0.0);
 uniform vec4 falls_d = vec4(0.0);
+uniform bool motion_enabled = true;
 uniform bool island_land_mask = false;
 varying vec4 art_modulate;
 float area_mask(vec2 point, vec4 area) {
@@ -29,6 +30,7 @@ void vertex() {
 	art_modulate = COLOR;
 }
 void fragment() {
+ float motion_time = motion_enabled ? TIME : 0.0;
 	vec4 source = texture(TEXTURE,UV);
  float blue = smoothstep(0.02,0.18,source.b-source.r)*smoothstep(-0.01,0.08,source.b-source.g*0.90);
  float green = smoothstep(0.02,0.16,source.g-max(source.r,source.b));
@@ -38,16 +40,20 @@ void fragment() {
   float lighthouse_islet = 1.0-smoothstep(0.9,1.02,length((UV-vec2(0.91,0.18))/vec2(0.095,0.15)));
   water *= 1.0-max(mainland,lighthouse_islet);
  }
- float leaves = max(area_mask(UV,foliage_a),area_mask(UV,foliage_b))*green;
+ float leaves = float(motion_enabled)*max(area_mask(UV,foliage_a),area_mask(UV,foliage_b))*green;
  float falls = max(max(area_mask(UV,falls_a),area_mask(UV,falls_b)),max(area_mask(UV,falls_c),area_mask(UV,falls_d)))*smoothstep(0.50,0.80,source.b)*smoothstep(-0.12,0.04,source.b-source.r);
- vec2 sample_uv = UV;
- sample_uv.x += sin(TIME*0.85+UV.y*13.0)*0.0055*leaves;
- sample_uv.y += sin(UV.x*130.0+TIME*1.1)*0.0025*water;
- sample_uv.x += sin(UV.y*150.0-TIME*2.0)*0.0012*water;
- sample_uv.y += sin(UV.y*210.0-TIME*5.0)*0.003*falls;
- vec4 art = texture(TEXTURE,clamp(sample_uv,vec2(0.001),vec2(0.999)));
- float shimmer = pow(max(0.0,sin(UV.y*390.0-TIME*2.0+sin(UV.x*70.0))),14.0)*water*0.09;
- float stream = (0.5+0.5*sin(UV.y*600.0-TIME*8.0))*falls*0.22;
+ // Only the two explicitly marked treetops drift with the prevailing wind.
+ // Blend advancing samples so leaf motion never reverses or snaps on a loop.
+ float wind_phase = fract(motion_time * 0.025);
+ float other_phase = fract(wind_phase + 0.5);
+ float wind_blend = abs(wind_phase * 2.0 - 1.0);
+ vec4 wind_a = texture(TEXTURE,clamp(UV-vec2(wind_phase*0.007,0.0),vec2(0.001),vec2(0.999)));
+ vec4 wind_b = texture(TEXTURE,clamp(UV-vec2(other_phase*0.007,0.0),vec2(0.001),vec2(0.999)));
+ vec4 art = mix(source,mix(wind_a,wind_b,wind_blend),leaves);
+ // Traveling light crests move to the right; the background image stays fixed.
+ float crest = pow(max(0.0,sin(UV.x*240.0-motion_time*1.2+UV.y*35.0)),18.0);
+ float shimmer = crest*water*0.065;
+ float stream = pow(0.5+0.5*sin(UV.y*600.0-motion_time*8.0),4.0)*falls*0.16;
  art.rgb = mix(art.rgb,vec3(0.92,0.99,1.0),shimmer+stream);
 	float luminance = dot(art.rgb, vec3(0.2126, 0.7152, 0.0722));
 	vec3 night_color = mix(art.rgb, vec3(luminance), coolness * 0.42);

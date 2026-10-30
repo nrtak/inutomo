@@ -18,6 +18,7 @@ var needs: Dictionary = {"Hunger": 80.0, "Happiness": 80.0, "Energy": 90.0, "Cle
 var puppy_name = "Mochi"
 var name_chosen = false
 var haptics_enabled = true
+var reduce_motion = false
 var sound_enabled = true
 var effects_volume = 0.7
 var ambience_volume = 0.45
@@ -156,7 +157,14 @@ func pet_puppy() -> bool:
 	needs.Happiness = minf(100, needs.Happiness + 2)
 	care_performed.emit("Pet")
 	IslandLife.record(self, "Pet")
-	say("Mochi leans into your hand. A little moment together.")
+	if PuppyHealth.unwell(self):
+		say("Mochi accepts a gentle pat. A quiet moment while recovering.")
+	elif is_puppy_napping():
+		say("A sleepy little nuzzle. Let Mochi keep dreaming.")
+	elif IslandLife.personality(self) == "Playful":
+		say("Mochi gives a happy little wiggle!")
+	else:
+		say("Mochi leans into your hand. A little moment together.")
 	changed.emit()
 	save_game()
 	return true
@@ -390,7 +398,7 @@ func save_game() -> bool:
 	var data = {"version": 1, "health": health, "needs": needs, "name": puppy_name, "breed": breed,
 		"walking": walking, "first_day": first_day, "play_days": play_days,
 		"coins": coins, "items": items, "cooldowns": cooldowns, "active_outing": active_outing, "saved_outings": saved_outings, "life": life,
-		"effects_volume": effects_volume, "ambience_volume": ambience_volume,
+		"reduce_motion": reduce_motion, "effects_volume": effects_volume, "ambience_volume": ambience_volume,
 		"name_chosen": name_chosen, "sound_enabled": sound_enabled, "haptics_enabled": haptics_enabled, "pending_stage": pending_stage,
 		"active_seconds": active_seconds, "points": points, "fetches": fetches, "walks": walks, "intro_seen": intro_seen,
 		"resting": resting, "age_seconds": age_seconds, "collection": collection,
@@ -443,7 +451,7 @@ func valid_save(data: Variant) -> bool:
 		var value = data.get(key)
 		if not (value is float or value is int) or not is_finite(float(value)) or value < 0:
 			return false
-	if not data.get("name_chosen", false) is bool or not data.get("sound_enabled", true) is bool or not data.get("haptics_enabled", true) is bool:
+	if not data.get("reduce_motion", false) is bool or not data.get("name_chosen", false) is bool or not data.get("sound_enabled", true) is bool or not data.get("haptics_enabled", true) is bool:
 		return false
 	if not PuppySteps.valid(data.get("walking", {})):
 		return false
@@ -554,6 +562,7 @@ func load_game() -> void:
 	name_chosen = data.get("name_chosen", data.intro_seen)
 	sound_enabled = data.get("sound_enabled", true)
 	haptics_enabled = data.get("haptics_enabled", true)
+	set_reduce_motion(data.get("reduce_motion", false), false)
 	pending_stage = data.get("pending_stage", "")
 	breed = data.breed
 	points = mini(int(data.points), 100000)
@@ -605,3 +614,35 @@ func activity_block_reason() -> String:
 	if needs.Energy < 15:
 		return "Needs a nap"
 	return ""
+
+func set_reduce_motion(enabled: bool, persist: bool = true) -> void:
+	reduce_motion = enabled
+	var daylight = get_node_or_null("/root/Daylight")
+	if is_instance_valid(daylight):
+		daylight.set_reduced_motion(enabled)
+	changed.emit()
+	if persist:
+		save_game()
+
+func is_puppy_napping() -> bool:
+	var actor = nap_actor.get_ref() if nap_actor != null else null
+	return resting or (breed == "Puppy" and is_instance_valid(actor) and not actor.location_portrait and actor.napping)
+
+func outing_result(before: Dictionary) -> String:
+	return "%d coins earned.\nHappiness +%d.\nGrowth: +%d care moment." % [maxi(0,coins-int(before.coins)),maxi(0,roundi(needs.Happiness-float(before.happiness))),maxi(0,points-int(before.points))]
+
+func growth_milestone() -> Dictionary:
+	if breed != "Puppy":
+		return {"name":"Adult", "progress":100.0, "hint":"All grown up! Keep sharing care, outings, and island memories."}
+	var current = stage_index()
+	var next = current+1
+	var care_left = maxi(0,STAGE_POINTS[next]-points)
+	var minutes_left = ceili(maxf(0,STAGE_SECONDS[next]-active_seconds)/60.0)
+	var care_progress = clampf(float(points-STAGE_POINTS[current])/float(STAGE_POINTS[next]-STAGE_POINTS[current]),0,1)
+	var time_progress = clampf((active_seconds-STAGE_SECONDS[current])/(STAGE_SECONDS[next]-STAGE_SECONDS[current]),0,1)
+	var hint = ""
+	if care_left > 0:
+		hint = "%d more care moments. Feed, Play, and Care all help." % care_left
+	if minutes_left > 0:
+		hint += ("\n" if not hint.is_empty() else "") + "%d more minutes together in the game. There is no rush." % minutes_left
+	return {"name":STAGE_NAMES[next],"progress":minf(care_progress,time_progress)*100,"hint":hint}

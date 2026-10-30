@@ -101,11 +101,9 @@ static func conversation_body(parent: Control, texture: Texture2D, character_nam
 	stage.offset_bottom = 0
 	stage.clip_contents = true
 	parent.add_child(stage)
-	var portrait = TextureRect.new()
-	var cutout = AtlasTexture.new()
-	cutout.atlas = texture
-	cutout.region = texture.get_image().get_used_rect()
-	portrait.texture = cutout
+	var portrait = ResidentPortrait.new()
+	portrait.configure(texture)
+	var cutout = portrait.texture
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_SCALE
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -300,3 +298,15 @@ static func location_portrait_rect(view: Vector2, image: Vector2, safe: Dictiona
 	var fitted: Vector2 = image * factor
 	var bottom_crop: float = minf(fitted.y * 0.22, view.y * 0.22)
 	return Rect2(Vector2(left, maxf(top, view.y - fitted.y + bottom_crop)), fitted)
+
+static func motion_toggle() -> CheckButton:
+	var game = Engine.get_main_loop().root.get_node("Game")
+	var toggle = CheckButton.new()
+	toggle.text = "Reduce Motion"
+	toggle.tooltip_text = "Still scenery and residents. Your dog can still walk and play."
+	toggle.custom_minimum_size.y = 48
+	toggle.add_theme_font_size_override("font_size",24)
+	toggle.add_theme_color_override("font_color",INK)
+	toggle.button_pressed = game.reduce_motion
+	toggle.toggled.connect(game.set_reduce_motion)
+	return toggle

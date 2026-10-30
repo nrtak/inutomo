@@ -42,11 +42,9 @@ func _process(_delta: float) -> void:
 		UI.button_wait(button, Game.cooldowns.get("Training", 0), 20.0)
 
 func choose(value: String) -> void:
-	mode = value
-	feedback = ""
 	if is_instance_valid(host.habitat):
 		host.habitat.puppy.preview_accessory = ""
-	render()
+	host.request_page("Life:"+value)
 
 func health_snapshot() -> String:
 	return PuppyHealth.status(Game) + PuppyHealth.advice(Game) + str(Game.health.history.size())
@@ -561,7 +559,7 @@ func beach_activities() -> void:
 		else:
 			content.add_child(UI.hint_label("Three gentle rolls on dry sand. " + str(Game.life.beach.throws) + " of 3 returns.", 23))
 			beach_button("Roll the ball", "play", 0)
-		tile("Other beach games", UI.place_icon("Beach"), host.request_page.bind("Beach"), Color("ffe0a0"))
+		tile("Back to Beach", UI.place_icon("Beach"), host.request_page.bind("Beach"), Color("ffe0a0"))
 	tile("Ask Kai", UI.resident_icon(Art.KAI), func(): host.show_resident(Art.KAI,"Kai","Beach lifeguard",IslandActivities.greeting(Game,"Kai","Choose Shells to identify a find, Cleanup to tidy the shore, or Sand Fetch for three gentle rolls. Rest first if your puppy is tired.")))
 
 func beach_button(caption: String, icon: String, choice: int) -> void:

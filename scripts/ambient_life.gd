@@ -11,11 +11,12 @@ const LANES = {
  "Beach Arrival":[Vector4(0.31,0.43,0.76,0.43)],
  "Shop":[Vector4(0.57,0.40,0.78,0.40)],
  "Harbor":[Vector4(0.51,0.43,0.65,0.43)],
- "Keeperâ€™s Cottage":[Vector4(0.59,0.43,0.75,0.43)],
+ "Keeper’s Cottage":[Vector4(0.59,0.43,0.75,0.43)],
  "Lighthouse":[Vector4(0.40,0.47,0.67,0.47)]
 }
 func _process(delta: float) -> void:
- if Game.paused_at > 0 or not is_visible_in_tree():
+ var game = get_node_or_null("/root/Game")
+ if (is_instance_valid(game) and (game.paused_at > 0 or game.reduce_motion)) or not is_visible_in_tree():
   return
  clock += delta
  queue_redraw()
@@ -34,8 +35,6 @@ func _draw() -> void:
   var point = origin+Vector2(lerpf(lane.x,lane.z,phase),lerpf(lane.y,lane.w,phase))*drawn
   var alpha = smoothstep(0,0.08,phase)*(1-smoothstep(0.92,1,phase))*0.8
   var unit = maxf(0.6,drawn.x/1250.0)
-  var bob = sin(clock*1.7+index)*unit
-  point.y += bob
   draw_line(point+Vector2(-17,3)*unit,point+Vector2(5,3)*unit,Color(0.9,1,1,alpha*0.5),unit)
   draw_colored_polygon(PackedVector2Array([point+Vector2(-8,0)*unit,point+Vector2(8,0)*unit,point+Vector2(5,3)*unit,point+Vector2(-5,3)*unit]),Color(0.48,0.35,0.22,alpha))
   draw_colored_polygon(PackedVector2Array([point+Vector2(0,-17)*unit,point+Vector2(0,-2)*unit,point+Vector2(-7,-2)*unit]),Color(1,0.98,0.88,alpha))

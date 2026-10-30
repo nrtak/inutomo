@@ -29,6 +29,20 @@ const MOTION = {
  "Keeper’s Cottage":[Vector4(0.43,0.25,0.57,0.5),Vector4(0,0,0.30,0.96),Vector4(0.8,0,0.2,1)],
  "Lighthouse":[Vector4(0.1,0.35,0.88,0.24),Vector4(0,0,0.3,1),Vector4(0.8,0.12,0.2,0.88)]
 }
+# Treetop-only masks: no flowers, ground cover, bushes, or indoor plants.
+const TREE_TOPS = {
+ "Island":[Vector4(0.065,0.075,0.13,0.19),Vector4(0.26,0.13,0.075,0.15)],
+ "Home":[Vector4.ZERO,Vector4(0.78,0.0,0.22,0.16)],
+ "Park":[Vector4(0.0,0.0,0.23,0.24),Vector4(0.82,0.0,0.18,0.20)],
+ "Beach":[Vector4(0.0,0.0,0.30,0.22),Vector4(0.82,0.0,0.18,0.20)],
+ "Beach Arrival":[Vector4(0.0,0.0,0.28,0.20),Vector4(0.83,0.0,0.17,0.20)],
+ "Shop":[Vector4.ZERO,Vector4(0.90,0.0,0.10,0.15)],
+ "Vet Clinic":[Vector4.ZERO,Vector4.ZERO],
+ "Puppy Club":[Vector4(0.0,0.0,0.25,0.22),Vector4(0.82,0.0,0.18,0.22)],
+ "Harbor":[Vector4(0.0,0.0,0.18,0.23),Vector4(0.88,0.0,0.12,0.20)],
+ "Keeper’s Cottage":[Vector4(0.0,0.0,0.24,0.23),Vector4(0.87,0.0,0.13,0.20)],
+ "Lighthouse":[Vector4(0.0,0.0,0.30,0.25),Vector4(0.92,0.12,0.08,0.15)]
+}
 const LIGHTS = {
 	"Beach Arrival": [Vector4(0.10,0.28,0.05,0.12),Vector4(0.30,0.76,0.55,0.45),Vector4.ZERO,Vector4.ZERO],
 	"Beach": [Vector4(0.10,0.55,0.06,0.12),Vector4(0.45,0.85,0.6,0.4),Vector4.ZERO,Vector4.ZERO],
@@ -48,6 +62,7 @@ func _ready() -> void:
 	for location in MOTION:
 		material_for(location)
 	refresh(true)
+	set_reduced_motion(bool(get_node("/root/Game").reduce_motion))
 
 func _process(delta: float) -> void:
 	clock += delta
@@ -98,6 +113,9 @@ func material_for(location: String) -> ShaderMaterial:
 		var names = ["water_area","foliage_a","foliage_b","falls_a","falls_b","falls_c","falls_d"]
 		for index in names.size():
 			local.set_shader_parameter(names[index],regions[index] if index < regions.size() else Vector4.ZERO)
+		var treetops: Array = TREE_TOPS.get(location,[Vector4.ZERO,Vector4.ZERO])
+		local.set_shader_parameter("foliage_a",treetops[0])
+		local.set_shader_parameter("foliage_b",treetops[1])
 		location_materials[location] = local
 	return location_materials[location]
 
@@ -107,3 +125,8 @@ func apply_to(background: CanvasItem, location: String = "Home") -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_RESUMED and material != null:
 		refresh(true)
+
+func set_reduced_motion(enabled: bool) -> void:
+	for target in [material]+location_materials.values():
+		if is_instance_valid(target):
+			target.set_shader_parameter("motion_enabled",not enabled)

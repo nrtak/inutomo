@@ -238,7 +238,7 @@ func show_sound_settings() -> void:
 	var content = UI.column(10)
 	content.custom_minimum_size.x = 720
 	panel.add_child(content)
-	content.add_child(UI.label("Gentle island sounds", 34, UI.TEAL))
+	content.add_child(UI.label("Sound & comfort", 34, UI.TEAL))
 	var toggle = UI.button("Sound: On" if Game.sound_enabled else "Sound: Off", func(): pass, Color("ffe0b0"))
 	toggle.pressed.connect(func():
 		Sound.set_enabled(not Game.sound_enabled)
@@ -274,7 +274,7 @@ func show_sound_settings() -> void:
 			label.text = ("Effects and footsteps" if kind == "effects" else "Ocean ambience") + ": %d%%" % int(number)
 		)
 		slider.drag_ended.connect(func(_changed: bool): Game.save_game())
-	content.add_child(UI.button("Try a care sound", Sound.play_effect.bind("care", -19), Color("b7def4")))
+	content.add_child(UI.motion_toggle())
 	content.add_child(UI.button("Done", func():
 		Game.save_game()
 		settings_overlay.queue_free()

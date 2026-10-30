@@ -75,3 +75,36 @@ static func daily_portrait(texture: Texture2D, date: String = "") -> Texture2D:
 		if texture in wardrobes[index]:
 			return wardrobes[index][posmod(day + index, 2)]
 	return texture
+
+static var resident_cache: Dictionary = {}
+
+static func resident_frames(source: Texture2D) -> Array[Texture2D]:
+	var outfits = [[NORA,NORA_CORAL],[JUNE,JUNE_MINT],[BEN,BEN_TRAINING],[LEAH,LEAH_TUNIC],[OWEN,OWEN_PARCEL],[REN,REN_SWEATER],[KAI]]
+	var names = ["nora","june","ben","leah","owen","ren","kai"]
+	for index in outfits.size():
+		var row = outfits[index].find(source)
+		if row < 0:
+			continue
+		var key: String = names[index]+str(row)
+		if resident_cache.has(key):
+			return resident_cache[key]
+		var sheet: Texture2D = load("res://assets/characters/"+names[index]+"_idle_sheet.png")
+		var cell = Vector2i(sheet.get_size())/2
+		var image = sheet.get_image()
+		var trim = Rect2i()
+		for column in 2:
+			var used = image.get_region(Rect2i(Vector2i(column,row)*cell,cell)).get_used_rect()
+			trim = trim.merge(used) if trim.has_area() else used
+		var result: Array[Texture2D] = []
+		for column in 2:
+			var frame = AtlasTexture.new()
+			frame.atlas = sheet
+			frame.region = Rect2(Vector2i(column,row)*cell+trim.position,trim.size)
+			frame.filter_clip = true
+			result.append(frame)
+		resident_cache[key] = result
+		return result
+	var frame = AtlasTexture.new()
+	frame.atlas = source
+	frame.region = source.get_image().get_used_rect()
+	return [frame]

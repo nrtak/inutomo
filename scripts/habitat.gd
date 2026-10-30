@@ -104,7 +104,7 @@ func _resize_world() -> void:
 		world.position = size * 0.5 - focus * factor + view_offset
 
 func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed and not puppy.controlled:
+	if event is InputEventMouseButton and event.pressed and (not puppy.controlled or puppy.location_portrait):
 		var point = (event.position - world.position) / world.scale
 		var puppy_point = puppy.sprite.to_local(world.to_global(point))
 		if puppy.sprite.get_rect().has_point(puppy_point):

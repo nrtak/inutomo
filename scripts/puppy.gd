@@ -114,12 +114,23 @@ func wake_briefly() -> void:
 	napping = false
 
 func _process(delta: float) -> void:
+	if Game.paused_at > 0:
+		return
 	if location_portrait:
 		if current_breed != Game.breed:
 			set_breed()
 		clock += delta
+		napping = Game.resting
 		set_pose(Game.resting)
-		sprite.position.y = sin(clock * 2) * 0.7
+		reaction_time = maxf(0,reaction_time-delta)
+		reaction_icon.visible = reaction_time > 0
+		sprite.position.y = 0 if Game.reduce_motion else sin(clock*2)*0.7
+		if reaction_icon.visible:
+			reaction_icon.position = Vector2(35,-125)
+			reaction_icon.modulate.a = minf(1,reaction_time*2)
+			sprite.rotation = 0 if Game.reduce_motion else sin(reaction_time*4)*0.015
+		else:
+			sprite.rotation = 0
 		return
 	if Game.paused_at > 0:
 		return
@@ -215,7 +226,7 @@ func _process(delta: float) -> void:
 				reaction_icon.position = Vector2(70, -100)
 				queue_redraw()
 			"Pet", "Treat":
-				sprite.position.y = -bounce * 2
+				sprite.position.y = -bounce * (0.5 if PuppyHealth.unwell(Game) else (4 if IslandLife.personality(Game) == "Playful" else 2))
 				sprite.rotation = (0.045 if reaction_kind == "Pet" and IslandLife.personality(Game) == "Cuddly" else 0) + sin(reaction_time * 5) * 0.025
 				reaction_icon.position = Vector2(50, -120 - bounce * 8)
 			"Sniff", "Sit", "Stay":
@@ -309,7 +320,7 @@ func set_walk_pose() -> void:
 	sprite.scale = Vector2.ONE * base_scale
 
 func react_to_care(kind: String) -> void:
-	if controlled:
+	if controlled and not location_portrait:
 		return
 	command_delay = 0
 	if not arriving_at_decor:

@@ -1,6 +1,7 @@
 extends VBoxContainer
 
 signal finished
+var return_place = "Park"
 var habitat: Habitat
 var bar: ProgressBar
 var progress: Label
@@ -104,11 +105,13 @@ func finish_fetch() -> void:
 	if complete:
 		return
 	complete = true
-	Game.complete_outing("Fetch", score)
+	bar.visible = false
+	var before = {"coins":Game.coins,"happiness":Game.needs.Happiness,"points":Game.points}
+	var rewarded = Game.complete_outing("Fetch", score)
 	progress.text = "Fetch complete! %d of 3 great throws" % score
-	status.text = "Happy paws! You earned %d coins." % (10 + score)
-	UI.button_caption(throw_button, "Back home")
-	throw_button.get_meta("picture").texture = UI.place_icon("Home")
+	status.text = Game.outing_result(before) if rewarded else "Progress saved. No additional reward was issued."
+	UI.button_caption(throw_button, "Back to "+return_place)
+	throw_button.get_meta("picture").texture = UI.place_icon(return_place)
 	throw_button.pressed.disconnect(_throw)
 	throw_button.pressed.connect(func(): finished.emit())
 

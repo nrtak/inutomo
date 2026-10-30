@@ -10,11 +10,9 @@ func _ready() -> void:
  mouse_filter = Control.MOUSE_FILTER_IGNORE
  set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  var safe = UI.safe_insets(24)
- var portrait = TextureRect.new()
- var atlas = AtlasTexture.new()
- atlas.atlas = Art.daily_portrait(texture)
- atlas.region = atlas.atlas.get_image().get_used_rect()
- portrait.texture = atlas
+ var portrait = ResidentPortrait.new()
+ portrait.configure(texture)
+ var atlas = portrait.texture
  portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
  portrait.stretch_mode = TextureRect.STRETCH_SCALE
  portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -50,5 +48,5 @@ func _ready() -> void:
  arrange.call_deferred()
  var fade = create_tween()
  fade.tween_interval(duration)
- fade.tween_property(self,"modulate:a",0.0,0.6)
- fade.tween_callback(queue_free)
+ fade.tween_property(bubble,"modulate:a",0.0,0.6)
+ fade.tween_callback(func(): bubble.visible = false)
