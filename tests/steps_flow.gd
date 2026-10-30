@@ -59,7 +59,9 @@ func run():
 	invalid.claimed = [500]
 	check(not PuppySteps.valid(invalid),"Unreached step rewards cannot load as claimed")
 	check(PuppySteps.valid({}) and PuppySteps.valid(game.walking),"Legacy saves and valid step state are supported")
-	var steps = root.get_node("Steps")
+	check(not root.has_node("Steps"),"Step counting is not active in the game")
+	var steps = load("res://scripts/steps.gd").new()
+	root.add_child(steps)
 	var sensor = FakePedometer.new()
 	steps.native = sensor
 	game.walking.enabled = false
@@ -86,12 +88,26 @@ func run():
 	steps.enable()
 	check(not game.walking.enabled,"Unsupported devices cannot enable pretend step data")
 	steps.native = null
+	steps.queue_free()
 	var main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 	current_scene = main
 	main.show_page("Life:Steps")
 	await process_frame
-	check(main.body.get_child(0).mode == "Steps","Walking companion has a real game page")
+	check(main.body.get_child(0).mode == "Dog","Retired steps links safely return to the puppy page")
+	main.show_page("Life:Events")
+	await process_frame
+	var events = main.body.get_child(0)
+	game.life.daily.clear()
+	events._process(0)
+	check(events.content.get_node("EventReward").disabled,"Event rewards stay unavailable until the checklist is complete")
+	for task in IslandLife.event_info().tasks:
+		game.life.daily[task] = 1
+	events._process(0)
+	check(not events.content.get_node("EventReward").disabled,"Event checklist refreshes as activities finish")
+	IslandLife.claim_event(game)
+	events._process(0)
+	check(events.content.get_node("EventReward").disabled,"Collected event rewards cannot be claimed twice")
 	main.show_page("Park")
 	game.resting = true
 	game.changed.emit()
@@ -132,13 +148,13 @@ func run():
 		root.add_child(phone)
 		main = load("res://scenes/main.tscn").instantiate()
 		phone.add_child(main)
-		main.show_page("Life:Steps")
+		main.show_page("Life:Events")
 		await process_frame
 		await process_frame
 		var browser = main.body.get_child(0)
 		var panel = browser.get_child(0)
 		var bounds = panel.get_global_rect()
-		check(bounds.position.x >= 105 and bounds.end.x <= width-105 and bounds.end.y <=695,"Walking companion fits phone safe areas")
+		check(bounds.position.x >= 105 and bounds.end.x <= width-105 and bounds.end.y <=695,"Events fit phone safe areas")
 		main.queue_free()
 		phone.queue_free()
 		await process_frame

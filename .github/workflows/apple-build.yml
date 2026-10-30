@@ -87,8 +87,6 @@ jobs:
         run: |
           mkdir -p build/macos
           Godot --headless --path . --export-release macOS build/macos/PuppyIsland.zip
-      - name: Build iPhone step counter plugin
-        run: bash native/steps/build_macos.sh
       - name: Export iOS Xcode project
         run: |
           mkdir -p build/ios

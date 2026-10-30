@@ -17,7 +17,7 @@ var clock = 0.0
 var transition: Tween
 var location_materials: Dictionary = {}
 const MOTION = {
- "Island":[Vector4(0,0.16,1,0.84),Vector4(0,0.02,0.4,0.96),Vector4(0.56,0.02,0.44,0.96),Vector4(0.335,0.61,0.03,0.14),Vector4(0.145,0.57,0.03,0.17)],
+ "Island":[Vector4(0,0.16,1,0.84),Vector4(0,0.02,0.4,0.96),Vector4(0.56,0.02,0.44,0.96),Vector4(0.335,0.61,0.03,0.14),Vector4(0.145,0.57,0.04,0.20),Vector4(0.075,0.34,0.04,0.16),Vector4(0.485,0.375,0.055,0.10)],
  "Home":[Vector4(0.36,0.15,0.6,0.47),Vector4(0.02,0.08,0.32,0.7),Vector4(0.83,0,0.17,0.45)],
  "Park":[Vector4(0.3,0.24,0.5,0.3),Vector4(0,0,0.25,0.95),Vector4(0.73,0,0.27,0.96)],
  "Beach":[Vector4(0.32,0.25,0.68,0.5),Vector4(0,0,0.32,0.95),Vector4(0.75,0,0.25,1)],
@@ -95,7 +95,7 @@ func material_for(location: String) -> ShaderMaterial:
 			local.set_shader_parameter("lamp_" + str(index), LIGHTS.get(location,[Vector4.ZERO,Vector4.ZERO,Vector4.ZERO,Vector4.ZERO])[index])
 		local.set_shader_parameter("island_land_mask",location == "Island")
 		var regions: Array = MOTION.get(location,[])
-		var names = ["water_area","foliage_a","foliage_b","falls_a","falls_b"]
+		var names = ["water_area","foliage_a","foliage_b","falls_a","falls_b","falls_c","falls_d"]
 		for index in names.size():
 			local.set_shader_parameter(names[index],regions[index] if index < regions.size() else Vector4.ZERO)
 		location_materials[location] = local

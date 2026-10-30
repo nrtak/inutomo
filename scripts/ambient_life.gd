@@ -2,7 +2,7 @@ class_name AmbientLife
 extends Node2D
 
 var location = "Island"
-var clock = 0.0
+var clock = 12.0
 const LANES = {
  "Island":[Vector4(0.015,0.20,0.095,0.20),Vector4(0.935,0.40,0.99,0.40)],
  "Home":[Vector4(0.53,0.39,0.77,0.39)],
@@ -11,7 +11,7 @@ const LANES = {
  "Beach Arrival":[Vector4(0.31,0.43,0.76,0.43)],
  "Shop":[Vector4(0.57,0.40,0.78,0.40)],
  "Harbor":[Vector4(0.51,0.43,0.65,0.43)],
- "Keeper’s Cottage":[Vector4(0.59,0.43,0.75,0.43)],
+ "Keeperâ€™s Cottage":[Vector4(0.59,0.43,0.75,0.43)],
  "Lighthouse":[Vector4(0.40,0.47,0.67,0.47)]
 }
 func _process(delta: float) -> void:
@@ -30,10 +30,10 @@ func _draw() -> void:
  var origin = (background.size-drawn)*0.5
  var index = 0
  for lane in LANES.get(location,[]):
-  var phase = fposmod(clock/48.0+index*0.43,1.0)
+  var phase = fposmod(clock/28.0+index*0.43,1.0)
   var point = origin+Vector2(lerpf(lane.x,lane.z,phase),lerpf(lane.y,lane.w,phase))*drawn
   var alpha = smoothstep(0,0.08,phase)*(1-smoothstep(0.92,1,phase))*0.8
-  var unit = maxf(0.6,drawn.x/1600.0)
+  var unit = maxf(0.6,drawn.x/1250.0)
   var bob = sin(clock*1.7+index)*unit
   point.y += bob
   draw_line(point+Vector2(-17,3)*unit,point+Vector2(5,3)*unit,Color(0.9,1,1,alpha*0.5),unit)

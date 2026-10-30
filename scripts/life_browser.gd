@@ -9,7 +9,7 @@ var shown_day = ""
 var shown_health = ""
 var beach_mode = ""
 var shown_daily = ""
-var shown_steps = ""
+var shown_event = ""
 var content: VBoxContainer
 var album_overlay: Control
 const MODES = ["Dog", "Wardrobe", "Training", "Friends", "Finds", "Home", "Events", "Photos"]
@@ -19,10 +19,10 @@ func _ready() -> void:
 	render()
 
 func _process(_delta: float) -> void:
-	if mode == "Steps" and shown_steps != str(Game.walking) + Steps.status:
-		render()
 	if mode in ["Playdate", "Deliveries", "Events", "Beach Activities", "Daily"] and shown_day != IslandLife.today():
 		feedback = ""
+		render()
+	if mode == "Events" and shown_event != str(Game.life.daily) + str(Game.life.event_claimed):
 		render()
 	if mode == "Daily" and shown_daily != str(IslandActivities.daily_card(Game)):
 		render()
@@ -52,7 +52,7 @@ func health_snapshot() -> String:
 	return PuppyHealth.status(Game) + PuppyHealth.advice(Game) + str(Game.health.history.size())
 
 func render() -> void:
-	shown_steps = str(Game.walking) + Steps.status
+	shown_event = str(Game.life.daily) + str(Game.life.event_claimed)
 	shown_daily = str(IslandActivities.daily_card(Game))
 	shown_day = IslandLife.today()
 	shown_health = health_snapshot()
@@ -71,6 +71,8 @@ func render() -> void:
 		add_child(space)
 	var panel = UI.card()
 	panel.custom_minimum_size.x = 440 if compact else 0
+	if mode == "Events":
+		panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_END if compact else Control.SIZE_EXPAND_FILL
 	add_child(panel)
 	var layout = UI.column(10)
@@ -82,7 +84,7 @@ func render() -> void:
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(title)
 	var tabs = GridContainer.new()
-	tabs.visible = mode in MODES
+	tabs.visible = mode in MODES and mode != "Events"
 	tabs.columns = 4
 	tabs.add_theme_constant_override("h_separation", 5)
 	tabs.add_theme_constant_override("v_separation", 5)
@@ -105,6 +107,8 @@ func render() -> void:
 		tabs.add_child(tab)
 	var scroll = ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	if mode == "Events":
+		scroll.custom_minimum_size.y = 400
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	layout.add_child(scroll)
 	content = UI.column(12)
@@ -119,7 +123,6 @@ func render() -> void:
 		"Deliveries": deliveries()
 		"Beach Activities": beach_activities()
 		"Daily": daily_card()
-		"Steps": walking_companion()
 		"Friends": friends()
 		"Finds": finds()
 		"Home": decorating()
@@ -382,11 +385,34 @@ func events() -> void:
 	IslandLife.refresh_day(Game)
 	var event = IslandLife.event_info()
 	content.add_child(UI.label(event.name, 30, UI.TEAL))
-	content.add_child(UI.label("A small celebration today. Enjoy each activity to earn 15 coins.", 23))
+	var completed = 0
 	for action in event.tasks:
-		var done = Game.life.daily.get(action, 0) > 0
-		content.add_child(UI.hint_label(("✓  " if done else "○  ") + action + " together", 26))
-	tile("Celebrate", preload("res://assets/ui/heart.svg"), func(): respond(IslandLife.claim_event(Game)), Color("f9d8e2"))
+		if Game.life.daily.get(action,0) > 0:
+			completed += 1
+	content.add_child(UI.label("%d of %d activities complete · Reward: 15 coins" % [completed,event.tasks.size()],22))
+	var choices = {
+		"Feed":{"text":"Feed your dog", "place":"Home", "focus":"Feed", "icon":"feed"},
+		"Pet":{"text":"Pet your dog at Home", "place":"Home", "icon":"heart"},
+		"Care":{"text":"Brush your dog", "place":"Home", "focus":"Care", "icon":"care"},
+		"Play":{"text":"Play at Home", "place":"Home", "focus":"Play", "icon":"play"},
+		"Walk":{"text":"Go for a walk at Beach", "place":"Beach", "icon":"leaf"},
+		"Fetch":{"text":"Play Fetch at Park", "place":"Park", "icon":"play"}
+	}
+	for action in event.tasks:
+		var done = Game.life.daily.get(action,0) > 0
+		var choice: Dictionary = choices[action]
+		var row = UI.button(("✓  " if done else "➜  ") + choice.text, host.daily_shortcut.bind(choice), Color("c8eddd") if done else Color("c2ecf4"))
+		row.icon = load("res://assets/ui/" + choice.icon + ".svg")
+		row.expand_icon = true
+		row.add_theme_constant_override("icon_max_width",36)
+		row.custom_minimum_size.y = 64
+		row.disabled = done
+		content.add_child(row)
+	var claimed = Game.life.event_claimed >= IslandLife.today()
+	var reward = UI.button("Reward collected" if claimed else "Collect 15 coins",func(): respond(IslandLife.claim_event(Game)),Color("fff0bd"))
+	reward.name = "EventReward"
+	reward.disabled = claimed or completed < event.tasks.size()
+	content.add_child(reward)
 
 func photos() -> void:
 	var take = tile("Take a photo", preload("res://assets/ui/camera.svg"), host.open_photo_mode)
@@ -550,24 +576,3 @@ func beach_button(caption: String, icon: String, choice: int) -> void:
 	)
 	button.set_meta("beach_action",true)
 	button.disabled = Game.cooldowns.get("Beach",0) > 0
-
-func walking_companion() -> void:
-	content.add_child(UI.label("Walk with " + Game.puppy_name,30,UI.TEAL))
-	content.add_child(UI.label("Carry your iPhone. Walk together in everyday life.",23))
-	var count = Game.walking.today if Game.walking.day == IslandLife.today() else 0
-	content.add_child(UI.label("%s steps today" % str(count),34))
-	content.add_child(UI.label("Shared journey: %s steps · %s" % [str(Game.walking.total),PuppySteps.badge(Game.walking.total)],23))
-	content.add_child(UI.hint_label(Steps.status,22))
-	content.add_child(UI.label("Optional Motion & Fitness access. Step totals stay on this device. No location tracking. Other care and play are always available.",21))
-	if not Game.walking.enabled:
-		var connect = tile("Connect iPhone steps",UI.place_icon("Park"),Steps.enable)
-		connect.disabled = not Steps.available()
-	else:
-		var sync = tile("Sync steps",UI.place_icon("Park"),Steps.refresh)
-		sync.disabled = Steps.pending or not Steps.available()
-		for goal in PuppySteps.GOALS:
-			var claimed = goal in Game.walking.claimed and Game.walking.day == IslandLife.today()
-			var reward = PuppySteps.COINS[PuppySteps.GOALS.find(goal)]
-			var button = tile(("✓ " if claimed else "") + "%d steps · %d coins + happiness" % [goal,reward],preload("res://assets/ui/coin.svg"),func(): respond(PuppySteps.claim(Game,goal)))
-			button.disabled = claimed or count < goal
-		tile("Disconnect steps",preload("res://assets/ui/rest.svg"),Steps.disable,Color("f9d8e2"))

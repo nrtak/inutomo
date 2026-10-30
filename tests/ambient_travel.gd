@@ -24,6 +24,7 @@ func run():
  await process_frame
  var map = main.world_host.get_child(0)
  check(map.map_dog.current_breed == game.breed,"Map marker uses the player's actual dog")
+ check(map.pins.Home.z_index > map.map_dog.z_index,"Destination labels always draw in front of the map dog")
  check(not map.map_dog.is_processing(),"Map marker cannot wander independently of its land route")
  var script = load("res://scripts/island_map.gd")
  for origin in map.PLACES:
@@ -54,6 +55,10 @@ func run():
   check(main.habitat.background.get_child_count()>0,"Each location has a layered ambient life renderer")
   var material: ShaderMaterial = main.habitat.background.material
   check(material.get_shader_parameter("water_area") != Vector4.ZERO,"Water movement is configured separately for each location")
+ for section in ["Events","Friends","Training","Playdate","Deliveries","Health Record"]:
+  main.show_page("Life:"+section)
+  var ambience = main.habitat.background.get_child(0)
+  check(ambience.location == main.habitat.location,"Activity pages use ambient motion for their actual scenery")
  var button = main.menu_button
  button.button_down.emit()
  await create_timer(0.12).timeout

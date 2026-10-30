@@ -150,10 +150,6 @@ func _ready() -> void:
 	daily_button.get_meta("caption").offset_left = 78
 	daily_button.get_meta("caption").add_theme_font_size_override("font_size", 22)
 	travel.add_child(daily_button)
-	var steps_button = UI.button("iPhone steps", request_page.bind("Life:Steps"),Color("c8eddd"))
-	steps_button.custom_minimum_size = Vector2(210,60)
-	steps_button.add_theme_font_size_override("font_size",20)
-	travel.add_child(steps_button)
 	camera_button = UI.button("Take photo", open_photo_mode, Color("f9d8e2"))
 	camera_button.icon = preload("res://assets/ui/camera.svg")
 	camera_button.expand_icon = true
@@ -174,11 +170,11 @@ func _ready() -> void:
 	bag_button.visible = false
 	header.add_child(bag_button)
 	needs_card = UI.card()
-	needs_card.custom_minimum_size.x = 460
+	needs_card.custom_minimum_size.x = 370
 	needs_card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	header.add_child(needs_card)
 	var need_col = GridContainer.new()
-	need_col.columns = 4
+	need_col.columns = 2
 	need_col.add_theme_constant_override("h_separation", 12)
 	need_col.add_theme_constant_override("v_separation", 8)
 	needs_card.add_child(need_col)
@@ -194,21 +190,19 @@ func _ready() -> void:
 		icon.expand_icon = true
 		icon.add_theme_constant_override("icon_max_width", 30)
 		icon.custom_minimum_size = Vector2(38, 38)
-		for state in ["normal", "hover", "pressed", "disabled", "focus"]:
-			var icon_style = UI.style(Color("fff0cf"), 14)
-			icon_style.content_margin_left = 4
-			icon_style.content_margin_right = 4
-			icon_style.content_margin_top = 4
-			icon_style.content_margin_bottom = 4
-			icon.add_theme_stylebox_override(state, icon_style)
+		for state in ["normal", "hover", "pressed", "disabled"]:
+			icon.add_theme_stylebox_override(state, StyleBoxEmpty.new())
 		icon.tooltip_text = key
 		line.add_child(icon)
-		meter_labels[key] = UI.label(key, 22)
+		var need_name = UI.label(key, 18)
+		need_name.autowrap_mode = TextServer.AUTOWRAP_OFF
+		line.add_child(need_name)
+		meter_labels[key] = UI.label(key, 20)
 		meter_labels[key].autowrap_mode = TextServer.AUTOWRAP_OFF
 		meter_labels[key].custom_minimum_size.x = 40
 		line.add_child(meter_labels[key])
 		var bar = ProgressBar.new()
-		bar.custom_minimum_size = Vector2(110, 10)
+		bar.custom_minimum_size = Vector2(166, 10)
 		bar.tooltip_text = key
 		bar.show_percentage = false
 		var bg = UI.style(Color("dfcfb8"), 6)
@@ -223,9 +217,6 @@ func _ready() -> void:
 		bar.add_theme_stylebox_override("background", bg)
 		bar.add_theme_stylebox_override("fill", fill)
 		col.add_child(bar)
-		var need_name = UI.label(key, 18)
-		need_name.autowrap_mode = TextServer.AUTOWRAP_OFF
-		col.add_child(need_name)
 		meters[key] = bar
 	var menu_gap = Control.new()
 	menu_gap.custom_minimum_size.x = 20
@@ -421,7 +412,7 @@ func update_navigation() -> void:
 	back_button.text = "‹ Back to Island" if page in LOCATION_PAGES else ("‹ Back to Beach" if page == "Life:Beach Activities" else "‹ Back")
 	back_button.custom_minimum_size = Vector2(190 if page in LOCATION_PAGES or page == "Life:Beach Activities" else 112, 68)
 	page_label.visible = page != "Home" and page not in ["Fetch", "Walk"]
-	page_label.text = {"Life:Beach Activities":"Kai’s Beach Activities", "Life:Daily":"To-do Today", "Life:Steps":"Walking Companion", "Life:Health Record": "Health History", "Life:Deliveries": "Harbor Parcels", "Life:Playdate": "Puppy Playdate", "Island": "Island Map", "Shop": "June’s Shop", "Vet Supplies": "Vet Supplies", "Bag": "Your Bag", "Journal": "Puppy Journal", "My Dogs": "My Dogs"}.get(page, "Puppy Playdate" if page == "Life:Playdate" else ("Island Life" if page.begins_with("Life") else page))
+	page_label.text = {"Life:Beach Activities":"Kai’s Beach Activities", "Life:Daily":"To-do Today", "Life:Health Record": "Health History", "Life:Deliveries": "Harbor Parcels", "Life:Playdate": "Puppy Playdate", "Island": "Island Map", "Shop": "June’s Shop", "Vet Supplies": "Vet Supplies", "Bag": "Your Bag", "Journal": "Puppy Journal", "My Dogs": "My Dogs"}.get(page, "Puppy Playdate" if page == "Life:Playdate" else ("Island Life" if page.begins_with("Life") else page))
 	daily_button.visible = page == "Home"
 	island_button.get_parent().visible = page == "Home"
 	actions.visible = page == "Home"
@@ -893,14 +884,11 @@ func close_navigation() -> void:
 	navigation_overlay = null
 
 func life_page(section: String) -> void:
-	set_scenery("Beach" if section == "Beach Activities" else ("Harbor" if section == "Deliveries" else ("Vet Clinic" if section == "Health Record" else ("Puppy Club" if section == "Playdate" else "Home"))))
-	if section in ["Training", "Events", "Friends"]:
-		habitat.location = "Park" if section == "Training" else "Puppy Club"
-		habitat.background.texture = Art.BACKGROUNDS[habitat.location]
-		Daylight.apply_to(habitat.background, habitat.location)
+	var scenery = {"Beach Activities":"Beach", "Deliveries":"Harbor", "Health Record":"Vet Clinic", "Playdate":"Puppy Club", "Training":"Park", "Events":"Puppy Club", "Friends":"Puppy Club"}.get(section,"Home")
+	set_scenery(scenery)
 	var browser = load("res://scripts/life_browser.gd").new()
 	browser.host = self
-	browser.mode = section if section in browser.MODES or section in ["Playdate", "Health Record", "Deliveries", "Beach Activities", "Daily", "Steps"] else "Dog"
+	browser.mode = section if section in browser.MODES or section in ["Playdate", "Health Record", "Deliveries", "Beach Activities", "Daily"] else "Dog"
 	browser.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	if section == "Beach Activities":
 		browser.beach_mode = pending_beach_mode

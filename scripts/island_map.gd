@@ -84,11 +84,13 @@ func _ready() -> void:
   pin.expand_icon = true
   pin.add_theme_constant_override("icon_max_width", 38)
   canvas.add_child(pin)
+  pin.z_index = 10
   pins[place] = pin
  canvas.resized.connect(place_pins)
  selected = host.current_place if host.current_place in PLACES else "Home"
  map_dog = PuppyActor.new()
  map_dog.controlled = true
+ map_dog.z_index = 1
  canvas.add_child(map_dog)
  map_dog.set_process(false)
  call_deferred("place_pins")
@@ -108,6 +110,13 @@ func place_pins() -> void:
   pin.position = (center - pin.size * 0.5).clamp(Vector2(safe.left, safe.top + 110), (canvas.size - pin.size - Vector2(safe.right, safe.bottom + 24)).max(Vector2(safe.left, safe.top + 110)))
 
  var occupied: Array[Rect2] = []
+ if is_instance_valid(map_dog):
+  if not travelling:
+   map_dog.set_pose(Game.resting)
+  var dog_scale = clampf(map_rect.size.x/1280.0*0.34,0.28,0.46)
+  var dog_size = map_dog.visible_size*map_dog.base_scale*dog_scale
+  var foot = map_rect.position + FOOT_POINTS.get(foot_location(selected),FOOT_POINTS.Home)*map_rect.size
+  occupied.append(Rect2(foot-Vector2(dog_size.x*0.5,dog_size.y)-Vector2(8,8),dog_size+Vector2(16,16)))
  for place in pins:
   var pin: Button = pins[place]
   var safe = UI.safe_insets()
