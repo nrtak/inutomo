@@ -9,6 +9,7 @@ var shown_day = ""
 var shown_health = ""
 var beach_mode = ""
 var shown_daily = ""
+var shown_steps = ""
 var content: VBoxContainer
 var album_overlay: Control
 const MODES = ["Dog", "Wardrobe", "Training", "Friends", "Finds", "Home", "Events", "Photos"]
@@ -18,6 +19,8 @@ func _ready() -> void:
 	render()
 
 func _process(_delta: float) -> void:
+	if mode == "Steps" and shown_steps != str(Game.walking) + Steps.status:
+		render()
 	if mode in ["Playdate", "Deliveries", "Events", "Beach Activities", "Daily"] and shown_day != IslandLife.today():
 		feedback = ""
 		render()
@@ -49,6 +52,7 @@ func health_snapshot() -> String:
 	return PuppyHealth.status(Game) + PuppyHealth.advice(Game) + str(Game.health.history.size())
 
 func render() -> void:
+	shown_steps = str(Game.walking) + Steps.status
 	shown_daily = str(IslandActivities.daily_card(Game))
 	shown_day = IslandLife.today()
 	shown_health = health_snapshot()
@@ -74,7 +78,7 @@ func render() -> void:
 	panel.add_child(layout)
 	var top = HBoxContainer.new()
 	layout.add_child(top)
-	var title = UI.label({"Dog": "Your Puppy", "Wardrobe": "Wardrobe", "Home": "Home Décor", "Finds": "Walk Keepsakes", "Photos": "Photo Album"}.get(mode, mode), 28, UI.TEAL)
+	var title = UI.label({"Dog": "Your Puppy", "Wardrobe": "Wardrobe", "Home": "Home Décor", "Finds": "Walk Keepsakes", "Photos": "Photo Album", "Daily": "To-do Today"}.get(mode, mode), 28, UI.TEAL)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(title)
 	var tabs = GridContainer.new()
@@ -115,6 +119,7 @@ func render() -> void:
 		"Deliveries": deliveries()
 		"Beach Activities": beach_activities()
 		"Daily": daily_card()
+		"Steps": walking_companion()
 		"Friends": friends()
 		"Finds": finds()
 		"Home": decorating()
@@ -338,7 +343,7 @@ func decorating() -> void:
 		var positions = HBoxContainer.new()
 		content.add_child(positions)
 		for index in 3:
-			positions.add_child(UI.button(["Left", "Middle", "Right"][index], move_decoration.bind(slot, index), Color("ffe0a0") if Game.life[slot] == index else Color("c2ecf4")))
+			positions.add_child(UI.button((["Far left", "Left side", "Right side"] if slot == "bowl_spot" else ["Left", "Middle", "Right"])[index], move_decoration.bind(slot, index), Color("ffe0a0") if Game.life[slot] == index else Color("c2ecf4")))
 	tile("Hide bowl" if Game.life.bowl else "Place feeding bowl", preload("res://assets/ui/feed.svg"), func():
 		Game.life.bowl = not Game.life.bowl
 		Game.save_game()
@@ -492,7 +497,7 @@ func _exit_tree() -> void:
 func daily_card() -> void:
 	content.add_child(UI.hint_label("Three optional ideas. Enjoy them at your own pace.", 23))
 	for idea in IslandActivities.daily_card(Game):
-		tile(("Done · " if idea.done else "") + idea.title, load("res://assets/ui/" + idea.icon + ".svg"), host.request_page.bind(idea.place), Color("c8eddd") if idea.done else Color("fff0bd"))
+		tile(("✓ " if idea.done else "") + idea.title, load("res://assets/ui/" + idea.icon + ".svg"), host.daily_shortcut.bind(idea), Color("c8eddd") if idea.done else Color("fff0bd"))
 
 func choose_beach(kind: String) -> void:
 	beach_mode = kind
@@ -545,3 +550,24 @@ func beach_button(caption: String, icon: String, choice: int) -> void:
 	)
 	button.set_meta("beach_action",true)
 	button.disabled = Game.cooldowns.get("Beach",0) > 0
+
+func walking_companion() -> void:
+	content.add_child(UI.label("Walk with " + Game.puppy_name,30,UI.TEAL))
+	content.add_child(UI.label("Carry your iPhone. Walk together in everyday life.",23))
+	var count = Game.walking.today if Game.walking.day == IslandLife.today() else 0
+	content.add_child(UI.label("%s steps today" % str(count),34))
+	content.add_child(UI.label("Shared journey: %s steps · %s" % [str(Game.walking.total),PuppySteps.badge(Game.walking.total)],23))
+	content.add_child(UI.hint_label(Steps.status,22))
+	content.add_child(UI.label("Optional Motion & Fitness access. Step totals stay on this device. No location tracking. Other care and play are always available.",21))
+	if not Game.walking.enabled:
+		var connect = tile("Connect iPhone steps",UI.place_icon("Park"),Steps.enable)
+		connect.disabled = not Steps.available()
+	else:
+		var sync = tile("Sync steps",UI.place_icon("Park"),Steps.refresh)
+		sync.disabled = Steps.pending or not Steps.available()
+		for goal in PuppySteps.GOALS:
+			var claimed = goal in Game.walking.claimed and Game.walking.day == IslandLife.today()
+			var reward = PuppySteps.COINS[PuppySteps.GOALS.find(goal)]
+			var button = tile(("✓ " if claimed else "") + "%d steps · %d coins + happiness" % [goal,reward],preload("res://assets/ui/coin.svg"),func(): respond(PuppySteps.claim(Game,goal)))
+			button.disabled = claimed or count < goal
+		tile("Disconnect steps",preload("res://assets/ui/rest.svg"),Steps.disable,Color("f9d8e2"))

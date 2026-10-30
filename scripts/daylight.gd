@@ -16,6 +16,19 @@ var current_period = ""
 var clock = 0.0
 var transition: Tween
 var location_materials: Dictionary = {}
+const MOTION = {
+ "Island":[Vector4(0,0.16,1,0.84),Vector4(0,0.02,0.4,0.96),Vector4(0.56,0.02,0.44,0.96),Vector4(0.335,0.61,0.03,0.14),Vector4(0.145,0.57,0.03,0.17)],
+ "Home":[Vector4(0.36,0.15,0.6,0.47),Vector4(0.02,0.08,0.32,0.7),Vector4(0.83,0,0.17,0.45)],
+ "Park":[Vector4(0.3,0.24,0.5,0.3),Vector4(0,0,0.25,0.95),Vector4(0.73,0,0.27,0.96)],
+ "Beach":[Vector4(0.32,0.25,0.68,0.5),Vector4(0,0,0.32,0.95),Vector4(0.75,0,0.25,1)],
+ "Beach Arrival":[Vector4(0,0.35,1,0.36),Vector4(0,0,0.30,0.94),Vector4(0.85,0,0.15,1)],
+ "Shop":[Vector4(0.45,0.22,0.52,0.43),Vector4(0,0,0.2,0.9),Vector4(0.84,0,0.16,0.9)],
+ "Vet Clinic":[Vector4(0.32,0.2,0.36,0.38),Vector4(0,0,0.27,0.8),Vector4(0.78,0,0.22,0.9)],
+ "Puppy Club":[Vector4(0.3,0.23,0.5,0.3),Vector4(0,0,0.3,0.94),Vector4(0.7,0,0.3,1)],
+ "Harbor":[Vector4(0.25,0.25,0.75,0.45),Vector4(0,0,0.24,0.96),Vector4(0.83,0,0.17,1)],
+ "Keeper’s Cottage":[Vector4(0.43,0.25,0.57,0.5),Vector4(0,0,0.30,0.96),Vector4(0.8,0,0.2,1)],
+ "Lighthouse":[Vector4(0.1,0.35,0.88,0.24),Vector4(0,0,0.3,1),Vector4(0.8,0.12,0.2,0.88)]
+}
 const LIGHTS = {
 	"Beach Arrival": [Vector4(0.10,0.28,0.05,0.12),Vector4(0.30,0.76,0.55,0.45),Vector4.ZERO,Vector4.ZERO],
 	"Beach": [Vector4(0.10,0.55,0.06,0.12),Vector4(0.45,0.85,0.6,0.4),Vector4.ZERO,Vector4.ZERO],
@@ -32,7 +45,7 @@ const LIGHTS = {
 func _ready() -> void:
 	material = ShaderMaterial.new()
 	material.shader = preload("res://scripts/daylight.gdshader")
-	for location in LIGHTS:
+	for location in MOTION:
 		material_for(location)
 	refresh(true)
 
@@ -74,12 +87,17 @@ func apply_minute(minute: int, immediate: bool = false) -> void:
 			transition.tween_property(target, "shader_parameter/coolness", period.cool, 12.0)
 
 func material_for(location: String) -> ShaderMaterial:
-	if not LIGHTS.has(location):
+	if not MOTION.has(location) and not LIGHTS.has(location):
 		return material
 	if not location_materials.has(location):
 		var local: ShaderMaterial = material.duplicate()
 		for index in 4:
-			local.set_shader_parameter("lamp_" + str(index), LIGHTS[location][index])
+			local.set_shader_parameter("lamp_" + str(index), LIGHTS.get(location,[Vector4.ZERO,Vector4.ZERO,Vector4.ZERO,Vector4.ZERO])[index])
+		local.set_shader_parameter("island_land_mask",location == "Island")
+		var regions: Array = MOTION.get(location,[])
+		var names = ["water_area","foliage_a","foliage_b","falls_a","falls_b"]
+		for index in names.size():
+			local.set_shader_parameter(names[index],regions[index] if index < regions.size() else Vector4.ZERO)
 		location_materials[location] = local
 	return location_materials[location]
 

@@ -31,6 +31,7 @@ var items: Dictionary = {"Treat": 0, "Toy": 0, "Brush": 0, "TrainingTreat": 0, "
 var PRICES = Goods.prices()
 var life = IslandLife.fresh()
 var health = PuppyHealth.fresh()
+var walking = PuppySteps.fresh()
 var last_food = ""
 var breed = "Puppy"
 var points = 0
@@ -40,6 +41,7 @@ var intro_seen = false
 var first_day: Dictionary = {"Care": false, "Nora": false, "Outing": false}
 var resting = false
 var age_seconds = 0.0
+var play_days: Array = []
 var active_seconds = 0.0
 var last_stage = "Tiny puppy"
 var collection: Array = []
@@ -52,6 +54,7 @@ var paused_at = 0.0
 
 func _ready() -> void:
 	load_game()
+	record_play_day()
 
 func _process(delta: float) -> void:
 	if paused_at > 0:
@@ -383,8 +386,9 @@ func update_growth() -> void:
 				remember("A new chapter: " + stage + ".")
 
 func save_game() -> bool:
+	record_play_day()
 	var data = {"version": 1, "health": health, "needs": needs, "name": puppy_name, "breed": breed,
-		"first_day": first_day,
+		"walking": walking, "first_day": first_day, "play_days": play_days,
 		"coins": coins, "items": items, "cooldowns": cooldowns, "active_outing": active_outing, "saved_outings": saved_outings, "life": life,
 		"effects_volume": effects_volume, "ambience_volume": ambience_volume,
 		"name_chosen": name_chosen, "sound_enabled": sound_enabled, "haptics_enabled": haptics_enabled, "pending_stage": pending_stage,
@@ -441,6 +445,16 @@ func valid_save(data: Variant) -> bool:
 			return false
 	if not data.get("name_chosen", false) is bool or not data.get("sound_enabled", true) is bool or not data.get("haptics_enabled", true) is bool:
 		return false
+	if not PuppySteps.valid(data.get("walking", {})):
+		return false
+	var saved_days = data.get("play_days", [])
+	if not saved_days is Array or saved_days.size() > 36500:
+		return false
+	var previous_day = ""
+	for day in saved_days:
+		if not valid_play_date(day) or day <= previous_day:
+			return false
+		previous_day = day
 	var goals = data.get("first_day", {})
 	if not goals is Dictionary:
 		return false
@@ -517,6 +531,9 @@ func load_game() -> void:
 		return
 	for key in NEEDS:
 		needs[key] = clampf(float(data.needs[key]), 0, 100)
+	walking = PuppySteps.normalized(data.get("walking", {}))
+	play_days = data.get("play_days", []).duplicate()
+	record_play_day()
 	puppy_name = data.name.left(16)
 	life = IslandLife.normalized(data.get("life", {}))
 	health = PuppyHealth.normalized(data.get("health", {}))
@@ -564,3 +581,27 @@ func _notification(what: int) -> void:
 		paused_at = 0.0
 	elif what == NOTIFICATION_WM_CLOSE_REQUEST:
 		save_game()
+
+func record_play_day(date: String = "") -> void:
+	if date.is_empty():
+		date = Time.get_date_string_from_system(false)
+	if not valid_play_date(date) or play_days.size() >= 36500:
+		return
+	if play_days.is_empty() or date > play_days.back():
+		play_days.append(date)
+
+func days_played() -> int:
+	record_play_day()
+	return maxi(1, play_days.size())
+
+static func valid_play_date(value: Variant) -> bool:
+	return LocalDate.valid(value)
+
+func activity_block_reason() -> String:
+	if PuppyHealth.unwell(self):
+		return "Visit Vet first"
+	if resting:
+		return "Wake at Home first"
+	if needs.Energy < 15:
+		return "Needs a nap"
+	return ""

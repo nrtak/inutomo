@@ -9,6 +9,7 @@ var buy_buttons: Dictionary = {}
 var groom_button: Button
 var health_button: Button
 var primary_actions: VBoxContainer
+var unavailable: Label
 var choices: GridContainer
 
 func _ready() -> void:
@@ -45,6 +46,8 @@ func _ready() -> void:
  choices.columns = 1
  choices.add_theme_constant_override("v_separation", 10)
  content.add_child(choices)
+ unavailable = UI.label("", 21, UI.TEAL)
+ content.add_child(unavailable)
  if location == "Harbor" and not Game.life.story.get("welcome", false):
   IslandStory.advance(Game, "welcome")
  if location == "Keeper’s Cottage" and not Game.life.story.get("met_keeper", false):
@@ -150,6 +153,13 @@ func add_choice(text: String, picture: Texture2D, action: Callable, color: Color
  return button
 
 func refresh() -> void:
+ var blocked = Game.activity_block_reason()
+ unavailable.text = blocked + "." if not blocked.is_empty() else ""
+ unavailable.visible = location in ["Park", "Beach", "Puppy Club"] and not blocked.is_empty()
+ for button in primary_actions.get_children() + choices.get_children():
+  if button.text in ["Play Fetch", "Resume Fetch", "Go for a walk", "Resume Walk", "Find shells", "Beach cleanup", "Sand fetch", "Puppy playdate", "Training"]:
+   button.disabled = not blocked.is_empty()
+   button.tooltip_text = blocked if not blocked.is_empty() else button.text
  if location == "Puppy Club":
   wallet.text = "Walks: %d    Fetch games: %d" % [Game.walks, Game.fetches]
  elif location == "Lighthouse":
@@ -261,7 +271,13 @@ func show_greeting() -> void:
  var greeting = load("res://scripts/location_greeting.gd").new()
  greeting.texture = person[0]
  greeting.character_name = person[1]
- greeting.text = IslandStory.next_step(Game).text if location in ["Harbor", "Keeper’s Cottage"] else person[2]
+ var visits = maxi(1 if Game.life.friends.has(person[1]) else 0,int(host.arrival_visits.get(location, 0)))
+ greeting.duration = 6.0 if visits == 0 else 3.5
+ var repeats = ["Lovely to see you both!", "Welcome back! What shall we try?", "Ready for another little adventure?"]
+ greeting.text = IslandStory.next_step(Game).text if location in ["Harbor", "Keeper’s Cottage"] else (person[2] if visits == 0 else repeats[visits % repeats.size()])
+ host.arrival_visits[location] = visits + 1
+ if not Game.life.friends.has(person[1]):
+  IslandLife.talk(Game,person[1])
  if location == "Puppy Club":
   Game.meet_nora()
  host.world_host.add_child(greeting)

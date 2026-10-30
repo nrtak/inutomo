@@ -1,0 +1,12 @@
+[config]
+name="PuppyPedometer"
+binary="PuppyPedometer.a"
+initialization="init_puppy_pedometer"
+deinitialization="deinit_puppy_pedometer"
+
+[dependencies]
+system=["Foundation.framework", "CoreMotion.framework"]
+linker_flags=["-ObjC"]
+
+[plist]
+NSMotionUsageDescription:string="Puppy Island uses your iPhone step count for optional walking rewards with your dog. Your steps stay on this device."

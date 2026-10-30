@@ -44,7 +44,7 @@ const WALK_ANCHORS = {
 }
 const WALK_HEIGHTS = {"Puppy": 338.0, "Shiba Inu": 382.5, "Golden Retriever": 323.5}
 
-const REN = preload("res://assets/characters/ren_redrawn_anime.png")
+const REN = preload("res://assets/characters/ren_navy_relaxed.png")
 const BACKGROUNDS = {"Harbor": preload("res://assets/backgrounds/harbor_anime.png"), "Keeper’s Cottage": preload("res://assets/backgrounds/cottage_anime.png"),"Home": HOME, "Park": PARK, "Beach": BEACH,
 	"Puppy Club": preload("res://assets/backgrounds/club_anime.png"),
 	"Shop": preload("res://assets/backgrounds/shop_anime.png"),
@@ -55,16 +55,16 @@ const JUNE = preload("res://assets/characters/june_shop_v2.png")
 const LEAH = preload("res://assets/characters/leah_anime.png")
 
 const BEN = preload("res://assets/characters/ben_anime.png")
-const KAI = preload("res://assets/characters/kai_beach.png")
+const KAI = preload("res://assets/characters/kai_compact_welcome.png")
 const OWEN = preload("res://assets/characters/owen_anime.png")
 
-const NORA_CORAL = preload("res://assets/characters/nora_coral_braid.png")
-const JUNE_MINT = preload("res://assets/characters/june_mint_parcel.png")
+const NORA_CORAL = preload("res://assets/characters/nora_coral_braid_welcome.png")
+const JUNE_MINT = preload("res://assets/characters/june_mint_relaxed.png")
 
 const BEN_TRAINING = preload("res://assets/characters/ben_training.png")
-const LEAH_TUNIC = preload("res://assets/characters/leah_tunic.png")
-const OWEN_PARCEL = preload("res://assets/characters/owen_parcel.png")
-const REN_SWEATER = preload("res://assets/characters/ren_sweater.png")
+const LEAH_TUNIC = preload("res://assets/characters/leah_tunic_relaxed.png")
+const OWEN_PARCEL = preload("res://assets/characters/owen_parcel_welcome.png")
+const REN_SWEATER = preload("res://assets/characters/ren_sweater_relaxed.png")
 
 static func daily_portrait(texture: Texture2D, date: String = "") -> Texture2D:
 	if date.is_empty():

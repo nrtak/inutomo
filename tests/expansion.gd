@@ -278,7 +278,13 @@ func run() -> void:
 	main.show_page("Home")
 	var room = main.habitat
 	check(room.decor_targets.has("Feed") and room.decor_targets.has("Play"), "Placed bowl and toy have Home interactions")
-	room.interact_decor("Feed")
+	await process_frame
+	var bowl_tap = InputEventMouseButton.new()
+	bowl_tap.button_index = MOUSE_BUTTON_LEFT
+	bowl_tap.pressed = true
+	bowl_tap.position = room.get_global_transform().affine_inverse() * room.world.to_global(room.decor_targets.Feed + Vector2(45,0))
+	room._gui_input(bowl_tap)
+	check(game.needs.Hunger > 30, "Tapping the visible edge of the enlarged bowl feeds the puppy")
 	check(room.puppy.pending_decor_action == "Feed", "Feeding sends the puppy toward its bowl")
 	for frame in 1500:
 		room.puppy._process(1.0 / 60)

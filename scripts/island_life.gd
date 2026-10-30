@@ -7,13 +7,13 @@ const KEEPSAKES = ["Heart leaf", "Pearl shell", "Sea glass"]
 const KEEPSAKE_ICONS = ["leaf", "shell", "sea_glass"]
 const PERSONALITIES = ["Curious", "Cuddly", "Playful"]
 static func fresh() -> Dictionary:
-	return {"beach":IslandActivities.fresh(), "bowl":true, "bowl_spot":1, "toy_spot":1, "delivery":{"recipient":"", "claimed":"", "completed":0}, "playdate": {"day":"", "step":0, "claimed":"", "visits":0}, "story": {}, "accessory": "", "bed": "", "toy": "", "spot": 1, "training": {"Sit": 0, "Stay": 0, "Come": 0}, "friends": {}, "favors": {}, "keepsakes": [], "photos": [], "day": "", "daily": {}, "event_claimed": ""}
+	return {"beach":IslandActivities.fresh(), "bowl":true, "bowl_spot":0, "toy_spot":1, "delivery":{"recipient":"", "claimed":"", "completed":0}, "playdate": {"day":"", "step":0, "claimed":"", "visits":0}, "story": {}, "accessory": "", "bed": "", "toy": "", "spot": 1, "training": {"Sit": 0, "Stay": 0, "Come": 0}, "friends": {}, "favors": {}, "keepsakes": [], "photos": [], "day": "", "daily": {}, "event_claimed": ""}
 
 static func home_point(game: Node, kind: String) -> Vector2:
 	match kind:
 		"Rest": return Vector2([550.0, 650.0, 760.0][game.life.spot], 505)
 		"Play": return Vector2([510.0, 650.0, 790.0][game.life.toy_spot], 555)
-		_: return Vector2([480.0, 620.0, 760.0][game.life.bowl_spot], 580)
+		_: return Vector2([400.0, 420.0, 870.0][game.life.bowl_spot], 580)
 
 static func today() -> String:
 	return Time.get_date_string_from_system(false)

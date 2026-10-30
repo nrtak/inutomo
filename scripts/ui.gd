@@ -49,13 +49,19 @@ static func button(text: String, action: Callable, color: Color = TEAL) -> Butto
 	b.add_theme_stylebox_override("hover", style(color.lightened(0.12), 20))
 	b.add_theme_stylebox_override("pressed", style(color.darkened(0.12), 20))
 	b.add_theme_stylebox_override("disabled", style(Color("b6c9cb"), 20))
-	b.add_theme_stylebox_override("focus", style(Color(0.15, 0.7, 0.7, 0.25), 20))
+	var focus_style = style(Color.TRANSPARENT,20)
+	focus_style.border_color = TEAL
+	focus_style.set_border_width_all(4)
+	b.add_theme_stylebox_override("focus",focus_style)
 	b.add_theme_font_size_override("font_size", 26)
 	b.add_theme_color_override("font_color", INK)
 	b.add_theme_color_override("font_hover_color", INK)
 	b.add_theme_color_override("font_pressed_color", INK)
 	b.add_theme_color_override("font_disabled_color", Color("746455"))
 	b.pressed.connect(action)
+	b.resized.connect(func(): b.pivot_offset = b.size * 0.5)
+	b.button_down.connect(func(): press_feedback(b,0.97))
+	b.button_up.connect(func(): press_feedback(b,1.0))
 	return b
 
 static func hint_label(text: String, font_size: int = 24, color: Color = INK) -> CommandHint:
@@ -276,3 +282,21 @@ static func location_button(text: String, texture: Texture2D, action: Callable, 
 	tile.set_meta("caption",caption)
 	tile.set_meta("picture",picture)
 	return tile
+
+static func press_feedback(button: Button, amount: float) -> void:
+	var previous = button.get_meta("press_tween") as Tween if button.has_meta("press_tween") else null
+	if previous != null and previous.is_valid():
+		previous.kill()
+	var tween = button.create_tween()
+	button.set_meta("press_tween",tween)
+	tween.tween_property(button,"scale",Vector2.ONE*amount,0.09).set_trans(Tween.TRANS_SINE)
+
+static func location_portrait_rect(view: Vector2, image: Vector2, safe: Dictionary) -> Rect2:
+	var left: float = safe.left + 8.0
+	var width: float = maxf(1.0, view.x * 0.40 - 8.0 - left)
+	var top: float = safe.top + 86.0
+	var height: float = maxf(1.0, view.y - top + view.y * 0.22)
+	var factor: float = minf(width / maxf(image.x, 1.0), height / maxf(image.y, 1.0))
+	var fitted: Vector2 = image * factor
+	var bottom_crop: float = minf(fitted.y * 0.22, view.y * 0.22)
+	return Rect2(Vector2(left, maxf(top, view.y - fitted.y + bottom_crop)), fitted)

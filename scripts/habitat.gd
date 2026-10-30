@@ -13,6 +13,7 @@ var playmate: Sprite2D
 var playdate_tween: Tween
 var restoration: Node2D
 var decor_targets: Dictionary = {}
+var decor_sprites: Dictionary = {}
 var view_offset = Vector2.ZERO
 
 func _ready() -> void:
@@ -29,6 +30,9 @@ func _ready() -> void:
 	world = Node2D.new()
 	add_child(world)
 	world.add_child(background)
+	var ambience = AmbientLife.new()
+	ambience.location = "Beach Arrival" if location == "Beach" and location_presentation else location
+	background.add_child(ambience)
 	if location == "Home":
 		add_home_decor()
 	if location == "Keeper’s Cottage":
@@ -64,6 +68,7 @@ func add_home_decor() -> void:
 		bed.scale = Vector2(250.0 / bed.texture.get_width(), 100.0 / bed.texture.get_height())
 		bed.position = IslandLife.home_point(Game, "Rest")
 		decor_targets.Rest = bed.position
+		decor_sprites.Rest = bed
 		world.add_child(bed)
 	if Game.items.get(Game.life.toy, 0) > 0:
 		var toy = Sprite2D.new()
@@ -72,13 +77,15 @@ func add_home_decor() -> void:
 		toy.scale = Vector2.ONE * (55.0 / toy.texture.get_width())
 		toy.position = IslandLife.home_point(Game, "Play")
 		decor_targets.Play = toy.position
+		decor_sprites.Play = toy
 		world.add_child(toy)
 	if Game.life.bowl:
 		var bowl = Sprite2D.new()
-		bowl.texture = preload("res://assets/ui/feed.svg")
-		bowl.scale = Vector2.ONE * (65.0 / bowl.texture.get_width())
+		bowl.texture = Goods.picture("PuppyMeal")
+		bowl.scale = Vector2.ONE * (110.0 / bowl.texture.get_width())
 		bowl.position = IslandLife.home_point(Game, "Feed")
 		decor_targets.Feed = bowl.position
+		decor_sprites.Feed = bowl
 		world.add_child(bowl)
 	for index in Game.life.keepsakes.size():
 		var keepsake = Sprite2D.new()
@@ -106,7 +113,7 @@ func _gui_input(event: InputEvent) -> void:
 			return
 		if location == "Home":
 			for action in decor_targets:
-				if point.distance_to(decor_targets[action]) < (65 if action == "Rest" else 36):
+				if decor_contains(action, point):
 					interact_decor(action)
 					accept_event()
 					return
@@ -218,3 +225,10 @@ func present_location_dog() -> void:
 	puppy.position = WalkArea.nearest(puppy.walk_area, Vector2(660, 650))
 	puppy.target = puppy.position
 	puppy.scale = Vector2.ONE * (1.85 if Game.breed == "Puppy" else 1.05)
+
+func decor_contains(action: String, point: Vector2) -> bool:
+	var prop = decor_sprites.get(action) as Sprite2D
+	if not is_instance_valid(prop) or not prop.visible:
+		return false
+	var local_point = prop.to_local(world.to_global(point))
+	return prop.get_rect().grow(6.0 / maxf(0.01, prop.scale.x)).has_point(local_point)

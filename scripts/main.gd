@@ -13,6 +13,10 @@ var daily_button: Button
 var camera_button: Button
 var photo_overlay: Control
 var photo_busy = false
+var photo_reward: WeakRef
+var photo_reward_was_visible = false
+var photo_greeting: WeakRef
+var photo_greeting_was_visible = false
 var photo_was_processing = true
 var back_button: Button
 var page_history: Array[String] = []
@@ -40,6 +44,7 @@ var page_label: Label
 var page = "Home"
 var health_badge: Button
 var age_label: Label
+var days_label: Label
 var rest_button: Button
 var actions: VBoxContainer
 var habitat: Habitat
@@ -56,6 +61,13 @@ const INTRO_PAGES = [
 var intro_overlay: Control
 var status_clock = 0.0
 var nav_buttons: Dictionary = {}
+var arrival_visits: Dictionary = {}
+var last_coins = 0
+var reward_total = 0
+var reward_notice: Control
+var reward_version = 0
+var home_suggestion: Label
+var home_suggestion_card: PanelContainer
 
 func _ready() -> void:
 	world_host = Control.new()
@@ -73,14 +85,16 @@ func _ready() -> void:
 	layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(layout)
 	var header = HBoxContainer.new()
+	header.add_theme_constant_override("separation", 24)
+	header.name = "ScreenHeader"
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layout.add_child(header)
 	var identity = UI.card()
 	identity_card = identity
-	identity.custom_minimum_size.x = 190
+	identity.custom_minimum_size.x = 220
 	identity.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	header.add_child(identity)
-	var identity_col = UI.column(2)
+	var identity_col = UI.column(4)
 	identity.add_child(identity_col)
 	name_label = UI.label(Game.puppy_name, 32)
 	name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -88,6 +102,8 @@ func _ready() -> void:
 	identity_col.add_child(name_label)
 	age_label = UI.label("", 24)
 	identity_col.add_child(age_label)
+	days_label = UI.label("", 20, UI.TEAL)
+	identity_col.add_child(days_label)
 	health_badge = UI.button("Visit Vet", request_page.bind("Vet Clinic"), Color("f9d8e2"))
 	health_badge.custom_minimum_size.y = 44
 	health_badge.add_theme_font_size_override("font_size", 20)
@@ -117,17 +133,34 @@ func _ready() -> void:
 	back_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	header.add_child(back_button)
 	header.move_child(back_button, 1)
-	island_button = UI.icon_button("Island", UI.place_icon("Island"), request_page.bind("Island"), Color("c2ecf4"))
-	island_button.custom_minimum_size = Vector2(104, 100)
+	island_button = UI.location_button("Go to Island", UI.place_icon("Island"), request_page.bind("Island"), Color("c2ecf4"))
+	island_button.custom_minimum_size = Vector2(210, 80)
+	island_button.get_meta("picture").offset_right = 70
+	island_button.get_meta("caption").offset_left = 78
+	island_button.get_meta("caption").add_theme_font_size_override("font_size", 22)
+	island_button.get_child(island_button.get_child_count()-1).text = "➜"
+	island_button.get_child(island_button.get_child_count()-1).add_theme_color_override("font_color", UI.INK)
+	island_button.get_child(island_button.get_child_count()-1).add_theme_font_size_override("font_size",24)
+	island_button.get_child(island_button.get_child_count()-1).offset_left = -30
+	island_button.get_child(island_button.get_child_count()-1).offset_right = -4
 	travel.add_child(island_button)
-	daily_button = UI.icon_button("Today", preload("res://assets/ui/sunset.svg"), request_page.bind("Life:Daily"), Color("fff0bd"))
-	daily_button.custom_minimum_size = Vector2(104, 80)
+	daily_button = UI.location_button("To-do Today", preload("res://assets/ui/sunset.svg"), request_page.bind("Life:Daily"), Color("fff0bd"))
+	daily_button.custom_minimum_size = Vector2(210, 72)
+	daily_button.get_meta("picture").offset_right = 70
+	daily_button.get_meta("caption").offset_left = 78
+	daily_button.get_meta("caption").add_theme_font_size_override("font_size", 22)
 	travel.add_child(daily_button)
-	camera_button = UI.icon_button("Photo", preload("res://assets/ui/camera.svg"), open_photo_mode, Color("f9d8e2"))
-	camera_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	camera_button.offset_top = -100
-	camera_button.offset_right = 104
-	utility_layer.add_child(camera_button)
+	var steps_button = UI.button("iPhone steps", request_page.bind("Life:Steps"),Color("c8eddd"))
+	steps_button.custom_minimum_size = Vector2(210,60)
+	steps_button.add_theme_font_size_override("font_size",20)
+	travel.add_child(steps_button)
+	camera_button = UI.button("Take photo", open_photo_mode, Color("f9d8e2"))
+	camera_button.icon = preload("res://assets/ui/camera.svg")
+	camera_button.expand_icon = true
+	camera_button.add_theme_constant_override("icon_max_width", 34)
+	camera_button.add_theme_font_size_override("font_size", 22)
+	camera_button.custom_minimum_size = Vector2(210, 60)
+	camera_button.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	page_label = UI.label("", 26, UI.TEAL)
 	page_label.visible = false
 	page_label.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -160,10 +193,17 @@ func _ready() -> void:
 		icon.icon = load("res://assets/ui/" + ["feed", "play", "rest", "care"][i] + ".svg")
 		icon.expand_icon = true
 		icon.add_theme_constant_override("icon_max_width", 30)
-		icon.custom_minimum_size = Vector2(54, 64)
+		icon.custom_minimum_size = Vector2(38, 38)
+		for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+			var icon_style = UI.style(Color("fff0cf"), 14)
+			icon_style.content_margin_left = 4
+			icon_style.content_margin_right = 4
+			icon_style.content_margin_top = 4
+			icon_style.content_margin_bottom = 4
+			icon.add_theme_stylebox_override(state, icon_style)
 		icon.tooltip_text = key
 		line.add_child(icon)
-		meter_labels[key] = UI.label(key, 24)
+		meter_labels[key] = UI.label(key, 22)
 		meter_labels[key].autowrap_mode = TextServer.AUTOWRAP_OFF
 		meter_labels[key].custom_minimum_size.x = 40
 		line.add_child(meter_labels[key])
@@ -183,13 +223,14 @@ func _ready() -> void:
 		bar.add_theme_stylebox_override("background", bg)
 		bar.add_theme_stylebox_override("fill", fill)
 		col.add_child(bar)
-		var need_name = UI.label(key, 20)
+		var need_name = UI.label(key, 18)
 		need_name.autowrap_mode = TextServer.AUTOWRAP_OFF
 		col.add_child(need_name)
 		meters[key] = bar
 	var menu_gap = Control.new()
 	menu_gap.custom_minimum_size.x = 20
 	header.add_child(menu_gap)
+	header.add_child(camera_button)
 	menu_button = UI.icon_button("Menu", preload("res://assets/ui/menu.svg"), open_navigation, Color("fff5e2"))
 	menu_button.custom_minimum_size = Vector2(72, 68)
 	menu_button.get_meta("caption").visible = false
@@ -222,6 +263,17 @@ func _ready() -> void:
 	action_dock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dock_layer.add_child(action_dock)
 	action_dock.add_child(actions)
+	var suggestion = UI.card()
+	home_suggestion_card = suggestion
+	suggestion.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	suggestion.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	suggestion.offset_left = 230
+	suggestion.offset_right = 620
+	suggestion.offset_top = -100
+	suggestion.offset_bottom = -12
+	utility_layer.add_child(suggestion)
+	home_suggestion = UI.label("",22)
+	suggestion.add_child(home_suggestion)
 	var action_colors = [Color("ffe0a0"), Color("bdeab0"), Color("b7def4"), Color("d9c9f6")]
 	for i in 4:
 		var kind: String = ["Feed", "Play", "Care", "Rest"][i]
@@ -236,6 +288,7 @@ func _ready() -> void:
 		if kind == "Rest":
 			rest_button = b
 	Game.notice.connect(_notice)
+	last_coins = Game.coins
 	Game.changed.connect(_update_needs)
 	show_page("Home")
 	_update_needs()
@@ -256,10 +309,20 @@ func _process(delta: float) -> void:
 	for kind in action_buttons:
 		var button: Button = action_buttons[kind]
 		var remaining = float(Game.cooldowns.get(kind, 0))
-		button.disabled = remaining > 0
+		var blocked = Game.activity_block_reason() if kind == "Play" else ""
+		button.disabled = remaining > 0 or not blocked.is_empty()
+		var caption: Label = button.get_meta("caption")
+		caption.add_theme_font_size_override("font_size",17 if remaining > 0 or not blocked.is_empty() else 22)
+		caption.offset_top = -50 if remaining > 0 or not blocked.is_empty() else -36
+		button.get_meta("picture").offset_bottom = -54 if remaining > 0 or not blocked.is_empty() else -36
+		button.tooltip_text = blocked if not blocked.is_empty() else ("Getting ready. Try again shortly." if remaining > 0 else kind)
 		if kind != "Rest":
-			UI.button_caption(button, kind)
+			UI.button_caption(button, kind + ("\nWait" if remaining > 0 else ("\n" + {"Visit Vet first":"Visit Vet", "Wake at Home first":"Wake first", "Needs a nap":"Needs rest"}.get(blocked,blocked) if not blocked.is_empty() else "")))
 			UI.button_wait(button, remaining, 6.0)
+	if is_instance_valid(home_suggestion_card):
+		var hint = home_hint()
+		home_suggestion_card.visible = page == "Home" and not hint.is_empty() and not is_instance_valid(photo_overlay) and not is_instance_valid(notice_overlay)
+		home_suggestion.text = hint
 	if not Game.save_error.is_empty():
 		if reported_save_error != Game.save_error or not is_instance_valid(notice_overlay) or not notice_overlay.get_meta("save_error", false):
 			reported_save_error = Game.save_error
@@ -271,9 +334,17 @@ func _process(delta: float) -> void:
 			notice_overlay = null
 
 func home_hint() -> String:
+	if PuppyHealth.unwell(Game):
+		return "Visit Leah for a free checkup."
 	if Game.resting:
-		return Game.personalize("Mochi is resting. Tap Wake when you're ready.")
-	return Game.personalize("Start with Feed, Play or Care. Tap the floor to call Mochi over.")
+		return "A cozy nap. Choose Wake when ready."
+	var lowest = "Hunger"
+	for key in Game.NEEDS:
+		if Game.needs[key] < Game.needs[lowest]:
+			lowest = key
+	if Game.needs[lowest] >= 45:
+		return "" if Game.points > 0 else "Try Feed, Play or Care together."
+	return Game.puppy_name + {"Hunger":" could use a meal.","Happiness":" would enjoy a little play.","Energy":" could use a nap.","Cleanliness":" could use a brush."}[lowest]
 
 func _notice(text: String) -> void:
 	message.text = text
@@ -309,12 +380,17 @@ func show_feedback(text: String, persistent_save_error: bool = false) -> void:
 	notice_tween.tween_callback(overlay.queue_free)
 
 func _update_needs() -> void:
+	var gained = Game.coins - last_coins
+	last_coins = Game.coins
+	if gained > 0 and is_inside_tree():
+		show_coin_reward(gained)
 	for key in meters:
 		meters[key].value = Game.needs[key]
 		meter_labels[key].text = str(int(Game.needs[key]))
 		meter_labels[key].tooltip_text = "%s: %d" % [key, int(Game.needs[key])]
 	name_label.text = Game.puppy_name
-	age_label.text = PuppyHealth.status(Game) if PuppyHealth.unwell(Game) else (Game.growth_stage() if Game.breed == "Puppy" else Game.breed)
+	age_label.text = Game.growth_stage() if Game.breed == "Puppy" else Game.breed
+	days_label.text = "Days played: %d" % Game.days_played()
 	health_badge.visible = page == "Home" and PuppyHealth.unwell(Game)
 	var travel = hud.find_child("TravelNavigation", true, false)
 	if is_instance_valid(travel):
@@ -329,7 +405,13 @@ func clear_body() -> void:
 			child.queue_free()
 
 func update_navigation() -> void:
-	camera_button.visible = page in ["Home", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Harbor", "Keeper’s Cottage"]
+	var camera_parent = island_button.get_parent() if page == "Home" else menu_button.get_parent()
+	if camera_button.get_parent() != camera_parent:
+		camera_button.reparent(camera_parent)
+		if page != "Home":
+			camera_parent.move_child(camera_button, menu_button.get_index())
+	camera_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	camera_button.visible = page in ["Home", "Shop", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Harbor", "Keeper’s Cottage"]
 	var scene_page = page in ["Home", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Harbor", "Keeper’s Cottage", "Fetch", "Walk"]
 	identity_card.visible = page == "Home" or page in ["Fetch", "Walk"]
 	bag_button.visible = false
@@ -339,8 +421,9 @@ func update_navigation() -> void:
 	back_button.text = "‹ Back to Island" if page in LOCATION_PAGES else ("‹ Back to Beach" if page == "Life:Beach Activities" else "‹ Back")
 	back_button.custom_minimum_size = Vector2(190 if page in LOCATION_PAGES or page == "Life:Beach Activities" else 112, 68)
 	page_label.visible = page != "Home" and page not in ["Fetch", "Walk"]
-	page_label.text = {"Life:Beach Activities":"Kai’s Beach Activities", "Life:Daily":"Today on the Island", "Life:Health Record": "Health History", "Life:Deliveries": "Harbor Parcels", "Life:Playdate": "Puppy Playdate", "Island": "Island Map", "Shop": "June’s Shop", "Vet Supplies": "Vet Supplies", "Bag": "Your Bag", "Journal": "Puppy Journal", "My Dogs": "My Dogs"}.get(page, "Puppy Playdate" if page == "Life:Playdate" else ("Island Life" if page.begins_with("Life") else page))
+	page_label.text = {"Life:Beach Activities":"Kai’s Beach Activities", "Life:Daily":"To-do Today", "Life:Steps":"Walking Companion", "Life:Health Record": "Health History", "Life:Deliveries": "Harbor Parcels", "Life:Playdate": "Puppy Playdate", "Island": "Island Map", "Shop": "June’s Shop", "Vet Supplies": "Vet Supplies", "Bag": "Your Bag", "Journal": "Puppy Journal", "My Dogs": "My Dogs"}.get(page, "Puppy Playdate" if page == "Life:Playdate" else ("Island Life" if page.begins_with("Life") else page))
 	daily_button.visible = page == "Home"
+	island_button.get_parent().visible = page == "Home"
 	actions.visible = page == "Home"
 	needs_card.visible = page in ["Home", "Fetch", "Walk"]
 	message_card.visible = false
@@ -404,10 +487,19 @@ func show_page(dest: String) -> void:
 
 func go_back() -> void:
 	if page in LOCATION_PAGES:
+		page_history.clear()
+		returning_to_page = true
 		request_page("Island")
+		returning_to_page = false
 		return
 	if page in ["Fetch", "Walk"]:
 		request_page("Park" if page == "Fetch" else "Beach")
+		return
+	if page in ["Life:Training", "Life:Playdate", "Life:Deliveries", "Life:Health Record", "Vet Supplies", "Shop Goods"]:
+		var origin = {"Life:Training":"Park", "Life:Playdate":"Puppy Club", "Life:Deliveries":"Harbor", "Life:Health Record":"Vet Clinic", "Vet Supplies":"Vet Clinic", "Shop Goods":"Shop"}[page]
+		returning_to_page = true
+		request_page(origin)
+		returning_to_page = false
 		return
 	if page == "Life:Beach Activities":
 		request_page("Beach")
@@ -429,7 +521,7 @@ func start_activity(kind: String) -> void:
 	var scene = load("res://scenes/" + kind.to_lower() + ".tscn").instantiate()
 	scene.habitat = habitat
 	scene.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scene.finished.connect(show_page.bind("Home"))
+	scene.finished.connect(show_page.bind("Park" if kind == "Fetch" else "Beach"))
 	body.add_child(scene)
 
 func island() -> void:
@@ -808,7 +900,7 @@ func life_page(section: String) -> void:
 		Daylight.apply_to(habitat.background, habitat.location)
 	var browser = load("res://scripts/life_browser.gd").new()
 	browser.host = self
-	browser.mode = section if section in browser.MODES or section in ["Playdate", "Health Record", "Deliveries", "Beach Activities", "Daily"] else "Dog"
+	browser.mode = section if section in browser.MODES or section in ["Playdate", "Health Record", "Deliveries", "Beach Activities", "Daily", "Steps"] else "Dog"
 	browser.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	if section == "Beach Activities":
 		browser.beach_mode = pending_beach_mode
@@ -818,8 +910,17 @@ func life_page(section: String) -> void:
 func open_photo_mode() -> void:
 	if is_instance_valid(photo_overlay):
 		return
-	if page not in ["Home", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Harbor", "Keeper’s Cottage"]:
+	if page not in ["Home", "Shop", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Harbor", "Keeper’s Cottage"]:
 		show_page("Home")
+	photo_reward = weakref(reward_notice) if is_instance_valid(reward_notice) else null
+	photo_reward_was_visible = reward_notice.visible if is_instance_valid(reward_notice) else false
+	if is_instance_valid(reward_notice):
+		reward_notice.visible = false
+	var greeting = world_host.get_node_or_null("LocationGreeting")
+	photo_greeting = weakref(greeting) if is_instance_valid(greeting) else null
+	photo_greeting_was_visible = greeting.visible if is_instance_valid(greeting) else false
+	if is_instance_valid(greeting):
+		greeting.visible = false
 	photo_was_processing = Game.is_processing()
 	if is_instance_valid(arrival_overlay):
 		arrival_overlay.queue_free()
@@ -852,6 +953,12 @@ func close_photo_mode() -> void:
 	if is_instance_valid(photo_overlay):
 		photo_overlay.queue_free()
 	photo_overlay = null
+	if photo_greeting != null and is_instance_valid(photo_greeting.get_ref()):
+		photo_greeting.get_ref().visible = photo_greeting_was_visible
+	photo_greeting = null
+	if photo_reward != null and is_instance_valid(photo_reward.get_ref()):
+		photo_reward.get_ref().visible = photo_reward_was_visible
+	photo_reward = null
 	hud.visible = true
 	Game.set_process(photo_was_processing)
 
@@ -957,3 +1064,38 @@ func browse_shop(category: String = "Food") -> void:
 	show_page("Shop Goods")
 	var browser = body.get_child(0)
 	browser.select_category(category)
+
+func daily_shortcut(idea: Dictionary) -> void:
+	request_page(idea.place)
+	if idea.get("focus", "") in action_buttons:
+		var target: Button = action_buttons[idea.focus]
+		target.grab_focus()
+		var pulse = target.create_tween()
+		pulse.tween_property(target,"modulate",Color("fff0b0"),0.25)
+		pulse.tween_property(target,"modulate",Color.WHITE,0.4)
+
+func show_coin_reward(amount: int) -> void:
+	reward_total = reward_total + amount if is_instance_valid(reward_notice) else amount
+	if is_instance_valid(reward_notice):
+		reward_notice.queue_free()
+	reward_version += 1
+	var version = reward_version
+	var card = UI.card()
+	reward_notice = card
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	var safe = UI.safe_insets()
+	card.offset_left = -safe.right - 190
+	card.offset_right = -safe.right
+	card.offset_top = safe.top + 110
+	card.offset_bottom = safe.top + 162
+	add_child(card)
+	card.add_child(UI.label("+%d coins" % reward_total,26,Color("28784f")))
+	var tween = card.create_tween()
+	tween.tween_interval(2.0)
+	tween.tween_property(card,"modulate:a",0.0,0.4)
+	tween.tween_callback(func():
+		if reward_version == version:
+			reward_notice = null
+		card.queue_free()
+	)

@@ -10,6 +10,13 @@ func run() -> void:
 	var game = root.get_node("Game")
 	game.set_process(false)
 	game.storage_path = "user://locations_test.json"
+	game.play_days = []
+	game.record_play_day("2026-10-28")
+	game.record_play_day("2026-10-28")
+	game.record_play_day("2026-10-30")
+	game.record_play_day("2026-10-29")
+	check(game.play_days.size() == 2, "Days played count unique forward local dates, not skipped days or repeated visits")
+	check(not game.valid_play_date("2026-02-30") and game.valid_play_date("2028-02-29"), "Play dates validate real calendar days")
 	game.intro_seen = true
 	game.pending_stage = ""
 	game.coins = 100
@@ -46,6 +53,7 @@ func run() -> void:
 	game.coins = 0
 	game.items.Toy = 0
 	game.load_game()
+	check(game.play_days.size() >= 2, "Days played survive save and load")
 	check(game.coins == 38 and game.items.Toy == 1, "Coins and purchases survive save and load")
 	var before_outing: int = game.coins
 	game.finish_activity("Walk")
@@ -66,6 +74,8 @@ func run() -> void:
 		await process_frame
 		await process_frame
 		check(main.back_button.text == "‹ Back to Island", "Each location clearly returns to the map")
+		check(main.camera_button.visible and main.camera_button.text == "Take photo", "Location camera has a clear purpose")
+		check(main.camera_button.get_parent() == main.menu_button.get_parent(), "Camera stays in the location utility header")
 		check(main.habitat.puppy.location_portrait and main.habitat.puppy.current_breed == game.breed, "Location shows the actual current dog")
 		check(WalkArea.contains(main.habitat.puppy.walk_area, main.habitat.puppy.position), "Presentation dog remains on safe ground")
 		var greeting = main.world_host.get_node_or_null("LocationGreeting")
@@ -73,8 +83,22 @@ func run() -> void:
 		check(not is_instance_valid(main.resident_overlay) and main.hud.visible, "Arrival leaves activities usable")
 		var portrait = greeting.get_child(0)
 		var bubble = greeting.get_child(1)
+		check(portrait.get_global_rect().position.x >= 0 and portrait.get_global_rect().end.x <= main.size.x * 0.40, "Arrival keeps the full arm width on screen")
+		check(portrait.texture.region.size.x == portrait.texture.atlas.get_image().get_used_rect().size.x, "Arrival never crops the artwork horizontally")
 		check(portrait.get_global_rect().end.y >= main.size.y - 1, "Portrait reaches the screen edge without a floating cut")
 		check(bubble.size.y < main.size.y * 0.35, "Arrival bubble hugs its short text")
+		main.open_photo_mode()
+		check(not greeting.visible, "Photo mode excludes arrival speech and portraits")
+		main.close_photo_mode()
+		check(greeting.visible and main.hud.visible, "Leaving photo mode restores the location greeting and controls")
+	for texture in [Art.NORA, Art.NORA_CORAL, Art.JUNE, Art.JUNE_MINT, Art.BEN, Art.BEN_TRAINING, Art.LEAH, Art.LEAH_TUNIC, Art.OWEN, Art.OWEN_PARCEL, Art.REN, Art.REN_SWEATER, Art.KAI]:
+		for view in [Vector2(1280,720), Vector2(1558,720)]:
+			var framing = UI.location_portrait_rect(view, texture.get_image().get_used_rect().size, {"left":105,"right":105,"top":20,"bottom":25})
+			check(framing.position.x >= 105 and framing.end.x <= view.x * 0.40, "Both wardrobe variants preserve their full arm width at phone aspect ratios")
+			check(framing.position.y >= 106 and framing.end.y >= view.y, "Portrait framing keeps heads visible and crops only at the screen bottom")
+	main.show_page("Home")
+	check(main.days_label.text.begins_with("Days played:"), "Dog card includes days played")
+	check(main.camera_button.get_parent() == main.island_button.get_parent(), "Home camera belongs to the shortcuts group")
 	main.show_page("Beach")
 	check(main.body.get_child(0).primary_actions.get_child_count() == 3, "All three beach games are on the arrival screen")
 	main.open_beach_activity("Cleanup")
@@ -84,7 +108,7 @@ func run() -> void:
 	main.browse_shop("Accessories")
 	check(main.body.get_child(0).category == "Accessories", "Shop shelf opens its goods")
 	main.go_back()
-	check(main.page == "Beach", "Content Back returns to its actual origin")
+	check(main.page == "Shop", "Goods return to their Shop location")
 	for resident in ["Nora", "Ben", "June", "Leah", "Owen"]:
 		main.show_page({"Nora": "Puppy Club", "Ben": "Park", "June": "Shop", "Leah": "Vet Clinic", "Owen": "Beach"}[resident])
 		var hub = main.body.get_child(0)

@@ -3,6 +3,7 @@ extends Control
 var texture: Texture2D
 var character_name = ""
 var text = ""
+var duration = 6.0
 
 func _ready() -> void:
  name = "LocationGreeting"
@@ -11,12 +12,8 @@ func _ready() -> void:
  var safe = UI.safe_insets(24)
  var portrait = TextureRect.new()
  var atlas = AtlasTexture.new()
- atlas.atlas = preload("res://assets/characters/kai_seated.png") if character_name == "Kai" else Art.daily_portrait(texture)
+ atlas.atlas = Art.daily_portrait(texture)
  atlas.region = atlas.atlas.get_image().get_used_rect()
- if character_name == "Kai":
-  atlas.region.size.x *= 0.74
- else:
-  atlas.region.size.y *= 0.72
  portrait.texture = atlas
  portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
  portrait.stretch_mode = TextureRect.STRETCH_SCALE
@@ -26,7 +23,7 @@ func _ready() -> void:
  var bubble = UI.card()
  bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
  add_child(bubble)
- var bubble_width = minf(340, get_viewport_rect().size.x * 0.27)
+ var bubble_width = minf(340, get_viewport_rect().size.x * 0.23)
  bubble.custom_minimum_size.x = bubble_width
  var content = UI.column(6)
  content.custom_minimum_size.x = bubble_width - 40
@@ -41,10 +38,10 @@ func _ready() -> void:
  tail.color = Color("fff6e5")
  bubble.add_child(tail)
  var arrange = func():
-  var factor = size.y * 0.94 / atlas.get_height()
-  portrait.size = atlas.get_size() * factor
-  portrait.position = Vector2(minf(0, size.x * 0.35 - portrait.size.x), size.y - portrait.size.y + 18)
-  bubble.position = Vector2(size.x * 0.33, safe.top + 74)
+  var bounds = UI.location_portrait_rect(size, atlas.get_size(), safe)
+  portrait.size = bounds.size
+  portrait.position = bounds.position
+  bubble.position = Vector2(size.x * 0.39, safe.top + 74)
   bubble.size = Vector2(bubble_width, bubble.get_combined_minimum_size().y)
   tail.position = Vector2(24,bubble.size.y-2)
  resized.connect(arrange)
@@ -52,6 +49,6 @@ func _ready() -> void:
  bubble.resized.connect(func(): tail.position = Vector2(24,bubble.size.y-2))
  arrange.call_deferred()
  var fade = create_tween()
- fade.tween_interval(6.0)
+ fade.tween_interval(duration)
  fade.tween_property(self,"modulate:a",0.0,0.6)
  fade.tween_callback(queue_free)

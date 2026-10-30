@@ -185,6 +185,9 @@ func run() -> void:
    if previous_button != null:
     check(previous_button.get_global_rect().end.y < action_rect.position.y, "Care actions form a separated vertical stack")
    previous_button = action_button
+  for header_item in [main.identity_card, main.needs_card, main.menu_button]:
+   var header_bounds = header_item.get_global_rect()
+   check(header_bounds.position.x >= 105 and header_bounds.end.x <= mobile_view.size.x - 105, "Home status header clears phone cutouts")
   main.show_page("Island")
   await process_frame
   await process_frame
@@ -197,6 +200,8 @@ func run() -> void:
    for j in range(i + 1, keys.size()):
     check(not rect.intersects(map.pins[keys[j]].get_global_rect()), "Map markers " + str(keys[i]) + " / " + str(keys[j]) + " do not overlap at " + str(screen_size))
   map.pins["Shop"].pressed.emit()
+  check(map.travelling, "One tap starts the dog walking to the destination")
+  map._process(map.travel_duration + 0.1)
   await process_frame
   check(main.page == "Shop", "One tap on a map pin opens its destination")
   main.browse_shop()
@@ -215,6 +220,10 @@ func run() -> void:
    main.show_page(place)
    await process_frame
    await process_frame
+   for header_item in [main.back_button, main.page_label, main.menu_button, main.camera_button]:
+    var header_bounds = header_item.get_global_rect()
+    check(header_bounds.position.x >= 105 and header_bounds.end.x <= mobile_view.size.x - 105, place + " header clears phone cutouts")
+   check(not main.camera_button.get_global_rect().intersects(main.menu_button.get_global_rect()), "Location camera does not overlap Menu")
    var hub = main.body.get_child(0)
    for button in hub.choices.get_children() + hub.primary_actions.get_children():
     var bounds: Rect2 = button.get_global_rect()
