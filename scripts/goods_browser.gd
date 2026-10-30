@@ -218,7 +218,7 @@ func purchase_feedback(kind: String) -> void:
  animation.tween_callback(bag.queue_free)
 
 func talk_to_june() -> void:
- host.show_resident(Art.JUNE, "June", "Shopkeeper", "Welcome! Tap a picture to learn about an item.\n\nTreats and shampoo are used up. Toys, brushes and beds stay with you.")
+ host.show_resident(Art.JUNE, "June", "Shopkeeper", IslandActivities.greeting(Game,"June","Welcome! Tap a picture to learn about an item.\n\nTreats and shampoo are used up. Toys, brushes and beds stay with you."))
 
 func show_details(kind: String) -> void:
  if is_instance_valid(detail_overlay):
@@ -301,4 +301,4 @@ func _exit_tree() -> void:
  close_details()
 
 func talk_to_leah() -> void:
- host.show_resident(Art.LEAH, "Leah", "Veterinarian", "Get a free checkup before using medicine or bandages. One treatment starts recovery; extra doses do not help. Treatment at my clinic is always free.")
+ host.show_resident(Art.LEAH, "Leah", "Veterinarian", IslandActivities.greeting(Game,"Leah","Get a free checkup before using medicine or bandages. One treatment starts recovery; extra doses do not help. Treatment at my clinic is always free."))

@@ -1,6 +1,9 @@
 extends Node
 
 const EFFECTS = {
+ "purchase": preload("res://assets/audio/purchase.wav"),
+ "discovery": preload("res://assets/audio/discovery.wav"),
+ "happy": preload("res://assets/audio/happy.wav"),
  "feed": preload("res://assets/audio/feed.wav"),
  "play": preload("res://assets/audio/play.wav"),
  "care": preload("res://assets/audio/care.wav"),
@@ -26,7 +29,11 @@ func _ready() -> void:
   var voice = AudioStreamPlayer.new()
   add_child(voice)
   voices.append(voice)
- Game.care_performed.connect(func(kind: String): play_effect({"Pet": "care", "Treat": "feed", "Sniff": "care", "Sit": "play"}.get(kind, kind.to_lower()), -19))
+ Game.care_performed.connect(func(kind: String):
+  play_effect({"Pet": "care", "Treat": "feed", "Sniff": "care", "Sit": "play", "Stay":"play", "Come":"happy"}.get(kind, kind.to_lower()), -19)
+  if kind in ["Pet", "Play"]:
+   play_effect("happy", -27)
+ )
  if DisplayServer.get_name() != "headless":
   set_enabled(Game.sound_enabled, false)
 
@@ -91,3 +98,8 @@ func set_levels(effects: float, waves: float, persist: bool = true) -> void:
  apply_mix()
  if persist:
   Game.save_game()
+
+func feedback(kind: String) -> void:
+ play_effect(kind, -22)
+ if Game.haptics_enabled and not suspended and DisplayServer.get_name() != "headless" and (OS.has_feature("ios") or OS.has_feature("android")):
+  Input.vibrate_handheld(25, 0.35)

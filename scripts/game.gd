@@ -17,6 +17,7 @@ const STAGE_NAMES = ["Tiny puppy", "Young puppy", "Growing puppy", "Adult"]
 var needs: Dictionary = {"Hunger": 80.0, "Happiness": 80.0, "Energy": 90.0, "Cleanliness": 85.0}
 var puppy_name = "Mochi"
 var name_chosen = false
+var haptics_enabled = true
 var sound_enabled = true
 var effects_volume = 0.7
 var ambience_volume = 0.45
@@ -215,6 +216,7 @@ func buy_item(kind: String) -> String:
 		return "A few more coins first. Finish a Walk or Fetch to earn some."
 	coins -= PRICES[kind]
 	items[kind] = items.get(kind, 0) + 1
+	get_node("/root/Sound").feedback("purchase")
 	remember("Picked up " + Goods.ITEMS[kind].name.to_lower() + (" at Leah's clinic." if Goods.ITEMS[kind].get("vet_only", false) else " at June's shop."))
 	changed.emit()
 	save_game()
@@ -385,7 +387,7 @@ func save_game() -> bool:
 		"first_day": first_day,
 		"coins": coins, "items": items, "cooldowns": cooldowns, "active_outing": active_outing, "saved_outings": saved_outings, "life": life,
 		"effects_volume": effects_volume, "ambience_volume": ambience_volume,
-		"name_chosen": name_chosen, "sound_enabled": sound_enabled, "pending_stage": pending_stage,
+		"name_chosen": name_chosen, "sound_enabled": sound_enabled, "haptics_enabled": haptics_enabled, "pending_stage": pending_stage,
 		"active_seconds": active_seconds, "points": points, "fetches": fetches, "walks": walks, "intro_seen": intro_seen,
 		"resting": resting, "age_seconds": age_seconds, "collection": collection,
 		"journal": journal, "saved_at": Time.get_unix_time_from_system()}
@@ -437,7 +439,7 @@ func valid_save(data: Variant) -> bool:
 		var value = data.get(key)
 		if not (value is float or value is int) or not is_finite(float(value)) or value < 0:
 			return false
-	if not data.get("name_chosen", false) is bool or not data.get("sound_enabled", true) is bool:
+	if not data.get("name_chosen", false) is bool or not data.get("sound_enabled", true) is bool or not data.get("haptics_enabled", true) is bool:
 		return false
 	var goals = data.get("first_day", {})
 	if not goals is Dictionary:
@@ -466,7 +468,7 @@ func valid_save(data: Variant) -> bool:
 		return false
 	for key in saved_cooldowns:
 		var remaining = saved_cooldowns[key]
-		if key not in ["Feed", "Play", "Care", "Goods", "Pet", "IslandMoment", "Training", "Playdate"] or not (remaining is float or remaining is int) or not is_finite(float(remaining)) or remaining < 0 or remaining > (30 if key in ["IslandMoment", "Training"] else 12):
+		if key not in ["Feed", "Play", "Care", "Goods", "Pet", "IslandMoment", "Training", "Playdate", "Beach"] or not (remaining is float or remaining is int) or not is_finite(float(remaining)) or remaining < 0 or remaining > (30 if key in ["IslandMoment", "Training"] else 12):
 			return false
 	var outings = data.get("saved_outings", {})
 	if not outings is Dictionary:
@@ -534,6 +536,7 @@ func load_game() -> void:
 	ambience_volume = float(data.get("ambience_volume", 0.45))
 	name_chosen = data.get("name_chosen", data.intro_seen)
 	sound_enabled = data.get("sound_enabled", true)
+	haptics_enabled = data.get("haptics_enabled", true)
 	pending_stage = data.get("pending_stage", "")
 	breed = data.breed
 	points = mini(int(data.points), 100000)

@@ -7,6 +7,8 @@ var training_buttons: Dictionary = {}
 var lesson_command = ""
 var shown_day = ""
 var shown_health = ""
+var beach_mode = ""
+var shown_daily = ""
 var content: VBoxContainer
 var album_overlay: Control
 const MODES = ["Dog", "Wardrobe", "Training", "Friends", "Finds", "Home", "Events", "Photos"]
@@ -16,8 +18,10 @@ func _ready() -> void:
 	render()
 
 func _process(_delta: float) -> void:
-	if mode in ["Playdate", "Deliveries", "Events"] and shown_day != IslandLife.today():
+	if mode in ["Playdate", "Deliveries", "Events", "Beach Activities", "Daily"] and shown_day != IslandLife.today():
 		feedback = ""
+		render()
+	if mode == "Daily" and shown_daily != str(IslandActivities.daily_card(Game)):
 		render()
 	if mode == "Health Record" and shown_health != health_snapshot():
 		render()
@@ -25,6 +29,10 @@ func _process(_delta: float) -> void:
 		for button in content.get_children():
 			if button is Button and button.has_meta("playdate"):
 				button.disabled = Game.cooldowns.get("Playdate", 0) > 0
+	if mode == "Beach Activities" and is_instance_valid(content):
+		for button in content.get_children():
+			if button is Button and button.has_meta("beach_action"):
+				button.disabled = Game.cooldowns.get("Beach",0) > 0
 	for command in training_buttons:
 		var button: Button = training_buttons[command]
 		button.disabled = Game.cooldowns.get("Training", 0) > 0
@@ -41,13 +49,14 @@ func health_snapshot() -> String:
 	return PuppyHealth.status(Game) + PuppyHealth.advice(Game) + str(Game.health.history.size())
 
 func render() -> void:
+	shown_daily = str(IslandActivities.daily_card(Game))
 	shown_day = IslandLife.today()
 	shown_health = health_snapshot()
 	training_buttons.clear()
 	for child in get_children():
 		remove_child(child)
 		child.queue_free()
-	var compact = mode in ["Wardrobe", "Home", "Training", "Playdate"]
+	var compact = mode in ["Wardrobe", "Home", "Training", "Playdate", "Beach Activities"]
 	if is_instance_valid(host.habitat):
 		host.habitat.view_offset.x = -minf(220, host.size.x * 0.16) if compact else 0.0
 		host.habitat._resize_world()
@@ -104,6 +113,8 @@ func render() -> void:
 		"Playdate": playdate()
 		"Health Record": health_record()
 		"Deliveries": deliveries()
+		"Beach Activities": beach_activities()
+		"Daily": daily_card()
 		"Friends": friends()
 		"Finds": finds()
 		"Home": decorating()
@@ -265,7 +276,7 @@ func deliveries() -> void:
 
 func friends() -> void:
 	content.add_child(UI.label("Little favors, growing friendships", 27, UI.TEAL))
-	var residents = {"Nora": Art.NORA, "Ben": Art.BEN, "June": Art.JUNE, "Leah": Art.LEAH, "Owen": Art.OWEN, "Ren": Art.REN}
+	var residents = {"Kai": Art.KAI, "Nora": Art.NORA, "Ben": Art.BEN, "June": Art.JUNE, "Leah": Art.LEAH, "Owen": Art.OWEN, "Ren": Art.REN}
 	var grid = GridContainer.new()
 	grid.columns = 3
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -294,9 +305,9 @@ func friends() -> void:
 
 func friend_conversation(person: String, portrait: Texture2D, asking_favor: bool = false) -> void:
 	IslandLife.talk(Game, person)
-	var reply = IslandLife.favor(Game, person) if asking_favor else "Lovely to see you and " + Game.puppy_name + "! Shall we make another little island memory?"
+	var reply = IslandLife.favor(Game, person) if asking_favor else IslandActivities.greeting(Game, person, "Lovely to see you and " + Game.puppy_name + "! Shall we make another little island memory?")
 	render()
-	host.show_resident(portrait, person, {"Nora": "Puppy Club organizer", "Ben": "Trainer", "June": "Shopkeeper", "Leah": "Veterinarian", "Owen": "Neighbor", "Ren": "Lighthouse keeper"}[person], reply)
+	host.show_resident(portrait, person, {"Nora": "Puppy Club organizer", "Ben": "Trainer", "June": "Shopkeeper", "Leah": "Veterinarian", "Owen": "Neighbor", "Ren": "Lighthouse keeper", "Kai": "Beach lifeguard"}[person], reply)
 
 func finds() -> void:
 	content.add_child(UI.label("Beach keepsakes", 27, UI.TEAL))
@@ -477,3 +488,60 @@ func confirm_delete(filename: String) -> void:
 
 func _exit_tree() -> void:
 	close_album_overlay()
+
+func daily_card() -> void:
+	content.add_child(UI.hint_label("Three optional ideas. Enjoy them at your own pace.", 23))
+	for idea in IslandActivities.daily_card(Game):
+		tile(("Done · " if idea.done else "") + idea.title, load("res://assets/ui/" + idea.icon + ".svg"), host.request_page.bind(idea.place), Color("c8eddd") if idea.done else Color("fff0bd"))
+
+func choose_beach(kind: String) -> void:
+	beach_mode = kind
+	feedback = ""
+	render()
+
+func beach_activities() -> void:
+	IslandActivities.refresh(Game)
+	if beach_mode == "":
+		content.add_child(UI.hint_label("Kai's gentle beach games. Each earns 4 coins once a day.", 23))
+		for kind in IslandActivities.BEACH_GAMES:
+			var done = kind in Game.life.beach.done
+			tile(kind + (" · Done today" if done else ""), load("res://assets/ui/" + {"Shells":"shell", "Cleanup":"menu_bag", "Sand Fetch":"play"}[kind] + ".svg"), choose_beach.bind(kind))
+	else:
+		content.add_child(UI.label(beach_mode, 27, UI.TEAL))
+		if not feedback.is_empty():
+			content.add_child(UI.hint_label(feedback, 23, UI.TEAL))
+		if beach_mode in Game.life.beach.done:
+			content.add_child(UI.label("Completed today. Thank you!", 23))
+		elif beach_mode == "Shells":
+			var shell = TextureRect.new()
+			shell.texture = preload("res://assets/ui/shell.svg")
+			shell.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			shell.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			shell.custom_minimum_size.y = 90
+			content.add_child(shell)
+			content.add_child(UI.hint_label("Which find has curved ridges?", 23))
+			beach_button("Pearl shell", "shell", 0)
+			beach_button("Sea glass", "sea_glass", 1)
+		elif beach_mode == "Cleanup":
+			content.add_child(UI.hint_label("Collect three pieces of litter. Leave shells and plants in place.", 23))
+			for index in 3:
+				if index not in Game.life.beach.cleaned:
+					beach_button(["Bottle", "Wrapper", "Paper"][index], ["litter_bottle", "litter_wrapper", "litter_paper"][index], index)
+		else:
+			content.add_child(UI.hint_label("Three gentle rolls on dry sand. " + str(Game.life.beach.throws) + " of 3 returns.", 23))
+			beach_button("Roll the ball", "play", 0)
+		tile("Other beach games", UI.place_icon("Beach"), host.request_page.bind("Beach"), Color("ffe0a0"))
+	tile("Ask Kai", UI.resident_icon(Art.KAI), func(): host.show_resident(Art.KAI,"Kai","Beach lifeguard",IslandActivities.greeting(Game,"Kai","Choose Shells to identify a find, Cleanup to tidy the shore, or Sand Fetch for three gentle rolls. Rest first if your puppy is tired.")))
+
+func beach_button(caption: String, icon: String, choice: int) -> void:
+	var button = tile(caption, load("res://assets/ui/" + icon + ".svg"), func():
+		var before = Game.life.beach.duplicate(true)
+		feedback = IslandActivities.beach_action(Game, beach_mode, choice)
+		if beach_mode == "Sand Fetch" and int(Game.life.beach.throws) > (int(before.throws) if before.day == IslandLife.today() else 0):
+			host.habitat.roll_sand_ball()
+		if not Game.save_error.is_empty():
+			feedback = Game.save_error
+		render()
+	)
+	button.set_meta("beach_action",true)
+	button.disabled = Game.cooldowns.get("Beach",0) > 0

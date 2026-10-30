@@ -235,7 +235,7 @@ func show_sound_settings() -> void:
 	var panel = UI.card()
 	panel.custom_minimum_size.x = 760
 	center.add_child(panel)
-	var content = UI.column(14)
+	var content = UI.column(10)
 	content.custom_minimum_size.x = 720
 	panel.add_child(content)
 	content.add_child(UI.label("Gentle island sounds", 34, UI.TEAL))
@@ -245,17 +245,25 @@ func show_sound_settings() -> void:
 		toggle.text = "Sound: On" if Game.sound_enabled else "Sound: Off"
 	)
 	content.add_child(toggle)
+	var touch_toggle = UI.button("Gentle vibration: On" if Game.haptics_enabled else "Gentle vibration: Off", func(): pass, Color("c8eddd"))
+	touch_toggle.custom_minimum_size.y = 56
+	touch_toggle.pressed.connect(func():
+		Game.haptics_enabled = not Game.haptics_enabled
+		touch_toggle.text = "Gentle vibration: On" if Game.haptics_enabled else "Gentle vibration: Off"
+		Game.save_game()
+	)
+	content.add_child(touch_toggle)
 	var levels: Dictionary = {}
 	for kind in ["effects", "waves"]:
 		var value = Game.effects_volume if kind == "effects" else Game.ambience_volume
-		var label = UI.label(("Care and footsteps" if kind == "effects" else "Ocean ambience") + ": %d%%" % int(value * 100), 25)
+		var label = UI.label(("Effects and footsteps" if kind == "effects" else "Ocean ambience") + ": %d%%" % int(value * 100), 25)
 		content.add_child(label)
 		var slider = HSlider.new()
 		slider.min_value = 0
 		slider.max_value = 100
 		slider.step = 1
 		slider.value = value * 100
-		slider.custom_minimum_size.y = 84
+		slider.custom_minimum_size.y = 56
 		content.add_child(slider)
 		levels[kind] = slider
 		slider.value_changed.connect(func(number: float):
@@ -263,7 +271,7 @@ func show_sound_settings() -> void:
 				Sound.set_levels(number / 100, Game.ambience_volume, false)
 			else:
 				Sound.set_levels(Game.effects_volume, number / 100, false)
-			label.text = ("Care and footsteps" if kind == "effects" else "Ocean ambience") + ": %d%%" % int(number)
+			label.text = ("Effects and footsteps" if kind == "effects" else "Ocean ambience") + ": %d%%" % int(number)
 		)
 		slider.drag_ended.connect(func(_changed: bool): Game.save_game())
 	content.add_child(UI.button("Try a care sound", Sound.play_effect.bind("care", -19), Color("b7def4")))

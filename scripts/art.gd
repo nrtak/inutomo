@@ -5,7 +5,7 @@ extends RefCounted
 const HOME = preload("res://assets/backgrounds/home_anime.png")
 const PARK = preload("res://assets/backgrounds/park_anime.png")
 const BEACH = preload("res://assets/backgrounds/beach_anime.png")
-const ISLAND = preload("res://assets/backgrounds/island_anime.png")
+const ISLAND = preload("res://assets/backgrounds/island_swimming_cove.png")
 const PUPPIES = {
 	"Puppy": preload("res://assets/puppies/puppy_anime.png"),
 	"Shiba Inu": preload("res://assets/puppies/shiba_anime.png"),
@@ -55,6 +55,7 @@ const JUNE = preload("res://assets/characters/june_shop_v2.png")
 const LEAH = preload("res://assets/characters/leah_anime.png")
 
 const BEN = preload("res://assets/characters/ben_anime.png")
+const KAI = preload("res://assets/characters/kai_beach.png")
 const OWEN = preload("res://assets/characters/owen_anime.png")
 
 const NORA_CORAL = preload("res://assets/characters/nora_coral_braid.png")

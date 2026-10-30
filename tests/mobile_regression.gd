@@ -199,6 +199,7 @@ func run() -> void:
   map.pins["Shop"].pressed.emit()
   await process_frame
   check(main.page == "Shop", "One tap on a map pin opens its destination")
+  main.browse_shop()
   var browser = main.body.get_child(0)
   for category in Goods.CATEGORIES:
    browser.select_category(category)
@@ -238,8 +239,8 @@ func run() -> void:
   main.show_page("Shop")
   check(main.back_button.visible and not main.island_button.visible, "Content pages show Back without a floating map button")
   main.back_button.pressed.emit()
-  check(main.page == "Bag", "Back returns from Shop to the Bag that opened it")
-  check(main.page_label.visible and main.page_label.text == "Your Bag", "Content pages have a clear heading")
+  check(main.page == "Island", "Locations consistently return to the island")
+  check(main.page_label.visible and main.page_label.text == "Island Map", "Map has a clear heading")
   main.island_button.pressed.emit()
   check(main.page == "Island", "Dedicated travel button opens the map")
   main.home_button.pressed.emit()

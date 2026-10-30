@@ -2,11 +2,13 @@ class_name Habitat
 extends Control
 
 var location = "Home"
+var location_presentation = false
 var puppy: PuppyActor
 var world: Node2D
 var background: TextureRect
 var discovery: Sprite2D
 var ball: Sprite2D
+var home_toy: Sprite2D
 var playmate: Sprite2D
 var playdate_tween: Tween
 var restoration: Node2D
@@ -18,8 +20,8 @@ func _ready() -> void:
 	clip_contents = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	background = TextureRect.new()
-	background.texture = Art.BACKGROUNDS.get(location, Art.HOME)
-	Daylight.apply_to(background, location)
+	background.texture = preload("res://assets/backgrounds/beach_arrival.png") if location == "Beach" and location_presentation else Art.BACKGROUNDS.get(location, Art.HOME)
+	Daylight.apply_to(background, "Beach Arrival" if location == "Beach" and location_presentation else location)
 	background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -65,6 +67,7 @@ func add_home_decor() -> void:
 		world.add_child(bed)
 	if Game.items.get(Game.life.toy, 0) > 0:
 		var toy = Sprite2D.new()
+		home_toy = toy
 		toy.texture = Goods.picture(Game.life.toy)
 		toy.scale = Vector2.ONE * (55.0 / toy.texture.get_width())
 		toy.position = IslandLife.home_point(Game, "Play")
@@ -179,3 +182,39 @@ func animate_playdate(step: int) -> void:
 func _exit_tree() -> void:
 	if playdate_tween != null and playdate_tween.is_valid():
 		playdate_tween.kill()
+
+func roll_sand_ball() -> void:
+	if location != "Beach":
+		return
+	if playdate_tween != null and playdate_tween.is_valid():
+		playdate_tween.kill()
+	var origin = puppy.position
+	var destination = WalkArea.nearest(puppy.walk_area,origin + Vector2(90, 0))
+	puppy.wake_briefly()
+	puppy.awake_remaining = 20
+	puppy.reaction_time = 0
+	puppy.target = destination
+	puppy.decision = 5
+	ball.visible = true
+	ball.position = origin
+	ball.rotation = 0
+	ball.scale = Vector2.ONE * (38.0 / ball.texture.get_width())
+	playdate_tween = create_tween()
+	playdate_tween.tween_property(ball,"position",destination,1.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	playdate_tween.parallel().tween_property(ball,"rotation",TAU,1.3)
+	playdate_tween.tween_callback(func(): puppy.target = origin)
+	playdate_tween.tween_property(ball,"position",origin,1.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	playdate_tween.tween_callback(func(): ball.visible = false)
+
+func _process(_delta: float) -> void:
+	if is_instance_valid(home_toy) and is_instance_valid(puppy):
+		home_toy.visible = not puppy.carrying_toy
+
+func present_location_dog() -> void:
+	if not location_presentation:
+		return
+	puppy.controlled = true
+	puppy.location_portrait = true
+	puppy.position = WalkArea.nearest(puppy.walk_area, Vector2(660, 650))
+	puppy.target = puppy.position
+	puppy.scale = Vector2.ONE * (1.85 if Game.breed == "Puppy" else 1.05)

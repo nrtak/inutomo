@@ -244,3 +244,35 @@ static func picture_button(text: String, texture: Texture2D, action: Callable, c
 	caption.offset_bottom = -7
 	tile.add_child(caption)
 	return tile
+
+static func location_button(text: String, texture: Texture2D, action: Callable, color: Color) -> Button:
+	var tile = button(text, action, color)
+	tile.custom_minimum_size = Vector2(380, 112)
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color"]:
+		tile.add_theme_color_override(state,Color.TRANSPARENT)
+	var picture = TextureRect.new()
+	picture.texture = texture
+	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	picture.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+	picture.offset_left = 14
+	picture.offset_right = 118
+	picture.offset_top = 8
+	picture.offset_bottom = -8
+	tile.add_child(picture)
+	var caption = label(text,25)
+	caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	caption.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	caption.offset_left = 138
+	caption.offset_right = -32
+	tile.add_child(caption)
+	var arrow = label("›",34,TEAL)
+	arrow.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	arrow.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
+	arrow.offset_left = -25
+	arrow.offset_right = -8
+	tile.add_child(arrow)
+	tile.set_meta("caption",caption)
+	tile.set_meta("picture",picture)
+	return tile

@@ -2,14 +2,14 @@ extends Node
 
 # Local device time is intentionally independent of save progress and UTC.
 const PERIODS = [
-	{"start": 0, "name": "Late night", "tone": Color("7389bb"), "light": 0.36, "cool": 0.70},
+	{"start": 0, "name": "Late night", "tone": Color("b8c9ed"), "light": 0.78, "cool": 0.24},
 	{"start": 300, "name": "Early morning", "tone": Color("ffcfb7"), "light": 0.78, "cool": 0.12},
 	{"start": 420, "name": "Morning", "tone": Color("fff1d8"), "light": 0.96, "cool": 0.0},
 	{"start": 660, "name": "Noon", "tone": Color.WHITE, "light": 1.0, "cool": 0.0},
 	{"start": 840, "name": "Afternoon", "tone": Color("fff0dc"), "light": 0.98, "cool": 0.0},
 	{"start": 960, "name": "Late afternoon", "tone": Color("ffc393"), "light": 0.88, "cool": 0.08},
-	{"start": 1080, "name": "Evening", "tone": Color("ccabdc"), "light": 0.64, "cool": 0.35},
-	{"start": 1200, "name": "Night", "tone": Color("899dd2"), "light": 0.44, "cool": 0.60}
+	{"start": 1080, "name": "Evening", "tone": Color("e9d3ed"), "light": 0.88, "cool": 0.16},
+	{"start": 1200, "name": "Night", "tone": Color("c0cff0"), "light": 0.82, "cool": 0.20}
 ]
 var material: ShaderMaterial
 var current_period = ""
@@ -17,6 +17,8 @@ var clock = 0.0
 var transition: Tween
 var location_materials: Dictionary = {}
 const LIGHTS = {
+	"Beach Arrival": [Vector4(0.10,0.28,0.05,0.12),Vector4(0.30,0.76,0.55,0.45),Vector4.ZERO,Vector4.ZERO],
+	"Beach": [Vector4(0.10,0.55,0.06,0.12),Vector4(0.45,0.85,0.6,0.4),Vector4.ZERO,Vector4.ZERO],
 	"Harbor": [Vector4(0.08, 0.44, 0.035, 0.07), Vector4(0.235, 0.43, 0.035, 0.07), Vector4.ZERO, Vector4.ZERO],
 	"Keeper’s Cottage": [Vector4(0.235, 0.37, 0.035, 0.07), Vector4(0.50, 0.15, 0.025, 0.04), Vector4.ZERO, Vector4.ZERO],
 	"Home": [Vector4(0.82, 0.52, 0.13, 0.20), Vector4(0.84, 0.77, 0.25, 0.22), Vector4(0.12, 0.42, 0.22, 0.38), Vector4.ZERO],

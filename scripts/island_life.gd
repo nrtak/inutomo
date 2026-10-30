@@ -1,13 +1,13 @@
 class_name IslandLife
 extends RefCounted
 
-const PEOPLE = {"Ren": "Care","Nora": "Care", "Ben": "Fetch", "June": "Feed", "Leah": "Care", "Owen": "Walk"}
+const PEOPLE = {"Kai": "Walk","Ren": "Care","Nora": "Care", "Ben": "Fetch", "June": "Feed", "Leah": "Care", "Owen": "Walk"}
 const COMMANDS = ["Sit", "Stay", "Come"]
 const KEEPSAKES = ["Heart leaf", "Pearl shell", "Sea glass"]
 const KEEPSAKE_ICONS = ["leaf", "shell", "sea_glass"]
 const PERSONALITIES = ["Curious", "Cuddly", "Playful"]
 static func fresh() -> Dictionary:
-	return {"bowl":true, "bowl_spot":1, "toy_spot":1, "delivery":{"recipient":"", "claimed":"", "completed":0}, "playdate": {"day":"", "step":0, "claimed":"", "visits":0}, "story": {}, "accessory": "", "bed": "", "toy": "", "spot": 1, "training": {"Sit": 0, "Stay": 0, "Come": 0}, "friends": {}, "favors": {}, "keepsakes": [], "photos": [], "day": "", "daily": {}, "event_claimed": ""}
+	return {"beach":IslandActivities.fresh(), "bowl":true, "bowl_spot":1, "toy_spot":1, "delivery":{"recipient":"", "claimed":"", "completed":0}, "playdate": {"day":"", "step":0, "claimed":"", "visits":0}, "story": {}, "accessory": "", "bed": "", "toy": "", "spot": 1, "training": {"Sit": 0, "Stay": 0, "Come": 0}, "friends": {}, "favors": {}, "keepsakes": [], "photos": [], "day": "", "daily": {}, "event_claimed": ""}
 
 static func home_point(game: Node, kind: String) -> Vector2:
 	match kind:
@@ -101,13 +101,13 @@ static func train(game: Node, command: String) -> String:
 		return "Let those paws take a breather before another lesson."
 	if game.life.training[command] >= 5:
 		game.cooldowns.Training = 20.0
-		game.care_performed.emit(command if command != "Stay" else "Sit")
+		game.care_performed.emit(command)
 		return "A lovely " + command.to_lower() + "! This command is already learned."
 	game.cooldowns.Training = 20.0
 	game.life.training[command] += 1
 	game.needs.Energy = maxf(0, game.needs.Energy - 2)
 	game.needs.Happiness = minf(100, game.needs.Happiness + 3)
-	game.care_performed.emit(command if command != "Stay" else "Sit")
+	game.care_performed.emit(command)
 	game.remember("Practiced " + command.to_lower() + " with Ben.")
 	game.changed.emit()
 	game.save_game()
@@ -190,6 +190,7 @@ static func deliver_parcel(game: Node, place: String) -> String:
 	return person + " received the parcel. Thank you! You earned 6 coins." + bonus
 
 static func discover(game: Node, index: int) -> void:
+	game.get_node("/root/Sound").feedback("discovery")
 	var item: String = KEEPSAKES[clampi(index, 0, 2)]
 	if item not in game.life.keepsakes:
 		game.life.keepsakes.append(item)
@@ -219,6 +220,8 @@ static func claim_event(game: Node) -> String:
 
 static func valid(data: Variant) -> bool:
 	if not data is Dictionary:
+		return false
+	if not IslandActivities.valid(data.get("beach", {})):
 		return false
 	var delivery = data.get("delivery", {"recipient":"", "claimed":"", "completed":0})
 	if not delivery is Dictionary or not delivery.get("claimed", "") is String or delivery.get("recipient", "") not in ["", "Nora", "Ben", "Leah", "Ren"]:
@@ -303,6 +306,7 @@ static func normalized(data: Dictionary) -> Dictionary:
 	for key in result:
 		if data.has(key):
 			result[key] = data[key].duplicate(true) if data[key] is Dictionary or data[key] is Array else data[key]
+	result.beach = IslandActivities.normalized(result.beach)
 	result.delivery = {"recipient": result.delivery.get("recipient", ""), "claimed": result.delivery.get("claimed", ""), "completed": int(result.delivery.get("completed", 0))}
 	for key in ["day", "claimed"]:
 		result.playdate[key] = result.playdate.get(key, "")

@@ -77,7 +77,7 @@ func run():
  game.needs = {"Hunger":80.0,"Happiness":80.0,"Energy":90.0,"Cleanliness":85.0}
  var main = load("res://scenes/main.tscn").instantiate()
  root.add_child(main)
- main.show_page("Shop")
+ main.browse_shop()
  var shop = main.body.get_child(0)
  shop.select_category("Care")
  check(not shop.rows.has("Medicine") and not shop.rows.has("Bandage"), "June does not sell veterinary supplies")

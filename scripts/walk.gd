@@ -78,6 +78,8 @@ func _next() -> void:
 	status.text = Game.personalize(MOMENTS[step])
 	Game.remember(MOMENTS[step])
 	IslandLife.discover(Game, step)
+	habitat.puppy.react_to_discovery()
+	status.text += {"Curious":" A curious little sniff!", "Cuddly":" A little moment shared with you.", "Playful":" An excited tail wiggle!"}[IslandLife.personality(Game)]
 	habitat.discovery.visible = false
 	step += 1
 	Game.checkpoint_outing(step)

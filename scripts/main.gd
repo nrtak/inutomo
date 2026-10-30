@@ -9,6 +9,7 @@ var notice_overlay: Control
 var notice_tween: Tween
 var reported_save_error = ""
 var hud: Control
+var daily_button: Button
 var camera_button: Button
 var photo_overlay: Control
 var photo_busy = false
@@ -21,6 +22,8 @@ var island_button: Button
 var leave_overlay: Control
 var outing_pause: Dictionary = {}
 var current_place = "Home"
+const LOCATION_PAGES = ["Park", "Beach", "Puppy Club", "Shop", "Vet Clinic", "Harbor", "Keeper’s Cottage", "Lighthouse"]
+var pending_beach_mode = ""
 var resident_overlay: Control
 var stage_overlay: Control
 var name_label: Label
@@ -117,6 +120,9 @@ func _ready() -> void:
 	island_button = UI.icon_button("Island", UI.place_icon("Island"), request_page.bind("Island"), Color("c2ecf4"))
 	island_button.custom_minimum_size = Vector2(104, 100)
 	travel.add_child(island_button)
+	daily_button = UI.icon_button("Today", preload("res://assets/ui/sunset.svg"), request_page.bind("Life:Daily"), Color("fff0bd"))
+	daily_button.custom_minimum_size = Vector2(104, 80)
+	travel.add_child(daily_button)
 	camera_button = UI.icon_button("Photo", preload("res://assets/ui/camera.svg"), open_photo_mode, Color("f9d8e2"))
 	camera_button.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	camera_button.offset_top = -100
@@ -185,7 +191,9 @@ func _ready() -> void:
 	menu_gap.custom_minimum_size.x = 20
 	header.add_child(menu_gap)
 	menu_button = UI.icon_button("Menu", preload("res://assets/ui/menu.svg"), open_navigation, Color("fff5e2"))
-	menu_button.custom_minimum_size = Vector2(104, 100)
+	menu_button.custom_minimum_size = Vector2(72, 68)
+	menu_button.get_meta("caption").visible = false
+	menu_button.get_meta("picture").offset_bottom = -9
 	menu_button.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	menu_button.size_flags_horizontal = Control.SIZE_SHRINK_END
 	header.add_child(menu_button)
@@ -323,13 +331,16 @@ func clear_body() -> void:
 func update_navigation() -> void:
 	camera_button.visible = page in ["Home", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Harbor", "Keeper’s Cottage"]
 	var scene_page = page in ["Home", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Harbor", "Keeper’s Cottage", "Fetch", "Walk"]
-	identity_card.visible = scene_page
+	identity_card.visible = page == "Home" or page in ["Fetch", "Walk"]
 	bag_button.visible = false
-	island_button.visible = scene_page and page not in ["Fetch", "Walk"]
-	home_button.visible = page != "Home"
-	back_button.visible = not scene_page and page != "Island"
-	page_label.visible = not scene_page
-	page_label.text = {"Life:Health Record": "Health History", "Life:Deliveries": "Harbor Parcels", "Life:Playdate": "Puppy Playdate", "Island": "Island Map", "Shop": "June’s Shop", "Vet Supplies": "Vet Supplies", "Bag": "Your Bag", "Journal": "Puppy Journal", "My Dogs": "My Dogs"}.get(page, "Puppy Playdate" if page == "Life:Playdate" else ("Island Life" if page.begins_with("Life") else page))
+	island_button.visible = page == "Home"
+	home_button.visible = false
+	back_button.visible = page != "Home"
+	back_button.text = "‹ Back to Island" if page in LOCATION_PAGES else ("‹ Back to Beach" if page == "Life:Beach Activities" else "‹ Back")
+	back_button.custom_minimum_size = Vector2(190 if page in LOCATION_PAGES or page == "Life:Beach Activities" else 112, 68)
+	page_label.visible = page != "Home" and page not in ["Fetch", "Walk"]
+	page_label.text = {"Life:Beach Activities":"Kai’s Beach Activities", "Life:Daily":"Today on the Island", "Life:Health Record": "Health History", "Life:Deliveries": "Harbor Parcels", "Life:Playdate": "Puppy Playdate", "Island": "Island Map", "Shop": "June’s Shop", "Vet Supplies": "Vet Supplies", "Bag": "Your Bag", "Journal": "Puppy Journal", "My Dogs": "My Dogs"}.get(page, "Puppy Playdate" if page == "Life:Playdate" else ("Island Life" if page.begins_with("Life") else page))
+	daily_button.visible = page == "Home"
 	actions.visible = page == "Home"
 	needs_card.visible = page in ["Home", "Fetch", "Walk"]
 	message_card.visible = false
@@ -341,6 +352,7 @@ func update_navigation() -> void:
 func set_scenery(location: String) -> void:
 	habitat = preload("res://scenes/home.tscn").instantiate()
 	habitat.location = location
+	habitat.location_presentation = page in LOCATION_PAGES
 	habitat.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	world_host.add_child(habitat)
 	if page == "Home" and not Game.pending_home_reaction.is_empty():
@@ -362,7 +374,7 @@ func show_page(dest: String) -> void:
 	if dest == "Home":
 		page_history.clear()
 	elif not returning_to_page and page != dest:
-		page_history.append("Home" if page in ["Fetch", "Walk"] else page)
+		page_history.append(("Park" if page == "Fetch" else "Beach") if page in ["Fetch", "Walk"] else page)
 		if page_history.size() > 20:
 			page_history.pop_front()
 	page = dest
@@ -387,9 +399,19 @@ func show_page(dest: String) -> void:
 		"My Dogs": dogs_page()
 		"Puppy Club", "Shop", "Vet Clinic", "Lighthouse", "Park", "Beach", "Harbor", "Keeper’s Cottage": location_page(dest)
 		"Bag": goods_page(false)
+		"Shop Goods": goods_page(true)
 		"Vet Supplies": goods_page(true, true)
 
 func go_back() -> void:
+	if page in LOCATION_PAGES:
+		request_page("Island")
+		return
+	if page in ["Fetch", "Walk"]:
+		request_page("Park" if page == "Fetch" else "Beach")
+		return
+	if page == "Life:Beach Activities":
+		request_page("Beach")
+		return
 	var destination = page_history.pop_back() if not page_history.is_empty() else "Home"
 	returning_to_page = true
 	show_page(destination)
@@ -545,7 +567,7 @@ func show_intro() -> void:
 	intro_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(intro_overlay)
 	var shade = ColorRect.new()
-	shade.color = Color(0.1, 0.18, 0.22, 0.5)
+	shade.color = Color(0.1, 0.18, 0.22, 0.18)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	intro_overlay.add_child(shade)
 	var col = UI.conversation_body(intro_overlay, Art.NORA, "Nora")
@@ -617,9 +639,6 @@ func close_growth_moment() -> void:
 	Game.set_process(true)
 
 func location_page(location: String) -> void:
-	if location == "Shop":
-		goods_page(true)
-		return
 	set_scenery(location)
 	var hub = load("res://scripts/location_hub.gd").new()
 	hub.host = self
@@ -641,7 +660,7 @@ func show_resident(texture: Texture2D, character_name: String, role: String, tex
 	resident_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(resident_overlay)
 	var shade = ColorRect.new()
-	shade.color = Color(0.1, 0.18, 0.22, 0.5)
+	shade.color = Color(0.1, 0.18, 0.22, 0.18)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	resident_overlay.add_child(shade)
 	var content = UI.conversation_body(resident_overlay, texture, character_name)
@@ -739,7 +758,7 @@ func open_navigation() -> void:
 	navigation_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(navigation_overlay)
 	var shade = ColorRect.new()
-	shade.color = Color(0.1, 0.18, 0.22, 0.5)
+	shade.color = Color(0.1, 0.18, 0.22, 0.18)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	navigation_overlay.add_child(shade)
 	var center = CenterContainer.new()
@@ -782,11 +801,18 @@ func close_navigation() -> void:
 	navigation_overlay = null
 
 func life_page(section: String) -> void:
-	set_scenery("Harbor" if section == "Deliveries" else ("Vet Clinic" if section == "Health Record" else ("Puppy Club" if section == "Playdate" else "Home")))
+	set_scenery("Beach" if section == "Beach Activities" else ("Harbor" if section == "Deliveries" else ("Vet Clinic" if section == "Health Record" else ("Puppy Club" if section == "Playdate" else "Home"))))
+	if section in ["Training", "Events", "Friends"]:
+		habitat.location = "Park" if section == "Training" else "Puppy Club"
+		habitat.background.texture = Art.BACKGROUNDS[habitat.location]
+		Daylight.apply_to(habitat.background, habitat.location)
 	var browser = load("res://scripts/life_browser.gd").new()
 	browser.host = self
-	browser.mode = section if section in browser.MODES or section in ["Playdate", "Health Record", "Deliveries"] else "Dog"
+	browser.mode = section if section in browser.MODES or section in ["Playdate", "Health Record", "Deliveries", "Beach Activities", "Daily"] else "Dog"
 	browser.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	if section == "Beach Activities":
+		browser.beach_mode = pending_beach_mode
+		pending_beach_mode = ""
 	body.add_child(browser)
 
 func open_photo_mode() -> void:
@@ -867,7 +893,7 @@ func show_need_tip(key: String) -> void:
 	tip_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(tip_overlay)
 	var shade = ColorRect.new()
-	shade.color = Color(0.1, 0.18, 0.22, 0.5)
+	shade.color = Color(0.1, 0.18, 0.22, 0.18)
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	tip_overlay.add_child(shade)
 	var center = CenterContainer.new()
@@ -922,3 +948,12 @@ func location_story_refresh(location: String) -> void:
 	hub.location = location
 	hub.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_child(hub)
+
+func open_beach_activity(kind: String) -> void:
+	pending_beach_mode = kind
+	request_page("Life:Beach Activities")
+
+func browse_shop(category: String = "Food") -> void:
+	show_page("Shop Goods")
+	var browser = body.get_child(0)
+	browser.select_category(category)

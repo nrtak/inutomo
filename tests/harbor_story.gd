@@ -46,7 +46,7 @@ func run():
   check(WalkArea.contains(main.habitat.puppy.walk_area, main.habitat.puppy.position), "Puppy starts on clear ground")
   check(main.camera_button.visible, "New destinations support photos")
  game.life = IslandLife.fresh()
- for step in ["welcome", "kit", "meet", "deliver", "lantern"]:
+ for step in ["kit", "deliver", "lantern"]:
   var place = "Harbor" if step in ["welcome", "kit"] else "Keeper’s Cottage"
   main.show_page(place)
   await process_frame

@@ -13,6 +13,7 @@ var clock = 0.0
 var decision = 3.0
 var controlled = false
 var base_scale = 1.0
+var location_portrait = false
 var reaction_time = 0.0
 var reaction_kind = ""
 var nap_remaining = 65.0
@@ -33,6 +34,9 @@ var sleepy_reaction = false
 var sleep_material: ShaderMaterial
 var style_material: ShaderMaterial
 var preview_accessory = ""
+var carrying_toy = false
+var discovery_time = 0.0
+var command_delay = 0.0
 var home_interactions = false
 var pending_decor_action = ""
 var arriving_at_decor = false
@@ -101,6 +105,7 @@ func request_move(point: Vector2) -> void:
 	else:
 		target = point
 	pending_decor_action = ""
+	carrying_toy = false
 	decision = 4.0
 
 func wake_briefly() -> void:
@@ -109,16 +114,46 @@ func wake_briefly() -> void:
 	napping = false
 
 func _process(delta: float) -> void:
+	if location_portrait:
+		if current_breed != Game.breed:
+			set_breed()
+		clock += delta
+		set_pose(Game.resting)
+		sprite.position.y = sin(clock * 2) * 0.7
+		return
 	if Game.paused_at > 0:
+		return
+	if Game.resting or PuppyHealth.unwell(Game):
+		command_delay = 0
+		if pending_decor_action in ["ToyVisit", "ToyReturn"]:
+			target = position
+			pending_decor_action = ""
+			carrying_toy = false
+	discovery_time = maxf(0, discovery_time - delta)
+	if command_delay > 0:
+		command_delay = maxf(0, command_delay-delta)
 		return
 	if settling_for_rest and (not Game.resting or position.distance_to(target) < 1):
 		settling_for_rest = false
 	if not pending_decor_action.is_empty() and position.distance_to(target) < 2:
 		var action = pending_decor_action
 		pending_decor_action = ""
-		arriving_at_decor = true
-		react_to_care(action)
-		arriving_at_decor = false
+		if action == "ToyVisit":
+			carrying_toy = true
+			reaction_icon.texture = Goods.picture(Game.life.toy)
+			reaction_icon.scale = Vector2.ONE * (45.0 / reaction_icon.texture.get_width())
+			reaction_icon.modulate.a = 1
+			target = WalkArea.nearest(walk_area, IslandLife.home_point(Game,"Rest") + Vector2(-45,30))
+			pending_decor_action = "ToyReturn"
+			decision = 30
+		else:
+			carrying_toy = false
+			arriving_at_decor = true
+			react_to_care("Play" if action == "ToyReturn" else action)
+			arriving_at_decor = false
+			if action == "ToyReturn":
+				mood = "Brought a favorite toy over to share"
+				Sound.play_effect("happy",-25)
 	clock += delta
 	decision -= delta
 	if current_breed != Game.breed:
@@ -161,8 +196,8 @@ func _process(delta: float) -> void:
 		return
 	reaction_time = maxf(0, reaction_time - delta)
 	queue_redraw()
-	reaction_icon.visible = reaction_time > 0
-	if reaction_time > 0 and not controlled:
+	reaction_icon.visible = reaction_time > 0 or carrying_toy
+	if reaction_time > 0 and not controlled and (reaction_kind != "Come" or position.distance_to(target) < 1):
 		sprite.flip_h = false
 		sprite.rotation = 0
 		var bounce = absf(sin(reaction_time * 7))
@@ -181,11 +216,12 @@ func _process(delta: float) -> void:
 				queue_redraw()
 			"Pet", "Treat":
 				sprite.position.y = -bounce * 2
-				sprite.rotation = sin(reaction_time * 5) * 0.025
+				sprite.rotation = (0.045 if reaction_kind == "Pet" and IslandLife.personality(Game) == "Cuddly" else 0) + sin(reaction_time * 5) * 0.025
 				reaction_icon.position = Vector2(50, -120 - bounce * 8)
-			"Sniff", "Sit":
-				sprite.position.y = bounce * 2
-				sprite.rotation = sin(reaction_time * 3) * 0.02
+			"Sniff", "Sit", "Stay":
+				var steadiness = 1.0 - float(Game.life.training.get(reaction_kind,0)) / 5.0
+				sprite.position.y = bounce * (2 if reaction_kind == "Sniff" else 2 * steadiness)
+				sprite.rotation = sin(reaction_time * 3) * 0.02 * (1.0 if reaction_kind == "Sniff" else steadiness)
 				reaction_icon.position = Vector2(65, -90)
 			_:
 				sprite.position.y = 0
@@ -196,7 +232,9 @@ func _process(delta: float) -> void:
 	sprite.rotation = 0
 	if decision <= 0 and not controlled:
 		decision = 20.0 if baby else randf_range(3, 6)
-		if baby:
+		if home_interactions and IslandLife.personality(Game) == "Playful" and randf() < 0.3 and begin_toy_visit():
+			pass
+		elif baby:
 			target = position + Vector2(randf_range(-30, 30) * (1 + Game.growth_fraction() * 2), randf_range(-5, 5))
 			target = target.clamp(bounds.position, bounds.end)
 			mood = "A tiny stretch before another nap"
@@ -226,6 +264,8 @@ func _process(delta: float) -> void:
 		move_speed = move_toward(move_speed, minf(desired_speed, braking_speed), delta * 320)
 		var step_distance = minf(distance, delta * move_speed)
 		var direction = (target - position).normalized()
+		if carrying_toy:
+			reaction_icon.position = Vector2(-45 if direction.x < 0 else 45, -65)
 		position = WalkArea.nearest(walk_area, position + direction * step_distance)
 		stride_distance += step_distance
 		footfall_distance += step_distance
@@ -271,8 +311,10 @@ func set_walk_pose() -> void:
 func react_to_care(kind: String) -> void:
 	if controlled:
 		return
+	command_delay = 0
 	if not arriving_at_decor:
 		pending_decor_action = ""
+		carrying_toy = false
 	if home_interactions and not arriving_at_decor and ((kind == "Feed" and Game.life.bowl) or (kind == "Play" and Game.items.get(Game.life.toy, 0) > 0)):
 		var destination = WalkArea.nearest(walk_area, IslandLife.home_point(Game, kind))
 		if position.distance_to(destination) > 2:
@@ -303,7 +345,7 @@ func react_to_care(kind: String) -> void:
 	reaction_time = reaction_duration
 	decision = 4.0
 	target = position
-	var icon_name: String = {"Pet": "heart", "Treat": "treat", "Sniff": "shell", "Sit": "training_treat", "Come": "heart"}.get(kind, kind.to_lower())
+	var icon_name: String = {"Pet": "heart", "Treat": "treat", "Sniff": "shell", "Sit": "training_treat", "Stay":"training_treat", "Come": "heart"}.get(kind, kind.to_lower())
 	if kind == "Treat" and Game.last_food == IslandLife.favorite(Game, "Food"):
 		icon_name = "heart"
 	if kind == "Play" and Game.life.toy == IslandLife.favorite(Game, "Toys") and Game.items.get(Game.life.toy, 0) > 0:
@@ -313,15 +355,42 @@ func react_to_care(kind: String) -> void:
 		reaction_icon.texture = Goods.picture(Game.life.toy)
 	reaction_icon.scale = Vector2.ONE * (58.0 / reaction_icon.texture.get_width())
 	mood = {"Feed": "Enjoying a tasty snack", "Play": "Wiggling with excitement", "Care": "Feeling fresh and loved", "Rest": "Settling in for a nap", "Pet": "Leaning into a gentle pat", "Treat": "Savoring a little reward", "Sniff": "Sniffing the salty breeze", "Sit": "Trying a patient little sit"}.get(kind, "Enjoying island life")
+	if kind in IslandLife.COMMANDS:
+		var level = int(Game.life.training.get(kind,0))
+		command_delay = float(5-level) * 0.10
+		reaction_duration = 2.4 + level * 0.25
+		reaction_time = reaction_duration
+		mood = ("Confident " if level == 5 else "Practicing ") + kind.to_lower()
 	if kind == "Come":
 		mood = "Coming when you call"
-		target = WalkArea.nearest(walk_area, position + Vector2(45, 0))
+		target = WalkArea.nearest(walk_area, position + Vector2(55 + int(Game.life.training.Come) * 10, 0))
 	if kind == "Rest" and not Game.resting:
 		mood = "Ready for a new adventure"
 
 func _draw() -> void:
+	if discovery_time > 0 and IslandLife.personality(Game) == "Curious":
+		for i in 3:
+			draw_circle(Vector2(40+i*14,-12-i*9),3,Color(0.4,0.8,0.7,minf(1,discovery_time)))
 	if reaction_time > 0 and reaction_kind == "Care" and not controlled:
 		for i in 5:
 			var rise = fmod(reaction_duration - reaction_time + i * 0.35, 1.8)
 			var point = Vector2(-55 + i * 27, -25 - rise * 65)
 			draw_circle(point, 4 + i % 3, Color(0.7, 0.9, 1, minf(0.8, reaction_time)), false, 2)
+
+func react_to_discovery() -> void:
+	discovery_time = 1.8
+	mood = {"Curious":"Investigating a new island find", "Cuddly":"Sharing a little discovery with you", "Playful":"Excited about a new treasure"}[IslandLife.personality(Game)]
+	if not controlled and not Game.resting:
+		react_to_care("Sniff" if IslandLife.personality(Game) == "Curious" else "Pet")
+
+func begin_toy_visit() -> bool:
+	if not home_interactions or controlled or not Game.can_explore() or Game.items.get(Game.life.toy,0) <= 0 or not pending_decor_action.is_empty():
+		return false
+	wake_briefly()
+	awake_remaining = maxf(awake_remaining,30)
+	reaction_time = 0
+	target = WalkArea.nearest(walk_area,IslandLife.home_point(Game,"Play"))
+	pending_decor_action = "ToyVisit"
+	decision = 30
+	mood = "Fetching a toy to share"
+	return true

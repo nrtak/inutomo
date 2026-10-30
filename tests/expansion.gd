@@ -114,6 +114,9 @@ func run() -> void:
 	check(Art.daily_portrait(Art.HOME, "2026-10-28") == Art.HOME, "Non-character artwork stays unchanged")
 	for portrait in [Art.NORA_CORAL, Art.JUNE_MINT, Art.BEN_TRAINING, Art.LEAH_TUNIC, Art.OWEN_PARCEL, Art.REN_SWEATER]:
 		check(portrait.get_image().get_pixel(0,0).a == 0, "Alternate portraits preserve transparent backgrounds")
+	IslandLife.talk(game,"Kai")
+	check(game.life.friends.has("Kai") and IslandLife.valid(game.life), "Kai joins saved friendships")
+	check(Art.daily_portrait(Art.KAI) == Art.KAI, "Kai keeps his approved look until alternate outfits are added")
 	var main = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
 	current_scene = main
@@ -177,7 +180,7 @@ func run() -> void:
 
 	check(Goods.featured("2026-10-28") == Goods.featured("2026-10-28"), "Daily picks stay consistent throughout a day")
 	check(Goods.featured("2026-10-28") != Goods.featured("2026-10-29"), "Daily picks rotate on a new local date")
-	main.show_page("Shop")
+	main.browse_shop()
 	var shop_preview = main.body.get_child(0)
 	shop_preview.select_category("Featured")
 	check(shop_preview.rows.size() == 3, "June offers three featured goods")
@@ -232,7 +235,7 @@ func run() -> void:
 	main.show_page("Life:Friends")
 	var friend_browser = main.body.get_child(0)
 	for person in IslandLife.PEOPLE:
-		var portrait = {"Nora": Art.NORA, "Ben": Art.BEN, "June": Art.JUNE, "Leah": Art.LEAH, "Owen": Art.OWEN, "Ren": Art.REN}[person]
+		var portrait = {"Kai": Art.KAI, "Nora": Art.NORA, "Ben": Art.BEN, "June": Art.JUNE, "Leah": Art.LEAH, "Owen": Art.OWEN, "Ren": Art.REN}[person]
 		for asking in [false, true]:
 			friend_browser.friend_conversation(person, portrait, asking)
 			check(is_instance_valid(main.resident_overlay) and not main.hud.visible, "Friend greetings and favors use the large portrait for " + person)
