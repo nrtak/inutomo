@@ -71,12 +71,12 @@ public:
  }
 };
 static PuppyPedometer *singleton = nullptr;
-extern "C" void init_puppy_pedometer() {
+void init_puppy_pedometer() {
  GDREGISTER_CLASS(PuppyPedometer);
  singleton = memnew(PuppyPedometer);
  Engine::get_singleton()->add_singleton(Engine::Singleton("PuppyPedometer", singleton));
 }
-extern "C" void deinit_puppy_pedometer() {
+void deinit_puppy_pedometer() {
  Engine::get_singleton()->remove_singleton("PuppyPedometer");
  if (singleton) { memdelete(singleton); singleton = nullptr; }
 }
