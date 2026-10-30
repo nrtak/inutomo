@@ -47,7 +47,8 @@ func _ready() -> void:
 	row.add_child(panel)
 	var content = UI.column(24)
 	panel.add_child(content)
-	content.add_child(UI.label("Puppy Island", 60))
+	content.add_child(UI.label("Inushima", 60))
+	content.add_child(UI.label("Puppy Island", 30, UI.TEAL))
 	start_button = UI.button("Continue" if Game.intro_seen else "Start Adventure", enter_game, Color("bdeab0"))
 	start_button.custom_minimum_size.y = 88
 	content.add_child(start_button)

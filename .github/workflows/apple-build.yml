@@ -93,6 +93,8 @@ jobs:
         run: |
           mkdir -p build/ios
           Godot --headless --path . --export-release iOS build/ios/PuppyIsland.zip
+      - name: Set app display names
+        run: python3 scripts/set_app_branding.py --ios build/ios --macos build/macos/PuppyIsland.zip
       - name: Compile unsigned iPhone app
         run: |
           xcodebuild -project build/ios/PuppyIsland.xcodeproj \

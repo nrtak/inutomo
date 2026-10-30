@@ -54,7 +54,7 @@ var intro_text: CommandHint
 var intro_progress: Label
 var intro_next: Button
 const INTRO_PAGES = [
-	"Welcome! I’m Nora from the Puppy Club. Let’s meet your little friend.",
+	"Welcome to Inushima! I’m Nora from the Puppy Club. Let’s meet your little friend.",
 	"This is Mochi! A tiny puppy with a big future. Their breed is still a mystery.",
 	"Feed, play, care and rest. Little moments help Mochi grow.",
 	"Open Island to explore. Find me at the Puppy Club, and follow your journey in the Journal!"

@@ -54,6 +54,7 @@ var storage_path = SAVE_PATH
 var paused_at = 0.0
 
 func _ready() -> void:
+	DisplayServer.window_set_title("Inushima: Puppy Island")
 	load_game()
 	record_play_day()
 
