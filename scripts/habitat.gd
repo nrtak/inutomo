@@ -10,6 +10,10 @@ var discovery: Sprite2D
 var ball: Sprite2D
 var home_toy: Sprite2D
 var playmate: Sprite2D
+var playmate_name: Label
+var shared_clock = -1.0
+var shared_kind = ""
+var shared_name = ""
 var playdate_tween: Tween
 var restoration: Node2D
 var decor_targets: Dictionary = {}
@@ -115,7 +119,7 @@ func _resize_world() -> void:
 		var zoom = 1.42 if location == "Home" or not is_zero_approx(view_offset.x) else 1.0
 		var factor = maxf(size.x / 1280.0, size.y / 720.0) * zoom
 		world.scale = Vector2.ONE * factor
-		var focus = Vector2(650, 410) if location == "Home" else Vector2(640, 360)
+		var focus = Vector2(650,410) if location == "Home" else Vector2(640,410 if not is_zero_approx(view_offset.x) else 360)
 		world.position = size * 0.5 - focus * factor + view_offset
 		background.position.y = maxf(0,-world.position.y/factor) if location in ["Lighthouse","Keeper’s Cottage"] else 0.0
 		if is_instance_valid(restoration):
@@ -155,6 +159,7 @@ func set_walk_stop(index: int) -> void:
 
 func show_playmate() -> void:
 	if is_instance_valid(playmate):
+		update_playmate()
 		return
 	playmate = Sprite2D.new()
 	playmate.texture = Art.PUPPIES.Puppy
@@ -167,8 +172,13 @@ func show_playmate() -> void:
 	playmate.offset.y = -playmate.texture.get_height() * 0.5
 	playmate.position = Vector2(770, 580)
 	world.add_child(playmate)
+	playmate_name = UI.label("",19,UI.INK)
+	world.add_child(playmate_name)
+	update_playmate()
 
 func animate_playdate(step: int) -> void:
+	shared_clock = -1.0
+	discovery.visible = false
 	show_playmate()
 	if playdate_tween != null and playdate_tween.is_valid():
 		playdate_tween.kill()
@@ -176,7 +186,7 @@ func animate_playdate(step: int) -> void:
 	playmate.rotation = 0
 	playmate.modulate = Color.WHITE
 	playmate.region_enabled = false
-	playmate.texture = Art.PUPPIES.Puppy
+	playmate.texture = Art.PUPPIES[IslandAdventure.BUDDIES[IslandAdventure.companion(Game)].breed]
 	playmate.scale = Vector2.ONE * (170.0 / playmate.texture.get_height())
 	playmate.offset = Vector2(0, -playmate.texture.get_height() * 0.5)
 	playmate.position = Vector2(770, 580)
@@ -197,9 +207,9 @@ func animate_playdate(step: int) -> void:
 		playdate_tween.tween_property(playmate,"position:y",580.0,0.3)
 		playdate_tween.tween_callback(func(): ball.visible = false)
 	else:
-		playmate.texture = Art.PUPPY_SLEEP
+		playmate.texture = Art.SLEEP_TEXTURES[IslandAdventure.BUDDIES[IslandAdventure.companion(Game)].breed]
 		playmate.region_enabled = true
-		playmate.region_rect = Rect2(Art.PUPPY_SLEEP_REGION)
+		playmate.region_rect = Rect2(Vector2.ZERO,playmate.texture.get_size())
 		playmate.offset = Vector2(0,-playmate.region_rect.size.y*0.5)
 		playmate.scale = Vector2.ONE * (110.0 / playmate.region_rect.size.y)
 		playdate_tween.tween_property(playmate,"modulate",Color("fff3da"),0.7)
@@ -231,7 +241,10 @@ func roll_sand_ball() -> void:
 	playdate_tween.tween_property(ball,"position",origin,1.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	playdate_tween.tween_callback(func(): ball.visible = false)
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if shared_clock >= 0 and Game.paused_at<=0:
+		shared_clock += delta
+		update_shared_game()
 	if is_instance_valid(home_toy) and is_instance_valid(puppy):
 		home_toy.visible = not puppy.carrying_toy
 
@@ -247,7 +260,8 @@ func present_location_dog() -> void:
 		return
 	puppy.position = WalkArea.nearest(puppy.walk_area, Vector2(660, 650))
 	puppy.target = puppy.position
-	puppy.scale = Vector2.ONE * (1.85 if Game.breed == "Puppy" else 1.05)
+	puppy.portrait_scale_height = 320.0
+	puppy.scale = Vector2.ONE * minf(1.85,320.0/(puppy.visible_size.y*puppy.base_scale))
 
 func decor_contains(action: String, point: Vector2) -> bool:
 	var prop = decor_sprites.get(action) as Sprite2D
@@ -255,3 +269,69 @@ func decor_contains(action: String, point: Vector2) -> bool:
 		return false
 	var local_point = prop.to_local(world.to_global(point))
 	return prop.get_rect().grow(6.0 / maxf(0.01, prop.scale.x)).has_point(local_point)
+
+func update_playmate() -> void:
+	var name = IslandAdventure.companion(Game)
+	var buddy: Dictionary = IslandAdventure.BUDDIES[name]
+	if shared_clock < 0 and (playdate_tween == null or not playdate_tween.is_running()):
+		playmate.texture = Art.PUPPIES[buddy.breed]
+		playmate.region_enabled = false
+		playmate.offset = Vector2(0,-playmate.texture.get_height()*0.5)
+		playmate.scale = Vector2.ONE*(170.0/playmate.texture.get_height())
+	playmate.material.set_shader_parameter("bandana",buddy.color)
+	playmate_name.text = name
+	playmate_name.autowrap_mode = TextServer.AUTOWRAP_OFF
+	playmate_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	playmate_name.size = Vector2(110,30)
+	playmate_name.position = Vector2(715,380)
+
+func animate_shared_game(kind: String) -> void:
+	show_playmate()
+	if playdate_tween != null and playdate_tween.is_valid():
+		playdate_tween.kill()
+	ball.visible = false
+	discovery.visible = false
+	shared_kind = kind
+	shared_name = IslandAdventure.companion(Game)
+	shared_clock = 0
+	playmate.rotation = 0
+	playmate.modulate = Color.WHITE
+	playmate.flip_h = false
+	playmate.position = Vector2(770,580)
+	update_shared_game()
+
+func update_shared_game() -> void:
+	if shared_clock >= 3.2 or shared_name != IslandAdventure.companion(Game) or not Game.can_explore():
+		shared_clock = -1.0
+		discovery.visible = false
+		playmate.flip_h = false
+		playmate.position = Vector2(770,580)
+		update_playmate()
+		return
+	var breed: String = IslandAdventure.BUDDIES[shared_name].breed
+	playmate.region_enabled = true
+	if shared_kind == "Mirror tricks":
+		var order = [0,1,2,1,0]
+		var index = 1 if Game.reduce_motion else int(order[mini(4,int(shared_clock/3.2*5))])
+		playmate.texture = Art.trick_sheet(breed)
+		playmate.region_rect = Art.trick_frames(breed,"Paw")[index]
+		playmate.scale = Vector2.ONE*(170.0/float(Art.TRICK_DATA[breed].height))
+	else:
+		var travel = minf(1.0,shared_clock/1.2)
+		playmate.position = Vector2(770,580).lerp(Vector2(715,580),travel)
+		if travel < 1 and not Game.reduce_motion:
+			var frame = int(shared_clock*8)%8
+			playmate.texture = Art.WALKS[breed]
+			playmate.region_rect = Art.WALK_REGIONS[breed][frame]
+			playmate.scale = Vector2.ONE*(170.0/float(Art.WALK_HEIGHTS[breed]))
+			playmate.flip_h = true
+		else:
+			playmate.texture = Art.PUPPIES[breed]
+			playmate.region_rect = Rect2(Vector2.ZERO,playmate.texture.get_size())
+			playmate.scale = Vector2.ONE*(170.0/playmate.texture.get_height())
+			playmate.flip_h = false
+		discovery.visible = travel >= 1
+		discovery.texture = Goods.picture("Toy")
+		discovery.position = Vector2(675,580)
+		discovery.scale = Vector2.ONE*(50.0/discovery.texture.get_width())
+	playmate.offset = Vector2(0,-playmate.region_rect.size.y*0.5)

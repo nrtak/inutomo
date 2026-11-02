@@ -32,7 +32,7 @@ static func restoration_step(game: Node) -> Dictionary:
   return {"text":"Show Ren your sea glass and help polish his display lens. Your keepsake stays with you.", "button":"Polish display lens", "place":"Keeper’s Cottage", "action":"lens_polished"}
  if not story.get("beacon_checked", false):
   return {"text":"Join Ren at the cottage while he checks the lighthouse signal.", "button":"Check lighthouse signal", "place":"Keeper’s Cottage", "action":"beacon_checked"}
- return {"text":"Restoration complete! The cottage path and display are ready, and Ren checked the beacon. Tower visits will come in a later chapter.", "button":"Visit Ren", "place":"Keeper’s Cottage", "action":""}
+ return {"text":"Restoration complete! The cottage path and display are ready, and Ren checked the beacon. Ren can now welcome you into the lighthouse observation room.", "button":"Visit Lighthouse", "place":"Lighthouse", "action":""}
 
 static func next_step(game: Node) -> Dictionary:
  var story: Dictionary = game.life.story
@@ -108,7 +108,7 @@ static func advance(game: Node, action: String) -> String:
     "repair_supplies":"Owen handed over the repair crate. Take it to Ren at the cottage.",
     "path_repaired":"The cottage path is tidy and repaired! Next, let's add a sea-glass display beside the lantern.",
     "lens_polished":"The display lens sparkles beside your sea glass. Your keepsake stays in your collection.",
-    "beacon_checked":"Ren checked the beacon while you waited safely at the cottage. A welcoming light again! You earned 15 coins. Tower visits will come in a later chapter."
+    "beacon_checked":"Ren checked the beacon while you waited safely at the cottage. A welcoming light again! You earned 15 coins. Ren can now welcome you into the lighthouse observation room."
    }
    message = messages[action]
    memory = {"repair_supplies":"Collected Ren's repair crate.", "path_repaired":"Helped Ren repair the cottage path.", "lens_polished":"Helped polish Ren's sea-glass display lens.", "beacon_checked":"Finished Ren's restoration chapter and checked the beacon."}[action]

@@ -50,7 +50,7 @@ static func walk_values(field: String) -> Dictionary:
 	return result
 
 const REN = preload("res://assets/characters/ren_cel_0.tres")
-const BACKGROUNDS = {"Harbor": preload("res://assets/backgrounds/harbor_cel.png"), "Keeper’s Cottage": preload("res://assets/backgrounds/cottage_cel.png"),"Home": HOME, "Park": PARK, "Beach": BEACH,
+const BACKGROUNDS = {"Lighthouse Room":preload("res://assets/backgrounds/lighthouse_room_cel.png"),"Harbor": preload("res://assets/backgrounds/harbor_cel.png"), "Keeper’s Cottage": preload("res://assets/backgrounds/cottage_cel.png"),"Home": HOME, "Park": PARK, "Beach": BEACH,
 	"Puppy Club": preload("res://assets/backgrounds/club_cel.png"),
 	"Shop": preload("res://assets/backgrounds/shop_cel.png"),
 	"Vet Clinic": preload("res://assets/backgrounds/vet_cel.png"),
@@ -114,3 +114,18 @@ static func resident_frames(source: Texture2D) -> Array[Texture2D]:
 	frame.atlas = source
 	frame.region = source.get_image().get_used_rect()
 	return [frame]
+
+static var TRICK_DATA: Dictionary = preload("res://assets/puppies/trick_cel_frames.json").data
+static var trick_cache: Dictionary = {}
+static func trick_frames(breed: String, command: String) -> Array[Rect2]:
+	var result: Array[Rect2] = []
+	if not TRICK_DATA.has(breed) or not TRICK_DATA[breed].rows.has(command):
+		return result
+	for bounds in TRICK_DATA[breed].rows[command]:
+		result.append(Rect2(bounds[0],bounds[1],bounds[2],bounds[3]))
+	return result
+
+static func trick_sheet(breed: String) -> Texture2D:
+	if not trick_cache.has(breed):
+		trick_cache[breed] = load("res://"+TRICK_DATA[breed].atlas)
+	return trick_cache[breed]

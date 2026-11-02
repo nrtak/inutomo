@@ -5,6 +5,7 @@ var character_name = ""
 var text = ""
 var duration = 6.0
 var scene_style = ""
+var talk: Callable
 
 func _ready() -> void:
  name = "LocationGreeting"
@@ -16,7 +17,12 @@ func _ready() -> void:
  var atlas = portrait.texture
  portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
  portrait.stretch_mode = TextureRect.STRETCH_SCALE
- portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ portrait.mouse_filter = Control.MOUSE_FILTER_STOP if talk.is_valid() else Control.MOUSE_FILTER_IGNORE
+ portrait.tooltip_text = "Tap to hear " + character_name + "'s story"
+ portrait.gui_input.connect(func(event: InputEvent):
+  if event is InputEventMouseButton and event.pressed and event.button_index==MOUSE_BUTTON_LEFT and talk.is_valid():
+   talk.call()
+ )
  portrait.clip_contents = false
  add_child(portrait)
  var bubble = UI.card()

@@ -114,7 +114,7 @@ func _ready() -> void:
     else:
      add_primary(step.button, preload("res://assets/ui/sunset.svg"), story_action.bind(step.action))
    else:
-    add_primary("Island stories", preload("res://assets/ui/menu_journal.svg"), host.request_page.bind("Journal"))
+    add_primary("Visit lighthouse", UI.place_icon("Lighthouse"), host.enter_lighthouse)
    if story.get("met_keeper", false) and not story.get("lantern", false):
     pass
    else:
@@ -125,6 +125,7 @@ func _ready() -> void:
    description.text = "An open plaza for little paws and bouncy balls."
    var text = "Resume Fetch" if Game.has_outing("Fetch") else "Play Fetch"
    add_primary(text, preload("res://assets/ui/play.svg"), host.start_activity.bind("Fetch"), Color("c8eddd"))
+   add_choice("Scent trail", preload("res://assets/ui/leaf.svg"), host.start_scent_trail, Color("fff0bd"))
    add_choice("Training", preload("res://assets/ui/training_treat.svg"), host.show_page.bind("Life:Training"), Color("f9d8e2"))
    feedback.text = "Three throws. Earn island coins."
   "Beach":
@@ -135,7 +136,7 @@ func _ready() -> void:
   "Puppy Club":
    description.text = "Meet Nora and your island friends."
    wallet.visible = false
-   add_choice("Puppy playdate", preload("res://assets/ui/heart.svg"), host.show_page.bind("Life:Playdate"))
+   add_choice(("Cozy playdate" if IslandWeather.current()=="Light rain" else "Puppy playdate"), preload("res://assets/ui/heart.svg"), host.show_page.bind("Life:Playdate"))
    add_primary("Today's event", preload("res://assets/ui/heart.svg"), host.show_page.bind("Life:Events"), Color("f9d8e2"))
    add_choice("Friends", preload("res://assets/ui/club.svg"), host.show_page.bind("Life:Friends"), Color("e1d9f6"))
   "Shop":
@@ -151,9 +152,16 @@ func _ready() -> void:
    add_choice("Rest at Home", preload("res://assets/ui/rest.svg"), rest_at_home, Color("e1d9f6"))
    add_choice("Health history", UI.resident_icon(Art.LEAH), host.show_page.bind("Life:Health Record"), Color("ffdfb5"))
   "Lighthouse":
-   description.text = "A quiet lookout for a later chapter."
-   feedback.text = "Preview only. The Lighthouse is still closed."
+   if IslandAdventure.tower_open(Game):
+    add_primary("Visit observation room", UI.place_icon("Lighthouse"), host.enter_lighthouse)
+   else:
+    feedback.text = "Help Ren finish the cottage restoration to open the lighthouse."
+    add_primary("Visit Ren", UI.place_icon("Keeper’s Cottage"),host.request_page.bind("Keeper’s Cottage"))
    add_choice("Island map", preload("res://assets/ui/island.svg"), host.show_page.bind("Island"))
+  "Lighthouse Room":
+   add_primary("The lighthouse story", UI.resident_icon(Art.REN), func(): host.show_resident(Art.REN,"Ren","Lighthouse keeper","Welcome to the observation room! The lens is safely behind its rail. That light has welcomed island families home for years. Enjoy the view with your little friend."))
+   add_choice("Take a keepsake photo", preload("res://assets/ui/beach_camera.svg"),host.open_photo_mode, Color("f9d8e2"))
+   add_choice("Back to the lookout",UI.place_icon("Lighthouse"),host.request_page.bind("Lighthouse"))
  Game.changed.connect(refresh)
  if Game.life.delivery.recipient != "" and IslandLife.delivery_info(Game).place == location:
   add_choice("Deliver parcel", preload("res://assets/ui/menu_bag.svg"), deliver_parcel, Color("fff0bd"))
@@ -195,7 +203,7 @@ func refresh() -> void:
  unavailable.text = blocked + "." if not blocked.is_empty() else ""
  unavailable.visible = location in ["Park", "Beach", "Puppy Club"] and not blocked.is_empty()
  for button in primary_actions.get_children() + choices.get_children():
-  if button.text in ["Play Fetch", "Resume Fetch", "Go for a walk", "Resume Walk", "Find shells", "Beach cleanup", "Sand fetch", "Puppy playdate", "Training"]:
+  if button.text in ["Play Fetch", "Resume Fetch", "Go for a walk", "Resume Walk", "Find shells", "Beach cleanup", "Sand fetch", "Puppy playdate", "Cozy playdate", "Scent trail", "Training"]:
    button.disabled = not blocked.is_empty()
    button.tooltip_text = blocked if not blocked.is_empty() else button.text
  if location == "Puppy Club":
@@ -302,7 +310,7 @@ func show_greeting() -> void:
   if child.name == "LocationGreeting":
    host.world_host.remove_child(child)
    child.queue_free()
- var people = {"Puppy Club":[Art.NORA,"Nora","Welcome! A playdate or an island event?"], "Park":[Art.BEN,"Ben","Ready to play? Try Fetch or practice a trick."], "Beach":[Art.KAI,"Kai","Welcome to the beach! What shall we try?"], "Shop":[Art.JUNE,"June","Welcome! Choose a shelf to browse."], "Vet Clinic":[Art.LEAH,"Leah","Free checkups and gentle care."], "Harbor":[Art.OWEN,"Owen","Welcome! Let’s help the island."], "Keeper’s Cottage":[Art.REN,"Ren","Good to see you. The light needs us."]}
+ var people = {"Puppy Club":[Art.NORA,"Nora","Welcome! A playdate or an island event?"], "Park":[Art.BEN,"Ben","Ready to play? Try Fetch or practice a trick."], "Beach":[Art.KAI,"Kai","Welcome to the beach! What shall we try?"], "Shop":[Art.JUNE,"June","Welcome! Choose a shelf to browse."], "Vet Clinic":[Art.LEAH,"Leah","Free checkups and gentle care."], "Harbor":[Art.OWEN,"Owen","Welcome! Let’s help the island."], "Keeper’s Cottage":[Art.REN,"Ren","Good to see you. The light needs us."], "Lighthouse Room":[Art.REN,"Ren","Welcome inside! Enjoy the island view."]}
  if location not in people:
   return
  var person = people[location]
@@ -313,8 +321,9 @@ func show_greeting() -> void:
  var visits = maxi(1 if Game.life.friends.has(person[1]) else 0,int(host.arrival_visits.get(location, 0)))
  greeting.duration = 6.0 if visits == 0 else 3.5
  var repeats = ["Lovely to see you both!", "Welcome back! What shall we try?", "Ready for another little adventure?"]
- greeting.text = person[2] if visits == 0 else repeats[visits % repeats.size()]
- if location == "Beach" and visits == 0:
+ greeting.text = IslandWeather.greeting(person[1],person[2] if visits == 0 else repeats[visits % repeats.size()])
+ greeting.talk = func(): host.show_resident(person[0],person[1],"Island friend",IslandAdventure.chapter(Game,person[1]))
+ if location == "Beach" and visits == 0 and IslandWeather.current()=="Sunny":
   greeting.text = "A peaceful evening by the sea." if Daylight.current_period in ["Evening","Night","Late night"] else "A perfect day for the beach!"
  host.arrival_visits[location] = visits + 1
  if not Game.life.friends.has(person[1]):

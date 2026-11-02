@@ -14,7 +14,7 @@ static func escaped(value: String) -> String:
 static func markup(value: String) -> String:
 	if commands == null:
 		commands = RegEx.new()
-		commands.compile("\\b(?:Go for a Walk|Throw the ball|Island life|Title screen|green zone|Feed|Play|Care|Rest|Wake|Throw|Fetch|Walk|Explore|Capture|Photo|Wardrobe|Training|Sit|Stay|Come|Buy|Use|Wear|Preview|Go|Close|Home|Island|Bag|Shop|Journal|Menu)\\b")
+		commands.compile("\\b(?:Go for a Walk|Throw the ball|Island life|Title screen|green zone|Feed|Play|Care|Rest|Wake|Throw|Fetch|Walk|Explore|Capture|Photo|Wardrobe|Training|Sit|Stay|Come|Paw|Spin|Bow|Roll Over|Sniff|Buy|Use|Wear|Preview|Go|Close|Home|Island|Bag|Shop|Journal|Menu)\\b")
 	var result = ""
 	var cursor = 0
 	for match in commands.search_all(value):

@@ -491,7 +491,7 @@ func valid_save(data: Variant) -> bool:
 		return false
 	for key in saved_cooldowns:
 		var remaining = saved_cooldowns[key]
-		if key not in ["Feed", "Play", "Care", "Goods", "Pet", "IslandMoment", "Training", "Playdate", "Beach"] or not (remaining is float or remaining is int) or not is_finite(float(remaining)) or remaining < 0 or remaining > (30 if key in ["IslandMoment", "Training"] else 12):
+		if key not in ["Feed", "Play", "Care", "Goods", "Pet", "IslandMoment", "Training", "Playdate", "Beach", "Scent"] or not (remaining is float or remaining is int) or not is_finite(float(remaining)) or remaining < 0 or remaining > (30 if key in ["IslandMoment", "Training"] else 12):
 			return false
 	var outings = data.get("saved_outings", {})
 	if not outings is Dictionary:

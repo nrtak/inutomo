@@ -13,6 +13,7 @@ var daily_button: Button
 var camera_button: Button
 var photo_overlay: Control
 var photo_busy = false
+var photo_stamp: Control
 var photo_reward: WeakRef
 var photo_reward_was_visible = false
 var photo_greeting: WeakRef
@@ -26,7 +27,7 @@ var island_button: Button
 var leave_overlay: Control
 var outing_pause: Dictionary = {}
 var current_place = "Home"
-const LOCATION_PAGES = ["Park", "Beach", "Puppy Club", "Shop", "Vet Clinic", "Harbor", "Keeper’s Cottage", "Lighthouse"]
+const LOCATION_PAGES = ["Park", "Beach", "Puppy Club", "Shop", "Vet Clinic", "Harbor", "Keeper’s Cottage", "Lighthouse", "Lighthouse Room"]
 var pending_beach_mode = ""
 var resident_overlay: Control
 var pending_location_refresh = ""
@@ -416,21 +417,21 @@ func update_navigation() -> void:
 		var camera_index = menu_button.get_index()-(1 if camera_button.get_index() < menu_button.get_index() else 0)
 		camera_parent.move_child(camera_button,camera_index)
 	camera_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	camera_button.visible = page in ["Home", "Shop", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Harbor", "Keeper’s Cottage"]
-	var scene_page = page in ["Home", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Harbor", "Keeper’s Cottage", "Fetch", "Walk"]
+	camera_button.visible = page in ["Home", "Shop", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Lighthouse Room", "Harbor", "Keeper’s Cottage"]
+	var scene_page = page in ["Home", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Harbor", "Keeper’s Cottage", "Lighthouse Room", "Fetch", "Walk", "Scent Trail"]
 	identity_card.visible = page == "Home" or page in ["Fetch", "Walk"]
 	bag_button.visible = false
 	island_button.visible = page == "Home"
 	home_button.visible = false
 	back_button.visible = page != "Home"
-	back_button.text = "‹ Back to Island" if page in LOCATION_PAGES else ("‹ Back to Beach" if page == "Life:Beach Activities" else "‹ Back")
-	back_button.custom_minimum_size = Vector2(190 if page in LOCATION_PAGES or page == "Life:Beach Activities" else 112, 68)
+	back_button.text = "‹ Back to Lighthouse" if page == "Lighthouse Room" else ("‹ Back to Park" if page == "Scent Trail" else ("‹ Back to Island" if page in LOCATION_PAGES else ("‹ Back to Beach" if page == "Life:Beach Activities" else "‹ Back")))
+	back_button.custom_minimum_size = Vector2(220 if page == "Lighthouse Room" else (190 if page in LOCATION_PAGES or page == "Life:Beach Activities" else 112), 68)
 	page_label.visible = page != "Home" and page not in ["Fetch", "Walk"]
-	page_label.text = {"Life:Beach Activities":"Kai’s Beach Activities", "Life:Daily":"To-do Today", "Life:Health Record": "Health History", "Life:Deliveries": "Harbor Parcels", "Life:Playdate": "Puppy Playdate", "Island": "Island Map", "Shop": "June’s Shop", "Vet Supplies": "Vet Supplies", "Bag": "Your Bag", "Journal": "Puppy Journal", "My Dogs": "My Dogs"}.get(page, "Puppy Playdate" if page == "Life:Playdate" else ("Island Life" if page.begins_with("Life") else page))
+	page_label.text = {"Life:Training":"Training", "Life:Wardrobe":"Wardrobe", "Life:Friends":"Friends", "Lighthouse Room":"Lighthouse Visit", "Life:Stories":"Island Stories", "Life:Dog Friends":"Dog Friends", "Life:Beach Activities":"Kai’s Beach Activities", "Life:Daily":"To-do Today", "Life:Health Record": "Health History", "Life:Deliveries": "Harbor Parcels", "Life:Playdate": "Puppy Playdate", "Island": "Island Map", "Shop": "June’s Shop", "Vet Supplies": "Vet Supplies", "Bag": "Your Bag", "Journal": "Puppy Journal", "My Dogs": "My Dogs"}.get(page, "Puppy Playdate" if page == "Life:Playdate" else ("Island Life" if page.begins_with("Life") else page))
 	daily_button.visible = page == "Home"
 	island_button.get_parent().visible = page == "Home"
 	actions.visible = page == "Home"
-	needs_card.visible = page in ["Home", "Fetch", "Walk"]
+	needs_card.visible = page in ["Home", "Fetch", "Walk", "Scent Trail"]
 	message_card.visible = false
 	health_badge.visible = page == "Home" and PuppyHealth.unwell(Game)
 	for key in nav_buttons:
@@ -448,6 +449,14 @@ func set_scenery(location: String) -> void:
 		Game.pending_home_reaction = ""
 
 func show_page(dest: String) -> void:
+	if dest == "Lighthouse Room" and not IslandAdventure.tower_open(Game):
+		show_feedback("Help Ren finish the cottage restoration first.")
+		return
+	if is_instance_valid(reward_notice):
+		reward_notice.queue_free()
+		reward_notice = null
+		reward_total = 0
+		reward_version += 1
 	if notice_tween != null and notice_tween.is_valid():
 		notice_tween.kill()
 	if is_instance_valid(notice_overlay):
@@ -467,13 +476,19 @@ func show_page(dest: String) -> void:
 			page_history.pop_front()
 	page = dest
 	if dest in Art.BACKGROUNDS:
-		current_place = dest
+		current_place = "Lighthouse" if dest == "Lighthouse Room" else dest
 	clear_body()
 	update_navigation()
 	if dest.begins_with("Life"):
 		life_page(dest.get_slice(":", 1) if ":" in dest else "Dog")
 		return
 	match dest:
+		"Scent Trail":
+			set_scenery("Park")
+			var trail = load("res://scripts/scent_trail.gd").new()
+			trail.host = self
+			trail.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			body.add_child(trail)
 		"Home":
 			set_scenery("Home")
 			var open_space = Control.new()
@@ -485,12 +500,18 @@ func show_page(dest: String) -> void:
 		"Island": island()
 		"Journal": journal_page()
 		"My Dogs": dogs_page()
-		"Puppy Club", "Shop", "Vet Clinic", "Lighthouse", "Park", "Beach", "Harbor", "Keeper’s Cottage": location_page(dest)
+		"Puppy Club", "Shop", "Vet Clinic", "Lighthouse", "Lighthouse Room", "Park", "Beach", "Harbor", "Keeper’s Cottage": location_page(dest)
 		"Bag": goods_page(false)
 		"Shop Goods": goods_page(true)
 		"Vet Supplies": goods_page(true, true)
 
 func go_back() -> void:
+	if page == "Lighthouse Room":
+		request_page("Lighthouse")
+		return
+	if page == "Scent Trail":
+		request_page("Park")
+		return
 	if page in LOCATION_PAGES:
 		page_history.clear()
 		returning_to_page = true
@@ -575,6 +596,7 @@ func page_panel() -> VBoxContainer:
 func journal_page() -> void:
 	var col = page_panel()
 	col.add_child(UI.label(Game.puppy_name + "'s Growth Journey", 30))
+	col.add_child(UI.button("Island stories",show_page.bind("Life:Stories"),Color("f9d8e2")))
 	var scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(scroll)
@@ -916,11 +938,11 @@ func close_navigation() -> void:
 	navigation_overlay = null
 
 func life_page(section: String) -> void:
-	var scenery = {"Beach Activities":"Beach", "Deliveries":"Harbor", "Health Record":"Vet Clinic", "Playdate":"Puppy Club", "Training":"Park", "Events":"Puppy Club", "Friends":"Puppy Club"}.get(section,"Home")
+	var scenery = {"Beach Activities":"Beach", "Deliveries":"Harbor", "Health Record":"Vet Clinic", "Playdate":"Puppy Club", "Training":"Park", "Events":"Puppy Club", "Friends":"Puppy Club", "Dog Friends":"Puppy Club", "Stories":"Puppy Club"}.get(section,"Home")
 	set_scenery(scenery)
 	var browser = load("res://scripts/life_browser.gd").new()
 	browser.host = self
-	browser.mode = section if section in browser.MODES or section in ["Playdate", "Health Record", "Deliveries", "Beach Activities", "Daily"] else "Dog"
+	browser.mode = section if section in browser.MODES or section in ["Playdate", "Health Record", "Deliveries", "Beach Activities", "Daily", "Dog Friends", "Stories"] else "Dog"
 	browser.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	if section == "Beach Activities":
 		browser.beach_mode = pending_beach_mode
@@ -931,7 +953,7 @@ func life_page(section: String) -> void:
 func open_photo_mode() -> void:
 	if is_instance_valid(photo_overlay):
 		return
-	if page not in ["Home", "Shop", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Harbor", "Keeper’s Cottage"]:
+	if page not in ["Home", "Shop", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Lighthouse Room", "Harbor", "Keeper’s Cottage"]:
 		show_page("Home")
 	photo_reward = weakref(reward_notice) if is_instance_valid(reward_notice) else null
 	photo_reward_was_visible = reward_notice.visible if is_instance_valid(reward_notice) else false
@@ -947,6 +969,32 @@ func open_photo_mode() -> void:
 		arrival_overlay.queue_free()
 	Game.set_process(false)
 	hud.visible = false
+	if page == "Lighthouse Room":
+		photo_stamp = Control.new()
+		photo_stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		photo_stamp.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		add_child(photo_stamp)
+		var border = Panel.new()
+		var frame = UI.style(Color.TRANSPARENT,12)
+		frame.border_color = Color("fff6e5")
+		frame.set_border_width_all(5)
+		border.add_theme_stylebox_override("panel",frame)
+		border.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		border.offset_left = 20
+		border.offset_right = -20
+		border.offset_top = 20
+		border.offset_bottom = -20
+		border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		photo_stamp.add_child(border)
+		var caption = UI.label(Game.puppy_name+" · Our lighthouse visit",22,Color("fff6e5"))
+		caption.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+		caption.offset_top = 34
+		caption.offset_bottom = 70
+		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		caption.add_theme_color_override("font_shadow_color",UI.INK)
+		caption.add_theme_constant_override("shadow_offset_x",1)
+		caption.add_theme_constant_override("shadow_offset_y",1)
+		photo_stamp.add_child(caption)
 	photo_overlay = Control.new()
 	photo_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	photo_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -971,6 +1019,9 @@ func open_photo_mode() -> void:
 func close_photo_mode() -> void:
 	if photo_busy:
 		return
+	if is_instance_valid(photo_stamp):
+		photo_stamp.queue_free()
+	photo_stamp = null
 	if is_instance_valid(photo_overlay):
 		photo_overlay.queue_free()
 	photo_overlay = null
@@ -1099,7 +1150,7 @@ func daily_shortcut(idea: Dictionary) -> void:
 		pulse.tween_property(target,"modulate",Color.WHITE,0.4)
 
 func show_coin_reward(amount: int) -> void:
-	if page in ["Fetch","Walk"]:
+	if page in ["Fetch","Walk","Scent Trail","Life:Playdate","Life:Beach Activities"]:
 		return
 	reward_total = reward_total + amount if is_instance_valid(reward_notice) else amount
 	if is_instance_valid(reward_notice):
@@ -1125,3 +1176,15 @@ func show_coin_reward(amount: int) -> void:
 			reward_notice = null
 		card.queue_free()
 	)
+
+func enter_lighthouse() -> void:
+	if not IslandAdventure.visit_tower(Game):
+		show_resident(Art.REN,"Ren","Lighthouse keeper","Help finish the restoration at my cottage first. Then I'll open the observation room for you both.")
+		return
+	show_page("Lighthouse Room")
+
+func start_scent_trail() -> void:
+	if not Game.can_explore():
+		show_feedback("A little rest or recovery first. Scent trails need 15 Energy.")
+		return
+	show_page("Scent Trail")

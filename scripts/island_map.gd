@@ -43,7 +43,7 @@ const PLACES = {
  "Shop": {"point": Vector2(0.28, 0.50), "text": "Visit June for treats, toys, care goods and comfort.", "art": "Shop"},
  "Vet Clinic": {"point": Vector2(0.80, 0.49), "text": "Leah offers a free checkup and gentle grooming.", "art": "Vet Clinic"},
  "Beach": {"point": Vector2(0.73, 0.77), "text": "Explore three discoveries, then walk back up the path.", "art": "Beach"},
- "Lighthouse": {"point": Vector2(0.77, 0.13), "text": "Locked for a later chapter. View the scenic preview.", "art": "Lighthouse"}
+ "Lighthouse": {"point": Vector2(0.77, 0.13), "text": "Help Ren restore the beacon, then visit the observation room.", "art": "Lighthouse"}
 }
 func _ready() -> void:
  mouse_filter = Control.MOUSE_FILTER_IGNORE

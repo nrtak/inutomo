@@ -17,6 +17,7 @@ var location_portrait = false
 var presentation_style = ""
 var portrait_width = 320.0
 var portrait_height = 325.0
+var portrait_scale_height = 0.0
 var reaction_time = 0.0
 var reaction_kind = ""
 var nap_remaining = 65.0
@@ -37,6 +38,8 @@ var sleepy_reaction = false
 var sleep_material: ShaderMaterial
 var style_material: ShaderMaterial
 var preview_accessory = ""
+var trick_command = ""
+var trick_elapsed = 0.0
 var carrying_toy = false
 var discovery_time = 0.0
 var command_delay = 0.0
@@ -125,12 +128,24 @@ func wake_briefly() -> void:
 func _process(delta: float) -> void:
 	if Game.paused_at > 0:
 		return
+	if not trick_command.is_empty():
+		if current_breed != Game.breed:
+			set_breed()
+		trick_elapsed += delta
+		if trick_elapsed < 3.2 and not Game.resting and not PuppyHealth.unwell(Game):
+			show_trick_pose()
+			return
+		trick_command = ""
+		reaction_time = 0
+		set_pose(Game.resting)
 	if location_portrait:
 		if current_breed != Game.breed:
 			set_breed()
 		clock += delta
 		napping = Game.resting
 		set_pose(Game.resting)
+		if portrait_scale_height > 0:
+			scale = Vector2.ONE*minf(1.85,portrait_scale_height/(visible_size.y*base_scale))
 		reaction_time = maxf(0,reaction_time-delta)
 		reaction_icon.visible = reaction_time > 0
 		sprite.position.y = 0 if Game.reduce_motion else sin(clock*2)*0.7
@@ -359,13 +374,16 @@ func react_to_care(kind: String) -> void:
 	if not sleepy_reaction:
 		wake_briefly()
 	reaction_kind = kind
+	if kind in ["Paw","Spin","Bow","Roll Over"]:
+		trick_command = kind
+		trick_elapsed = 0
 	reaction_duration = 3.2 if kind == "Feed" else (3.0 if kind == "Care" else 2.4)
 	if kind == "Pet" and IslandLife.personality(Game) == "Cuddly":
 		reaction_duration = 3.5
 	reaction_time = reaction_duration
 	decision = 4.0
 	target = position
-	var icon_name: String = {"Pet": "heart", "Treat": "treat", "Sniff": "shell", "Sit": "training_treat", "Stay":"training_treat", "Come": "heart"}.get(kind, kind.to_lower())
+	var icon_name: String = {"Pet": "heart", "Treat": "treat", "Sniff": "shell", "Sit": "training_treat", "Stay":"training_treat", "Come": "heart", "Paw":"training_treat", "Spin":"training_treat", "Bow":"training_treat", "Roll Over":"training_treat"}.get(kind, kind.to_lower())
 	if kind == "Treat" and Game.last_food == IslandLife.favorite(Game, "Food"):
 		icon_name = "heart"
 	if kind == "Play" and Game.life.toy == IslandLife.favorite(Game, "Toys") and Game.items.get(Game.life.toy, 0) > 0:
@@ -414,3 +432,26 @@ func begin_toy_visit() -> bool:
 	decision = 30
 	mood = "Fetching a toy to share"
 	return true
+
+func show_trick_pose() -> void:
+	var frames = Art.trick_frames(Game.breed,trick_command)
+	if frames.is_empty():
+		trick_command = ""
+		return
+	# Preserve the dog's outfit and size while showing actual new limb poses.
+	set_pose(false)
+	var phase = trick_elapsed / 3.2
+	var order = [0,1,2,1,0] if trick_command == "Paw" else ([0,1,2,0] if trick_command == "Spin" else [0,1,2])
+	var index: int = order[mini(order.size()-1,int(phase*order.size()))]
+	if Game.reduce_motion:
+		index = 1
+	sprite.texture = Art.trick_sheet(Game.breed)
+	sprite.region_enabled = true
+	sprite.region_rect = frames[index]
+	sprite.offset = Vector2(0,-frames[index].size.y*0.5)
+	sprite.flip_h = false
+	sprite.position.y = 0
+	sprite.rotation = 0
+	var height = minf(portrait_width,portrait_height) if presentation_style=="Beach" else (lerpf(180,280,Game.growth_fraction()) if Game.breed=="Puppy" else 320.0)
+	sprite.scale = Vector2.ONE*(height/float(Art.TRICK_DATA[Game.breed].height))
+	reaction_icon.visible = false

@@ -248,6 +248,8 @@ static func picture_button(text: String, texture: Texture2D, action: Callable, c
 	caption.offset_top = -48
 	caption.offset_bottom = -7
 	tile.add_child(caption)
+	tile.set_meta("picture",picture)
+	tile.set_meta("caption",caption)
 	return tile
 
 static func location_button(text: String, texture: Texture2D, action: Callable, color: Color) -> Button:

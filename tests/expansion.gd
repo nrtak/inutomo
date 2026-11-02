@@ -171,7 +171,7 @@ func run() -> void:
 	check(is_zero_approx(main.habitat.ball.rotation), "Repeated playdate ball animations start with a fresh roll")
 	check(main.habitat.ball.visible, "Shared play animates a visible ball")
 	main.habitat.animate_playdate(3)
-	check(main.habitat.playmate.texture == Art.PUPPY_SLEEP and not main.habitat.ball.visible, "Resting playmates settle down and put the ball away")
+	check(main.habitat.playmate.texture == Art.SLEEP_TEXTURES[IslandAdventure.BUDDIES[IslandAdventure.companion(game)].breed] and not main.habitat.ball.visible, "Resting playmates settle down and put the ball away")
 	var playdate_view = main.body.get_child(0)
 	playdate_view.shown_day = "2000-01-01"
 	playdate_view._process(0)

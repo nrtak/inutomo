@@ -24,7 +24,7 @@ func _ready() -> void:
 	render()
 
 func _process(_delta: float) -> void:
-	if mode in ["Playdate", "Deliveries", "Events", "Beach Activities", "Daily"] and shown_day != IslandLife.today():
+	if mode in ["Playdate", "Deliveries", "Events", "Beach Activities", "Daily", "Dog Friends", "Stories"] and shown_day != IslandLife.today():
 		feedback = ""
 		render()
 	if mode == "Events" and shown_event != str(Game.life.daily) + str(Game.life.event_claimed):
@@ -36,7 +36,11 @@ func _process(_delta: float) -> void:
 	if mode == "Playdate" and is_instance_valid(content):
 		for button in content.get_children():
 			if button is Button and button.has_meta("playdate"):
-				button.disabled = Game.cooldowns.get("Playdate", 0) > 0
+				button.disabled = Game.cooldowns.get("Playdate", 0) > 0 or not Game.can_explore()
+	if mode == "Playdate" and is_instance_valid(content):
+		for button in content.get_children():
+			if button is Button and button.has_meta("shared_buddy"):
+				button.disabled = not Game.can_explore() or Game.life.adventure.buddies.get(button.get_meta("shared_buddy"),{}).get("bonus_day","")>=IslandLife.today()
 	if mode == "Beach Activities" and is_instance_valid(content):
 		var reason = Game.activity_block_reason()
 		if is_instance_valid(beach_status):
@@ -48,7 +52,7 @@ func _process(_delta: float) -> void:
 				button.tooltip_text = reason if not reason.is_empty() else ("A short breather before the next turn." if button.disabled else button.text)
 	for command in training_buttons:
 		var button: Button = training_buttons[command]
-		button.disabled = Game.cooldowns.get("Training", 0) > 0
+		button.disabled = Game.cooldowns.get("Training", 0) > 0 or not Game.can_explore()
 		UI.button_wait(button, Game.cooldowns.get("Training", 0), 20.0)
 
 func choose(value: String) -> void:
@@ -95,14 +99,14 @@ func render() -> void:
 		panel.add_theme_stylebox_override("panel",box)
 	var top = HBoxContainer.new()
 	layout.add_child(top)
-	var title = UI.label({"Dog": "Your Puppy", "Wardrobe": "Wardrobe", "Home": "Home Décor", "Finds": "Walk Keepsakes", "Photos": "Photo Album", "Daily": "To-do Today"}.get(mode, mode), 28, UI.TEAL)
+	var title = UI.label({"Dog": "Your Puppy", "Wardrobe": "Wardrobe", "Home": "Home Décor", "Finds": "Walk Keepsakes", "Photos": "Photo Album", "Daily": "To-do Today", "Dog Friends":"Dog Friends", "Stories":"Island Stories"}.get(mode, mode), 28, UI.TEAL)
 	if mode == "Beach Activities":
 		title.text = {"Shells":"Find shells","Cleanup":"Beach cleanup","Sand Fetch":"Sand fetch"}.get(beach_mode,"Beach activities")
 		title.add_theme_color_override("font_color",BeachStyle.INK)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(title)
 	var tabs = GridContainer.new()
-	tabs.visible = mode in MODES and mode != "Events"
+	tabs.visible = mode in MODES and mode != "Events" and not compact
 	tabs.columns = 4
 	tabs.add_theme_constant_override("h_separation", 5)
 	tabs.add_theme_constant_override("v_separation", 5)
@@ -148,6 +152,8 @@ func render() -> void:
 		"Home": decorating()
 		"Events": events()
 		"Photos": photos()
+		"Dog Friends": dog_friends()
+		"Stories": stories()
 	if mode == "Beach Activities":
 		arrange_beach()
 		content.minimum_size_changed.connect(arrange_beach)
@@ -183,6 +189,7 @@ func respond(text: String) -> void:
 	host.show_feedback(text)
 
 func dog_page() -> void:
+	content.add_child(UI.label(IslandWeather.current() + " on the island",22,UI.TEAL))
 	content.add_child(UI.label(Game.puppy_name + " is " + IslandLife.personality(Game).to_lower() + ".", 28, UI.TEAL))
 	var descriptions = {"Curious": "Always sniffing for a new discovery.", "Cuddly": "Happiest with gentle pats and cozy company.", "Playful": "Always ready for a little game."}
 	content.add_child(UI.label(descriptions[IslandLife.personality(Game)], 24))
@@ -232,15 +239,28 @@ func training() -> void:
 	content.add_child(UI.label("Ben's little lessons", 27, UI.TEAL))
 	if lesson_command == "":
 		content.add_child(UI.hint_label("Choose a command. Five short practices teach it.", 23))
+		var lessons = GridContainer.new()
+		lessons.columns = 2
+		lessons.add_theme_constant_override("h_separation",8)
+		lessons.add_theme_constant_override("v_separation",8)
+		lessons.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		content.add_child(lessons)
 		for command in IslandLife.COMMANDS:
 			var level = int(Game.life.training[command])
-			tile(command + (" · Learned" if level == 5 else " · " + str(level) + " of 5"), preload("res://assets/ui/training_treat.svg"), select_lesson.bind(command))
+			var lesson = UI.icon_button(command + (" · Learned" if level==5 else " · %d of 5" % level),preload("res://assets/ui/training_treat.svg"),select_lesson.bind(command),Color("c8eddd"))
+			lesson.custom_minimum_size = Vector2(0,88)
+			lesson.get_meta("caption").add_theme_font_size_override("font_size",18)
+			lessons.add_child(lesson)
 		return
 	var command = lesson_command
 	var tips = {
 		"Sit": "Tap Practice sit. Give a calm cue and let those little paws settle.",
 		"Stay": "Tap Practice stay. Keep the cue gentle while your puppy holds a patient sit.",
-		"Come": "Tap Practice come. Call warmly and welcome your puppy back."
+		"Come": "Tap Practice come. Call warmly and welcome your puppy back.",
+		"Paw":"Offer a calm cue and watch your puppy lift a paw.",
+		"Spin":"A slow turn, with a happy finish. Keep practice playful.",
+		"Bow":"Watch the front paws stretch forward into a playful bow.",
+		"Roll Over":"A gentle roll on the soft ground, then back to their paws."
 	}
 	content.add_child(UI.label(command, 28, UI.TEAL))
 	content.add_child(UI.hint_label(tips[command], 23))
@@ -267,15 +287,14 @@ func playdate() -> void:
 	var visit: Dictionary = Game.life.playdate
 	var done = visit.claimed >= IslandLife.today()
 	var step = int(visit.step) if visit.day == IslandLife.today() else 0
-	content.add_child(UI.hint_label("A gentle hello, a shared toy, then a quiet rest.", 23))
-	var friend = UI.icon_button("Ask Nora", UI.resident_icon(Art.NORA), func(): host.show_resident(Art.NORA, "Nora", "Puppy Club organizer", "Let the puppies say hello at their own pace. Play together, then finish with a calm rest. A completed playdate earns 5 coins and happiness, once a day."))
-	friend.custom_minimum_size.y = 80
-	content.add_child(friend)
-	content.add_child(UI.label("Playdates together: " + str(visit.visits), 22, UI.TEAL))
+	var buddy_name = IslandAdventure.companion(Game)
+	var buddy_visits = IslandAdventure.buddy_visits(Game,buddy_name)
+	content.add_child(UI.label(buddy_name+" · "+IslandAdventure.BUDDIES[buddy_name].nature,26,UI.TEAL))
+	content.add_child(UI.label(IslandAdventure.buddy_level(buddy_visits)+" · %d playdates" % buddy_visits,22))
 	if not feedback.is_empty():
 		content.add_child(UI.label(feedback, 23))
 	if done:
-		content.add_child(UI.hint_label("All done today! Visit again tomorrow.", 23))
+		content.add_child(UI.hint_label("Today's playdate is complete. Next friend: " + Game.life.adventure.playmate + ".", 23))
 	else:
 		content.add_child(UI.label("Step " + str(step + 1) + " of 3 · 5 coins on completion", 22))
 		var captions = ["Say hello", "Roll the ball", "Rest together"]
@@ -287,9 +306,24 @@ func playdate() -> void:
 				host.habitat.animate_playdate(int(Game.life.playdate.step))
 			render()
 		)
-		button.disabled = Game.cooldowns.get("Playdate", 0) > 0
+		button.disabled = Game.cooldowns.get("Playdate", 0) > 0 or not Game.can_explore()
 		button.set_meta("playdate", true)
-	tile("Back to Puppy Club", UI.place_icon("Puppy Club"), host.request_page.bind("Puppy Club"))
+	var select = UI.button("Choose another friend",host.request_page.bind("Life:Dog Friends"),Color("fff0bd"))
+	select.custom_minimum_size.y = 60
+	select.disabled = visit.day==IslandLife.today() and visit.step>0 and visit.step<3
+	content.add_child(select)
+	var help = UI.button("How to play",func(): host.show_resident(Art.NORA,"Nora","Puppy Club organizer","Say hello, roll a toy together, then share a quiet rest. A full playdate earns 5 coins once a day. Come back to the same friend to unlock shared games."),Color("fff6e5"))
+	help.custom_minimum_size.y = 56
+	content.add_child(help)
+	for kind in ["Mirror tricks","Treasure pals"]:
+		if buddy_visits >= (2 if kind=="Mirror tricks" else 4):
+			var shared = tile(kind,preload("res://assets/ui/heart.svg"),shared_game.bind(buddy_name,kind))
+			shared.set_meta("shared_buddy",buddy_name)
+			shared.disabled = not Game.can_explore() or Game.life.adventure.buddies.get(buddy_name,{}).get("bonus_day","")>=IslandLife.today()
+	var back = UI.button("Back to Puppy Club",host.request_page.bind("Puppy Club"),Color("fff6e5"))
+	back.custom_minimum_size = Vector2(220,56)
+	back.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	content.add_child(back)
 
 func health_record() -> void:
 	content.add_child(UI.label(Game.puppy_name + " · " + PuppyHealth.status(Game), 27, UI.TEAL))
@@ -325,6 +359,8 @@ func deliveries() -> void:
 	tile("Back to Harbor", UI.place_icon("Harbor"), host.request_page.bind("Harbor"))
 
 func friends() -> void:
+	tile("Dog friends",preload("res://assets/ui/club.svg"),host.request_page.bind("Life:Dog Friends"))
+	tile("Island stories",preload("res://assets/ui/menu_journal.svg"),host.request_page.bind("Life:Stories"),Color("f9d8e2"))
 	content.add_child(UI.label("Little favors, growing friendships", 27, UI.TEAL))
 	var residents = {"Kai": Art.KAI, "Nora": Art.NORA, "Ben": Art.BEN, "June": Art.JUNE, "Leah": Art.LEAH, "Owen": Art.OWEN, "Ren": Art.REN}
 	var grid = GridContainer.new()
@@ -621,3 +657,85 @@ func beach_button(caption: String, icon: String, choice: int) -> void:
 	)
 	button.set_meta("beach_action",true)
 	button.disabled = Game.cooldowns.get("Beach",0) > 0 or not Game.can_explore()
+
+func dog_friends() -> void:
+	content.add_child(UI.hint_label("Meet the same friends again. Two playdates unlock Mirror tricks; four unlock Treasure pals.",23))
+	var grid = GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation",12)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_child(grid)
+	for name in IslandAdventure.BUDDIES:
+		var buddy: Dictionary = IslandAdventure.BUDDIES[name]
+		var box = UI.column(8)
+		box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(box)
+		var picture = UI.picture_button(name,Art.PUPPIES[buddy.breed],select_buddy.bind(name))
+		picture.custom_minimum_size = Vector2(0,190)
+		picture.disabled = Game.life.playdate.day==IslandLife.today() and Game.life.playdate.step>0 and Game.life.playdate.step<3
+		var material = ShaderMaterial.new()
+		material.shader = preload("res://scripts/dog_style.gdshader")
+		material.set_shader_parameter("recolor",true)
+		material.set_shader_parameter("bandana",buddy.color)
+		picture.get_meta("picture").material = material
+		box.add_child(picture)
+		var visits = IslandAdventure.buddy_visits(Game,name)
+		box.add_child(UI.label(buddy.nature+" · "+IslandAdventure.buddy_level(visits),21))
+		box.add_child(UI.label("%d playdates together" % visits,21,UI.TEAL))
+		var choose = UI.button("Meet "+name,select_buddy.bind(name),Color("c8eddd"))
+		choose.custom_minimum_size.y = 64
+		choose.disabled = Game.life.playdate.day==IslandLife.today() and Game.life.playdate.step>0 and Game.life.playdate.step<3
+		box.add_child(choose)
+	var back = UI.button("Back to Puppy Club",host.request_page.bind("Puppy Club"),Color("fff6e5"))
+	back.custom_minimum_size = Vector2(220,56)
+	back.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	content.add_child(back)
+
+func select_buddy(name: String) -> void:
+	var reply = IslandAdventure.choose_buddy(Game,name)
+	if Game.life.adventure.playmate == name:
+		host.request_page("Life:Playdate")
+	else:
+		respond(reply)
+
+func shared_game(name: String, kind: String) -> void:
+	var before = Game.life.adventure.buddies.get(name,{}).get("bonus_day","")
+	var reply = IslandAdventure.shared_activity(Game,name,kind)
+	if Game.life.adventure.buddies.get(name,{}).get("bonus_day","") != before:
+		host.habitat.animate_shared_game(kind)
+	feedback = reply
+	render()
+
+func stories() -> void:
+	content.add_child(UI.hint_label("Tap a resident to share a short story. You can also tap them at their location.",23))
+	var portraits = {"Nora":Art.NORA,"Ben":Art.BEN,"June":Art.JUNE,"Leah":Art.LEAH,"Owen":Art.OWEN,"Kai":Art.KAI,"Ren":Art.REN}
+	var grid = GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation",12)
+	grid.add_theme_constant_override("v_separation",14)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_child(grid)
+	for person in portraits:
+		var box = UI.column(6)
+		box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(box)
+		var status = IslandAdventure.chapter_status(Game,person)
+		var action = func():
+			var reply = IslandAdventure.chapter(Game,person)
+			render()
+			host.show_resident(portraits[person],person,"Island friend",reply)
+		var picture = UI.picture_button(person,UI.resident_icon(portraits[person]),action)
+		picture.custom_minimum_size = Vector2(0,140)
+		box.add_child(picture)
+		box.add_child(UI.label(status.title,21,UI.TEAL))
+		var button = UI.button(status.button,action,Color("c8eddd") if status.ready else Color("fff0bd"))
+		button.custom_minimum_size.y = 60
+		button.add_theme_font_size_override("font_size",20)
+		box.add_child(button)
+		if status.step==1:
+			box.add_child(UI.label("%d of %d %s" % [status.progress,status.goal,status.task.to_lower()],20))
+			var place: String = {"Playdate":"Life:Playdate","Training":"Life:Training","Feed":"Home","Care":"Home","Delivery":"Life:Deliveries","Beach":"Beach","Walk":"Beach"}[status.task]
+			var go = UI.button("Go to activity",host.request_page.bind(place),Color("c2ecf4"))
+			go.custom_minimum_size.y = 58
+			go.add_theme_font_size_override("font_size",20)
+			box.add_child(go)

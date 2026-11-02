@@ -2,12 +2,12 @@ class_name IslandLife
 extends RefCounted
 
 const PEOPLE = {"Kai": "Walk","Ren": "Care","Nora": "Care", "Ben": "Fetch", "June": "Feed", "Leah": "Care", "Owen": "Walk"}
-const COMMANDS = ["Sit", "Stay", "Come"]
+const COMMANDS = ["Sit", "Stay", "Come", "Paw", "Spin", "Bow", "Roll Over"]
 const KEEPSAKES = ["Heart leaf", "Pearl shell", "Sea glass"]
 const KEEPSAKE_ICONS = ["leaf", "shell", "sea_glass"]
 const PERSONALITIES = ["Curious", "Cuddly", "Playful"]
 static func fresh() -> Dictionary:
-	return {"beach":IslandActivities.fresh(), "bowl":true, "bowl_spot":0, "toy_spot":1, "delivery":{"recipient":"", "claimed":"", "completed":0}, "playdate": {"day":"", "step":0, "claimed":"", "visits":0}, "story": {}, "accessory": "", "bed": "", "toy": "", "spot": 1, "training": {"Sit": 0, "Stay": 0, "Come": 0}, "friends": {}, "favors": {}, "keepsakes": [], "photos": [], "day": "", "daily": {}, "event_claimed": ""}
+	return {"adventure":IslandAdventure.fresh(), "beach":IslandActivities.fresh(), "bowl":true, "bowl_spot":0, "toy_spot":1, "delivery":{"recipient":"", "claimed":"", "completed":0}, "playdate": {"day":"", "step":0, "claimed":"", "visits":0}, "story": {}, "accessory": "", "bed": "", "toy": "", "spot": 1, "training": {"Sit": 0, "Stay": 0, "Come": 0, "Paw":0, "Spin":0, "Bow":0, "Roll Over":0}, "friends": {}, "favors": {}, "keepsakes": [], "photos": [], "day": "", "daily": {}, "event_claimed": ""}
 
 static func home_point(game: Node, kind: String) -> Vector2:
 	match kind:
@@ -31,6 +31,7 @@ static func refresh_day(game: Node) -> void:
 		game.life.daily = {}
 
 static func record(game: Node, action: String) -> void:
+	IslandAdventure.record_task(game,action)
 	refresh_day(game)
 	game.life.daily[action] = mini(1000, int(game.life.daily.get(action, 0)) + 1)
 
@@ -94,7 +95,7 @@ static func delete_photo(game: Node, filename: String) -> String:
 
 static func train(game: Node, command: String) -> String:
 	if command not in COMMANDS:
-		return "Choose Sit, Stay or Come."
+		return "Choose a lesson with Ben."
 	if not game.can_explore():
 		return "A checkup or recovery first. Visit Vet Clinic." if PuppyHealth.unwell(game) else "A little rest first. Training needs 15 Energy."
 	if game.cooldowns.get("Training", 0) > 0:
@@ -102,9 +103,13 @@ static func train(game: Node, command: String) -> String:
 	if game.life.training[command] >= 5:
 		game.cooldowns.Training = 20.0
 		game.care_performed.emit(command)
+		IslandAdventure.record_task(game,"Training")
+		game.changed.emit()
+		game.save_game()
 		return "A lovely " + command.to_lower() + "! This command is already learned."
 	game.cooldowns.Training = 20.0
 	game.life.training[command] += 1
+	IslandAdventure.record_task(game,"Training")
 	game.needs.Energy = maxf(0, game.needs.Energy - 2)
 	game.needs.Happiness = minf(100, game.needs.Happiness + 3)
 	game.care_performed.emit(command)
@@ -125,6 +130,8 @@ static func playdate_step(game: Node) -> String:
 	if visit.day != date:
 		visit.day = date
 		visit.step = 0
+	if visit.step == 0:
+		game.life.adventure.active_playmate = game.life.adventure.playmate
 	visit.step += 1
 	game.cooldowns.Playdate = 3.0
 	var replies = ["A gentle sniff and a friendly hello!", "You rolled the ball together. Happy little tails!", "A calm rest together. New friends already!"]
@@ -135,10 +142,12 @@ static func playdate_step(game: Node) -> String:
 		visit.visits = mini(1000, visit.visits + 1)
 		game.needs.Happiness = minf(100, game.needs.Happiness + 8)
 		game.needs.Energy = maxf(0, game.needs.Energy - 6)
-		game.coins = mini(1000000, game.coins + 5)
+		var earned = mini(5,1000000-game.coins)
+		game.coins += earned
 		talk(game, "Nora")
-		game.remember("Made a puppy friend at Nora's playdate.")
-		reply += " You earned 5 coins and happiness."
+		game.remember("Shared a playdate with " + IslandAdventure.companion(game) + ".")
+		reply += " " + IslandAdventure.finish_playdate(game)
+		reply += (" You earned %d %s and happiness." % [earned,"coin" if earned==1 else "coins"]) if earned>0 else " Your coin purse is full. Enjoy the happiness!"
 	game.changed.emit()
 	game.save_game()
 	return reply
@@ -178,6 +187,7 @@ static func deliver_parcel(game: Node, place: String) -> String:
 	delivery.recipient = ""
 	delivery.claimed = today() if delivery.claimed < today() else delivery.claimed
 	delivery.completed = mini(1000, delivery.completed + 1)
+	IslandAdventure.record_task(game,"Delivery")
 	game.coins = mini(1000000, game.coins + 6)
 	talk(game, person)
 	var bonus = ""
@@ -221,6 +231,12 @@ static func claim_event(game: Node) -> String:
 static func valid(data: Variant) -> bool:
 	if not data is Dictionary:
 		return false
+	if not IslandStory.valid(data.get("story", {})):
+		return false
+	if not IslandAdventure.valid(data.get("adventure", {})):
+		return false
+	if data.get("adventure",{}).get("tower_visited",false) and not data.get("story",{}).get("beacon_checked",false):
+		return false
 	if not IslandActivities.valid(data.get("beach", {})):
 		return false
 	var delivery = data.get("delivery", {"recipient":"", "claimed":"", "completed":0})
@@ -241,8 +257,6 @@ static func valid(data: Variant) -> bool:
 	if visit.get("step", 0) > 0 and visit.get("day", "") == "":
 		return false
 	if visit.get("step", 0) == 3 and visit.get("claimed", "") != visit.get("day", ""):
-		return false
-	if not IslandStory.valid(data.get("story", {})):
 		return false
 	for key in ["accessory", "bed", "toy", "day", "event_claimed"]:
 		if not data.get(key, "") is String:
@@ -306,6 +320,7 @@ static func normalized(data: Dictionary) -> Dictionary:
 	for key in result:
 		if data.has(key):
 			result[key] = data[key].duplicate(true) if data[key] is Dictionary or data[key] is Array else data[key]
+	result.adventure = IslandAdventure.normalized(result.adventure)
 	result.beach = IslandActivities.normalized(result.beach)
 	result.delivery = {"recipient": result.delivery.get("recipient", ""), "claimed": result.delivery.get("claimed", ""), "completed": int(result.delivery.get("completed", 0))}
 	for key in ["day", "claimed"]:

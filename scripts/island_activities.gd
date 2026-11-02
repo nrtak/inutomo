@@ -71,6 +71,7 @@ static func beach_action(game: Node, kind: String, choice: int = 0) -> String:
  var completed = beach.shell if kind == "Shells" else (beach.cleaned.size() == 3 if kind == "Cleanup" else beach.throws == 3)
  if completed:
   beach.done.append(kind)
+  IslandAdventure.record_task(game,"Beach")
   game.needs.Happiness = minf(100,game.needs.Happiness+5)
   game.needs.Energy = maxf(0,game.needs.Energy-3)
   var earned = mini(4,1000000-game.coins)

@@ -122,6 +122,9 @@ func material_for(location: String) -> ShaderMaterial:
 
 func apply_to(background: CanvasItem, location: String = "Home") -> void:
 	background.material = material_for(location)
+	var layer = load("res://scripts/weather_layer.gd").new()
+	layer.location = location
+	background.add_child(layer)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_RESUMED and material != null:
