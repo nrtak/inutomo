@@ -29,8 +29,24 @@ func _draw() -> void:
  var factor = maxf(background.size.x/texture_size.x,background.size.y/texture_size.y)
  var drawn = texture_size*factor
  var origin = (background.size-drawn)*0.5
+ if location == "Beach Arrival":
+  for wave in 3:
+   var wave_phase = fposmod(clock/36.0+wave*0.31,1.0)
+   var point = origin+Vector2(lerpf(0.20,0.82,wave_phase),0.53+wave*0.047)*drawn
+   var alpha = smoothstep(0.0,0.12,wave_phase)*(1.0-smoothstep(0.86,1.0,wave_phase))*0.4
+   var unit = drawn.x/1250.0
+   var curve = PackedVector2Array()
+   for offset in [Vector2(-48,0),Vector2(-20,2),Vector2(16,1),Vector2(42,-1)]:
+    curve.append(point+offset*unit)
+   draw_polyline(curve,Color(0.98,1,0.94,alpha),2.0*unit,true)
  var index = 0
  for lane in LANES.get(location,[]):
+  if location != "Beach Arrival":
+   var wave_phase = fposmod(clock/36.0+index*0.31,1.0)
+   var wave_point = origin+Vector2(lerpf(lane.x,lane.z,wave_phase),lane.y+0.025)*drawn
+   var wave_alpha = smoothstep(0.0,0.12,wave_phase)*(1.0-smoothstep(0.86,1.0,wave_phase))*0.3
+   var wave_unit = drawn.x/1250.0
+   draw_polyline(PackedVector2Array([wave_point+Vector2(-20,0)*wave_unit,wave_point+Vector2(0,1)*wave_unit,wave_point+Vector2(24,-1)*wave_unit]),Color(0.98,1,0.94,wave_alpha),1.8*wave_unit,true)
   var phase = fposmod(clock/28.0+index*0.43,1.0)
   var point = origin+Vector2(lerpf(lane.x,lane.z,phase),lerpf(lane.y,lane.w,phase))*drawn
   var alpha = smoothstep(0,0.08,phase)*(1-smoothstep(0.92,1,phase))*0.8

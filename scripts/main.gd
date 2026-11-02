@@ -29,6 +29,7 @@ var current_place = "Home"
 const LOCATION_PAGES = ["Park", "Beach", "Puppy Club", "Shop", "Vet Clinic", "Harbor", "Keeper’s Cottage", "Lighthouse"]
 var pending_beach_mode = ""
 var resident_overlay: Control
+var pending_location_refresh = ""
 var stage_overlay: Control
 var name_label: Label
 var body: VBoxContainer
@@ -397,11 +398,23 @@ func clear_body() -> void:
 			child.queue_free()
 
 func update_navigation() -> void:
+	for button in [back_button,camera_button,menu_button]:
+		if page in LOCATION_PAGES or page == "Home":
+			BeachStyle.style_button(button,BeachStyle.PAPER)
+		else:
+			BeachStyle.restore_button(button)
+	camera_button.icon = preload("res://assets/ui/beach_camera.svg")
+	var header = menu_button.get_parent()
+	# Keep map controls together on the left, clear of the distant tower.
+	var compact_header = page in ["Island","Lighthouse"]
+	header.move_child(menu_button,page_label.get_index()+1 if compact_header else header.get_child_count()-1)
+	page_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN if compact_header else Control.SIZE_EXPAND_FILL
 	var camera_parent = island_button.get_parent() if page == "Home" else menu_button.get_parent()
 	if camera_button.get_parent() != camera_parent:
 		camera_button.reparent(camera_parent)
-		if page != "Home":
-			camera_parent.move_child(camera_button, menu_button.get_index())
+	if page != "Home":
+		var camera_index = menu_button.get_index()-(1 if camera_button.get_index() < menu_button.get_index() else 0)
+		camera_parent.move_child(camera_button,camera_index)
 	camera_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	camera_button.visible = page in ["Home", "Shop", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Harbor", "Keeper’s Cottage"]
 	var scene_page = page in ["Home", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Harbor", "Keeper’s Cottage", "Fetch", "Walk"]
@@ -427,7 +440,7 @@ func update_navigation() -> void:
 func set_scenery(location: String) -> void:
 	habitat = preload("res://scenes/home.tscn").instantiate()
 	habitat.location = location
-	habitat.location_presentation = page in LOCATION_PAGES
+	habitat.location_presentation = page in LOCATION_PAGES or page == "Life:Beach Activities"
 	habitat.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	world_host.add_child(habitat)
 	if page == "Home" and not Game.pending_home_reaction.is_empty():
@@ -742,6 +755,11 @@ func show_resident(texture: Texture2D, character_name: String, role: String, tex
 	IslandLife.talk(Game, character_name)
 	var was_processing = Game.is_processing()
 	var hud_was_visible = hud.visible
+	var location_resident = world_host.get_node_or_null("LocationGreeting")
+	var resident_was_visible = is_instance_valid(location_resident) and location_resident.visible
+	var resident_ref = weakref(location_resident) if is_instance_valid(location_resident) else null
+	if is_instance_valid(location_resident):
+		location_resident.visible = false
 	hud.visible = false
 	Game.set_process(false)
 	resident_overlay = Control.new()
@@ -758,8 +776,15 @@ func show_resident(texture: Texture2D, character_name: String, role: String, tex
 	var close_button = UI.button("Close", func():
 		resident_overlay.queue_free()
 		resident_overlay = null
+		var resident = resident_ref.get_ref() if resident_ref != null else null
+		if is_instance_valid(resident):
+			resident.visible = resident_was_visible
 		hud.visible = hud_was_visible
 		Game.set_process(was_processing)
+		if not pending_location_refresh.is_empty():
+			var location = pending_location_refresh
+			pending_location_refresh = ""
+			location_story_refresh(location)
 	, Color("bdeab0"))
 	close_button.custom_minimum_size = Vector2(150, 68)
 	close_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -900,6 +925,7 @@ func life_page(section: String) -> void:
 	if section == "Beach Activities":
 		browser.beach_mode = pending_beach_mode
 		pending_beach_mode = ""
+		habitat.present_location_dog()
 	body.add_child(browser)
 
 func open_photo_mode() -> void:
@@ -1041,6 +1067,9 @@ func show_arrival(place: String) -> void:
 
 func location_story_refresh(location: String) -> void:
 	if page != location or not is_instance_valid(habitat):
+		return
+	if is_instance_valid(resident_overlay):
+		pending_location_refresh = location
 		return
 	for child in body.get_children():
 		body.remove_child(child)

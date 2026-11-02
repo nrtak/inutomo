@@ -10,16 +10,27 @@ func run():
  var game = root.get_node("Game")
  game.set_process(false)
  game.paused_at = 0
+ game.set_reduce_motion(false,false)
  for source in [Art.NORA,Art.NORA_CORAL,Art.JUNE,Art.JUNE_MINT,Art.BEN,Art.BEN_TRAINING,Art.LEAH,Art.LEAH_TUNIC,Art.OWEN,Art.OWEN_PARCEL,Art.REN,Art.REN_SWEATER,Art.KAI]:
   var portrait = ResidentPortrait.new()
   portrait.configure(source)
   root.add_child(portrait)
-  check(portrait.frames.size() == 2,"Every outfit has a facial expression and hand gesture pair")
+  var is_nora = source in [Art.NORA,Art.NORA_CORAL]
+  check(portrait.frames.size() == (3 if is_nora else 2),"Every outfit has a conversation pair; Nora also has a hello wave")
   check(portrait.frames[0].get_size() == portrait.frames[1].get_size(),"Changing gesture preserves framing")
+  if is_nora:
+   check(portrait.frame_index == 2 and portrait.texture == portrait.frames[2],"Both Nora outfits start with the smiling hello wave")
+   check(portrait.frames[2].get_size() == portrait.frames[0].get_size(),"Nora's raised hand keeps the same framing")
   var initial = portrait.texture
   portrait._process(20)
   await create_timer(0.35).timeout
-  check(portrait.frame_index == 1 and portrait.texture != initial,"A resident changes expression and gesture after a quiet pause: "+source.resource_path)
+  check(portrait.frame_index == (0 if is_nora else 1) and portrait.texture != initial,"A resident changes expression and gesture after a quiet pause: "+source.resource_path)
+  check(portrait.get_child_count() == 0,"A gesture never overlays two faces or pairs of arms")
+  if is_nora:
+   portrait._process(20)
+   check(portrait.frame_index == 1,"Nora continues into conversational gestures after saying hello")
+   portrait._process(6)
+   check(portrait.frame_index == 0 and not portrait.greeting_pending,"The hello wave does not repeat during the idle cycle")
   game.paused_at = 1
   var elapsed = portrait.elapsed
   portrait._process(30)

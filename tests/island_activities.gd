@@ -47,6 +47,16 @@ func run():
  check(IslandActivities.valid(game.life.beach) and IslandActivities.valid({}), "Beach saves and legacy saves are supported")
  check(not IslandActivities.valid({"cleaned":[0,0]}) and not IslandActivities.valid({"throws":4}), "Malformed beach progress is rejected")
  check(IslandActivities.daily_card(game).size() == 3, "Daily card has only three suggestions")
+ game.life.beach = IslandActivities.fresh()
+ game.cooldowns.clear()
+ game.coins = 999999
+ var capped_reply = IslandActivities.beach_action(game,"Shells",0)
+ check(game.coins == 1000000 and "earned 1 coin." in capped_reply,"Beach rewards report the actual amount when the purse reaches its limit")
+ game.life.beach = IslandActivities.fresh()
+ game.cooldowns.clear()
+ capped_reply = IslandActivities.beach_action(game,"Shells",0)
+ check(game.coins == 1000000 and "purse is full" in capped_reply,"A full purse never reports coins that were not added")
+ game.coins = 12
  PuppyHealth.start(game,"Sore paw")
  game.life.beach = IslandActivities.fresh()
  game.cooldowns.clear()

@@ -43,7 +43,9 @@ static func beach_action(game: Node, kind: String, choice: int = 0) -> String:
  if kind not in BEACH_GAMES:
   return "Choose a beach activity."
  if not game.can_explore():
-  return "Recover with Leah first." if PuppyHealth.unwell(game) else "Wake up and rest first. Beach activities need 15 Energy."
+  if PuppyHealth.unwell(game):
+   return "Recover with Leah first."
+  return "Wake your dog at Home before playing." if game.resting else "A short nap first. Beach activities need 15 Energy."
  refresh(game)
  var beach: Dictionary = game.life.beach
  if beach.day > IslandLife.today() or kind in beach.done:
@@ -71,9 +73,10 @@ static func beach_action(game: Node, kind: String, choice: int = 0) -> String:
   beach.done.append(kind)
   game.needs.Happiness = minf(100,game.needs.Happiness+5)
   game.needs.Energy = maxf(0,game.needs.Energy-3)
-  game.coins = mini(1000000,game.coins+4)
+  var earned = mini(4,1000000-game.coins)
+  game.coins += earned
   game.remember("Enjoyed " + kind.to_lower() + " with Kai at the Beach.")
-  reply += " You earned 4 coins."
+  reply += (" You earned %d " % earned)+("coin." if earned == 1 else "coins.") if earned > 0 else " Your coin purse is full."
   game.get_node("/root/Sound").feedback("discovery")
  game.care_performed.emit("Play" if kind == "Sand Fetch" else "Sniff")
  game.changed.emit()

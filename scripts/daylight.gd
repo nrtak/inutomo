@@ -109,6 +109,7 @@ func material_for(location: String) -> ShaderMaterial:
 		for index in 4:
 			local.set_shader_parameter("lamp_" + str(index), LIGHTS.get(location,[Vector4.ZERO,Vector4.ZERO,Vector4.ZERO,Vector4.ZERO])[index])
 		local.set_shader_parameter("island_land_mask",location == "Island")
+		local.set_shader_parameter("water_shimmer",0.0)
 		var regions: Array = MOTION.get(location,[])
 		var names = ["water_area","foliage_a","foliage_b","falls_a","falls_b","falls_c","falls_d"]
 		for index in names.size():

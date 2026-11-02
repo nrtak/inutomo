@@ -21,7 +21,7 @@ func _ready() -> void:
 	clip_contents = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	background = TextureRect.new()
-	background.texture = preload("res://assets/backgrounds/beach_arrival.png") if location == "Beach" and location_presentation else Art.BACKGROUNDS.get(location, Art.HOME)
+	background.texture = BeachStyle.BACKGROUND if location == "Beach" and location_presentation else Art.BACKGROUNDS.get(location, Art.HOME)
 	Daylight.apply_to(background, "Beach Arrival" if location == "Beach" and location_presentation else location)
 	background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
@@ -39,6 +39,7 @@ func _ready() -> void:
 		restoration = load("res://scripts/restoration_visual.gd").new()
 		world.add_child(restoration)
 	puppy = PuppyActor.new()
+	puppy.presentation_style = "Beach" if location == "Beach" and location_presentation else ""
 	puppy.home_interactions = location == "Home"
 	world.add_child(puppy)
 	Game.nap_actor = weakref(puppy)
@@ -51,7 +52,7 @@ func _ready() -> void:
 	for point in puppy.walk_area:
 		puppy.bounds = puppy.bounds.expand(point)
 	ball = Sprite2D.new()
-	ball.texture = preload("res://assets/ui/play.svg")
+	ball.texture = preload("res://assets/ui/beach_ball.svg") if location == "Beach" and location_presentation else preload("res://assets/ui/play.svg")
 	ball.scale = Vector2.ONE * 0.5
 	ball.visible = false
 	world.add_child(ball)
@@ -84,6 +85,7 @@ func add_home_decor() -> void:
 		bowl.texture = Goods.picture("PuppyMeal")
 		bowl.scale = Vector2.ONE * (110.0 / bowl.texture.get_width())
 		bowl.position = IslandLife.home_point(Game, "Feed")
+		bowl.offset.y = -12
 		decor_targets.Feed = bowl.position
 		decor_sprites.Feed = bowl
 		world.add_child(bowl)
@@ -97,11 +99,27 @@ func add_home_decor() -> void:
 
 func _resize_world() -> void:
 	if world:
+		if location == "Beach" and location_presentation:
+			world.scale = Vector2.ONE
+			world.position = Vector2.ZERO
+			background.size = size
+			if is_instance_valid(puppy):
+				var safe = UI.safe_insets()
+				var column_left = size.x-safe.right-BeachStyle.column_width(size,safe)
+				puppy.portrait_width = maxf(180,minf(320,(column_left-size.x*0.50-26)*2))
+				puppy.portrait_height = minf(325,size.y*0.45)
+				puppy.walk_area = PackedVector2Array([Vector2(size.x*0.38,size.y*0.73),Vector2(size.x*0.64,size.y*0.73),Vector2(size.x*0.64,size.y*0.94),Vector2(size.x*0.38,size.y*0.94)])
+				puppy.position = Vector2(size.x*0.50,size.y*0.92)
+				puppy.target = puppy.position
+			return
 		var zoom = 1.42 if location == "Home" or not is_zero_approx(view_offset.x) else 1.0
 		var factor = maxf(size.x / 1280.0, size.y / 720.0) * zoom
 		world.scale = Vector2.ONE * factor
 		var focus = Vector2(650, 410) if location == "Home" else Vector2(640, 360)
 		world.position = size * 0.5 - focus * factor + view_offset
+		background.position.y = maxf(0,-world.position.y/factor) if location in ["Lighthouse","Keeper’s Cottage"] else 0.0
+		if is_instance_valid(restoration):
+			restoration.position = background.position
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and (not puppy.controlled or puppy.location_portrait):
@@ -222,6 +240,11 @@ func present_location_dog() -> void:
 		return
 	puppy.controlled = true
 	puppy.location_portrait = true
+	if location == "Beach":
+		puppy.scale = Vector2.ONE
+		_resize_world()
+		puppy.set_pose(Game.resting)
+		return
 	puppy.position = WalkArea.nearest(puppy.walk_area, Vector2(660, 650))
 	puppy.target = puppy.position
 	puppy.scale = Vector2.ONE * (1.85 if Game.breed == "Puppy" else 1.05)

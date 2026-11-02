@@ -15,6 +15,7 @@ uniform vec4 falls_c = vec4(0.0);
 uniform vec4 falls_d = vec4(0.0);
 uniform bool motion_enabled = true;
 uniform bool island_land_mask = false;
+uniform float water_shimmer = 0.065;
 varying vec4 art_modulate;
 float area_mask(vec2 point, vec4 area) {
  if (area.z <= 0.0 || area.w <= 0.0) { return 0.0; }
@@ -52,8 +53,8 @@ void fragment() {
  vec4 art = mix(source,mix(wind_a,wind_b,wind_blend),leaves);
  // Traveling light crests move to the right; the background image stays fixed.
  float crest = pow(max(0.0,sin(UV.x*240.0-motion_time*1.2+UV.y*35.0)),18.0);
- float shimmer = crest*water*0.065;
- float stream = pow(0.5+0.5*sin(UV.y*600.0-motion_time*8.0),4.0)*falls*0.16;
+ float shimmer = crest*water*water_shimmer;
+ float stream = pow(0.5+0.5*sin(UV.y*100.0-motion_time*2.0),4.0)*falls*0.10;
  art.rgb = mix(art.rgb,vec3(0.92,0.99,1.0),shimmer+stream);
 	float luminance = dot(art.rgb, vec3(0.2126, 0.7152, 0.0722));
 	vec3 night_color = mix(art.rgb, vec3(luminance), coolness * 0.42);

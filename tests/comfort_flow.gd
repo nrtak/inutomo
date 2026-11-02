@@ -48,7 +48,7 @@ func run():
  resident.show_frame(1)
  game.set_reduce_motion(true,false)
  resident._process(0)
- check(not resident.incoming.visible and not resident.transition.is_valid(),"Reduce Motion stops an in-flight resident transition immediately")
+ check(resident.frame_index == 1 and resident.texture == resident.frames[1] and resident.get_child_count() == 0,"Reduce Motion holds a single clean resident pose without blended overlays")
 
  main.show_page("Life:Events")
  main.show_page("Life:Training")

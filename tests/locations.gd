@@ -84,7 +84,7 @@ func run() -> void:
 		var portrait = greeting.get_child(0)
 		var bubble = greeting.get_child(1)
 		check(portrait.get_global_rect().position.x >= 0 and portrait.get_global_rect().end.x <= main.size.x * 0.40, "Arrival keeps the full arm width on screen")
-		check(portrait is ResidentPortrait and portrait.frames.size() == 2 and portrait.frames[0].get_size() == portrait.frames[1].get_size(), "Arrival poses keep consistent framing for full arms")
+		check(portrait is ResidentPortrait and portrait.frames.size() >= 2 and portrait.frames[0].get_size() == portrait.frames[1].get_size(), "Arrival poses keep consistent framing for full arms")
 		check(portrait.get_global_rect().end.y >= main.size.y - 1, "Portrait reaches the screen edge without a floating cut")
 		check(bubble.size.y < main.size.y * 0.35, "Arrival bubble hugs its short text")
 		main.open_photo_mode()

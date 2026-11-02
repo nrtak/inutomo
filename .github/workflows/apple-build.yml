@@ -48,24 +48,12 @@ jobs:
           if grep -E 'SCRIPT ERROR|Parse Error|Failed to load' "$RUNNER_TEMP/import.log"; then exit 1; fi
       - name: Gameplay and save regression tests
         run: |
-          Godot --headless --path . --script tests/smoke.gd
-          Godot --headless --path . --script tests/start_menu.gd
-          Godot --headless --path . --script tests/growth.gd
-          Godot --headless --path . --script tests/gait.gd
-          Godot --headless --path . --script tests/walk_areas.gd
-          Godot --headless --path . --script tests/player_features.gd
-          Godot --headless --path . --script tests/island_moments.gd
-          Godot --headless --path . --script tests/daylight.gd
-          Godot --headless --path . --script tests/expansion.gd
-          Godot --headless --path . --script tests/harbor_story.gd
-          Godot --headless --path . --script tests/health.gd
-          Godot --headless --path . --script tests/island_activities.gd
-          Godot --headless --path . --script tests/steps_flow.gd
-          Godot --headless --path . --script tests/comfort_flow.gd
-          Godot --headless --path . --script tests/calm_residents.gd
-          Godot --headless --path . --script tests/ambient_travel.gd
-          Godot --headless --path . --script tests/locations.gd
-          Godot --headless --path . --script tests/mobile_regression.gd
+          set -euo pipefail
+          for suite in smoke start_menu growth gait walk_areas player_features island_moments daylight expansion harbor_story health island_activities steps_flow comfort_flow calm_residents beach_style cel_world ambient_travel locations mobile_regression; do
+            log="$RUNNER_TEMP/test-${suite}.log"
+            Godot --headless --path . --script "tests/${suite}.gd" 2>&1 | tee "$log"
+            if grep -E 'SCRIPT ERROR|Parse Error|^ERROR:' "$log"; then exit 1; fi
+          done
       - name: Configure Apple project identity
         env:
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
@@ -170,6 +158,15 @@ jobs:
             PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER"
           xcodebuild -exportArchive -archivePath build/PuppyIsland.xcarchive \
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath build/export
+          python3 - <<'PY'
+          from pathlib import Path
+          packages = list(Path('build/export').glob('*.ipa'))
+          if len(packages) != 1:
+              raise RuntimeError('Expected exactly one exported iPhone package')
+          target = Path('build/export/PuppyIsland.ipa')
+          if packages[0] != target:
+              packages[0].rename(target)
+          PY
       - uses: actions/upload-artifact@v6
         with:
           name: PuppyIsland-ipa

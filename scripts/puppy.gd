@@ -14,6 +14,9 @@ var decision = 3.0
 var controlled = false
 var base_scale = 1.0
 var location_portrait = false
+var presentation_style = ""
+var portrait_width = 320.0
+var portrait_height = 325.0
 var reaction_time = 0.0
 var reaction_kind = ""
 var nap_remaining = 65.0
@@ -71,18 +74,19 @@ func set_breed() -> void:
 	set_pose(false)
 
 func set_pose(asleep: bool) -> void:
-	var texture: Texture2D = Art.SLEEP_TEXTURES[Game.breed] if asleep else Art.PUPPIES[Game.breed]
-	sprite.material = sleep_material if asleep and Game.breed != "Puppy" else null
+	var unified = presentation_style == "Beach"
+	var texture: Texture2D = BeachStyle.dog_texture(Game.breed,asleep) if unified else (Art.SLEEP_TEXTURES[Game.breed] if asleep else Art.PUPPIES[Game.breed])
+	sprite.material = sleep_material if asleep and Game.breed != "Puppy" and not unified else null
 	var accessory: String = preview_accessory if not preview_accessory.is_empty() else Game.life.accessory
 	if Goods.ITEMS.has(accessory) and Goods.ITEMS[accessory].has("color") and (not preview_accessory.is_empty() or Game.items.get(accessory, 0) > 0):
 		style_material.set_shader_parameter("bandana", Goods.ITEMS[accessory].color)
 		style_material.set_shader_parameter("recolor", true)
-		style_material.set_shader_parameter("sleeping_cutout", asleep and Game.breed != "Puppy")
+		style_material.set_shader_parameter("sleeping_cutout", asleep and Game.breed != "Puppy" and not unified)
 		sprite.material = style_material
 	if sprite.texture != texture:
 		sprite.texture = texture
 		if not pose_bounds.has(texture):
-			pose_bounds[texture] = Art.SLEEP_REGIONS[Game.breed] if asleep else texture.get_image().get_used_rect()
+			pose_bounds[texture] = Art.SLEEP_REGIONS[Game.breed] if asleep and not unified else texture.get_image().get_used_rect()
 		var visible_rect: Rect2i = pose_bounds[texture]
 		sprite.region_enabled = true
 		sprite.region_rect = visible_rect
@@ -95,6 +99,11 @@ func set_pose(asleep: bool) -> void:
 	else:
 		base_scale = (lerpf(180, 280, growth) if Game.breed == "Puppy" else 320.0) / visible_size.y
 	sprite.scale = Vector2.ONE * base_scale
+	if unified:
+		base_scale = minf(portrait_width/visible_size.x,portrait_height/visible_size.y)
+		sprite.scale = Vector2.ONE*base_scale
+		shadow.scale = Vector2(visible_size.x*base_scale/140.0,0.8)
+		shadow.modulate = Color("b39b81")
 
 func request_move(point: Vector2) -> void:
 	if controlled or Game.resting:
@@ -126,7 +135,7 @@ func _process(delta: float) -> void:
 		reaction_icon.visible = reaction_time > 0
 		sprite.position.y = 0 if Game.reduce_motion else sin(clock*2)*0.7
 		if reaction_icon.visible:
-			reaction_icon.position = Vector2(35,-125)
+			reaction_icon.position = Vector2(0,-visible_size.y*base_scale-18) if presentation_style == "Beach" else Vector2(35,-125)
 			reaction_icon.modulate.a = minf(1,reaction_time*2)
 			sprite.rotation = 0 if Game.reduce_motion else sin(reaction_time*4)*0.015
 		else:

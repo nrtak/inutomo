@@ -13,13 +13,15 @@ var travel_path = PackedVector2Array()
 var target_place = ""
 const FOOT_POINTS = {
  "Home":Vector2(0.25,0.32), "Puppy Club":Vector2(0.54,0.31),
- "Park":Vector2(0.52,0.47), "Shop":Vector2(0.31,0.57),
+ "Park":Vector2(0.54,0.53), "Shop":Vector2(0.31,0.57),
  "Vet Clinic":Vector2(0.77,0.55), "Beach":Vector2(0.71,0.78),
- "Harbor":Vector2(0.45,0.77), "Keeper’s Cottage":Vector2(0.86,0.38),
+ "Harbor":Vector2(0.45,0.77), "Keeper’s Cottage":Vector2(0.915,0.28),
  "West path":Vector2(0.37,0.38), "Club path":Vector2(0.54,0.38),
  "Shop path":Vector2(0.43,0.55), "East path":Vector2(0.65,0.48),
  "South path":Vector2(0.56,0.61), "Beach path":Vector2(0.57,0.70),
- "Harbor path":Vector2(0.49,0.67), "Cottage path":Vector2(0.82,0.48)
+ "Harbor path":Vector2(0.49,0.67), "Clinic side":Vector2(0.84,0.54),
+ "Clinic corner":Vector2(0.86,0.47), "Cottage path":Vector2(0.846,0.405),
+ "Bridge path":Vector2(0.875,0.34)
 }
 const PATH_LINKS = [
  ["Home","West path"],["West path","Park"],
@@ -28,7 +30,9 @@ const PATH_LINKS = [
  ["Vet Clinic","East path"],["East path","Park"],
  ["Park","South path"],["South path","Beach path"],["Beach path","Beach"],
  ["South path","Harbor path"],["Harbor path","Harbor"],
- ["Vet Clinic","Cottage path"],["Cottage path","Keeper’s Cottage"]
+ ["Vet Clinic","Clinic side"],["Clinic side","Clinic corner"],
+ ["Clinic corner","Cottage path"],["Cottage path","Bridge path"],
+ ["Bridge path","Keeper’s Cottage"]
 ]
 const PLACES = {
  "Harbor": {"point": Vector2(0.43, 0.84), "text": "Meet Owen at the ferry office.", "art": "Harbor"},
@@ -39,18 +43,23 @@ const PLACES = {
  "Shop": {"point": Vector2(0.28, 0.50), "text": "Visit June for treats, toys, care goods and comfort.", "art": "Shop"},
  "Vet Clinic": {"point": Vector2(0.80, 0.49), "text": "Leah offers a free checkup and gentle grooming.", "art": "Vet Clinic"},
  "Beach": {"point": Vector2(0.73, 0.77), "text": "Explore three discoveries, then walk back up the path.", "art": "Beach"},
- "Lighthouse": {"point": Vector2(0.90, 0.15), "text": "Locked for a later chapter. View the scenic preview.", "art": "Lighthouse"}
+ "Lighthouse": {"point": Vector2(0.77, 0.13), "text": "Locked for a later chapter. View the scenic preview.", "art": "Lighthouse"}
 }
 func _ready() -> void:
  mouse_filter = Control.MOUSE_FILTER_IGNORE
- var bg = ColorRect.new()
- bg.color = Color("d6f1f3")
+ var bg = TextureRect.new()
+ var sea = GradientTexture2D.new()
+ sea.gradient = Gradient.new()
+ sea.gradient.colors = PackedColorArray([Color("71c6ed"),Color("20b8d7")])
+ sea.fill_from = Vector2(0,0)
+ sea.fill_to = Vector2(0,1)
+ bg.texture = sea
+ Daylight.apply_to(bg,"Map surround")
  bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
  bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  add_child(bg)
  var inset = MarginContainer.new()
  inset.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
- var safe = UI.safe_insets()
  var margins = {"left": 0, "right": 0, "top": 0, "bottom": 0}
  for edge in margins:
   inset.add_theme_constant_override("margin_" + edge, margins[edge])
@@ -64,9 +73,8 @@ func _ready() -> void:
  map_image.texture = Art.ISLAND
  Daylight.apply_to(map_image, "Island")
  map_image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
- map_image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+ map_image.stretch_mode = TextureRect.STRETCH_SCALE
  map_image.mouse_filter = Control.MOUSE_FILTER_IGNORE
- map_image.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  canvas.add_child(map_image)
  var ambience = AmbientLife.new()
  ambience.location = "Island"
@@ -99,17 +107,21 @@ func place_pins() -> void:
  if canvas.size.x <= 0 or canvas.size.y <= 0:
   return
  var texture_size = Vector2(Art.ISLAND.get_size())
- var factor = maxf(canvas.size.x / texture_size.x, canvas.size.y / texture_size.y)
+ var safe = UI.safe_insets()
+ var area = Rect2(Vector2(safe.left,safe.top),Vector2(maxf(1,canvas.size.x-safe.left-safe.right),maxf(1,canvas.size.y-safe.top-safe.bottom)))
+ # Fit the whole island; its sky sits behind the compact map header.
+ var factor = minf(area.size.x / texture_size.x, area.size.y / texture_size.y)
  var draw_size = texture_size * factor
- map_rect = Rect2((canvas.size - draw_size) * 0.5, draw_size)
+ map_rect = Rect2(area.position+(area.size-draw_size)*0.5,draw_size)
+ map_image.position = map_rect.position
+ map_image.size = map_rect.size
  for place in pins:
   var pin: Button = pins[place]
   pin.size = pin.get_combined_minimum_size()
   var center = map_rect.position + PLACES[place].point * map_rect.size
-  var safe = UI.safe_insets()
   pin.position = (center - pin.size * 0.5).clamp(Vector2(safe.left, safe.top + 110), (canvas.size - pin.size - Vector2(safe.right, safe.bottom + 24)).max(Vector2(safe.left, safe.top + 110)))
 
- var occupied: Array[Rect2] = []
+ var occupied: Array[Rect2] = [Rect2(map_rect.position+Vector2(0.86,0.045)*map_rect.size,Vector2(0.10,0.19)*map_rect.size)]
  if is_instance_valid(map_dog):
   if not travelling:
    map_dog.set_pose(Game.resting)
@@ -119,7 +131,6 @@ func place_pins() -> void:
   occupied.append(Rect2(foot-Vector2(dog_size.x*0.5,dog_size.y)-Vector2(8,8),dog_size+Vector2(16,16)))
  for place in pins:
   var pin: Button = pins[place]
-  var safe = UI.safe_insets()
   var lower = Vector2(safe.left, safe.top + 110)
   var upper = canvas.size - pin.size - Vector2(safe.right, safe.bottom + 24)
   var xs = [pin.position.x, lower.x, upper.x]

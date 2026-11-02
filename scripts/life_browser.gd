@@ -12,10 +12,15 @@ var shown_daily = ""
 var shown_event = ""
 var content: VBoxContainer
 var album_overlay: Control
+var beach_panel: PanelContainer
+var beach_layout: VBoxContainer
+var beach_status: Label
+var beach_scroller: ScrollContainer
 const MODES = ["Dog", "Wardrobe", "Training", "Friends", "Finds", "Home", "Events", "Photos"]
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.resized.connect(arrange_beach)
 	render()
 
 func _process(_delta: float) -> void:
@@ -33,9 +38,14 @@ func _process(_delta: float) -> void:
 			if button is Button and button.has_meta("playdate"):
 				button.disabled = Game.cooldowns.get("Playdate", 0) > 0
 	if mode == "Beach Activities" and is_instance_valid(content):
+		var reason = Game.activity_block_reason()
+		if is_instance_valid(beach_status):
+			beach_status.text = reason+"." if not reason.is_empty() else ""
+			beach_status.visible = not reason.is_empty()
 		for button in content.get_children():
 			if button is Button and button.has_meta("beach_action"):
-				button.disabled = Game.cooldowns.get("Beach",0) > 0
+				button.disabled = Game.cooldowns.get("Beach",0) > 0 or not Game.can_explore()
+				button.tooltip_text = reason if not reason.is_empty() else ("A short breather before the next turn." if button.disabled else button.text)
 	for command in training_buttons:
 		var button: Button = training_buttons[command]
 		button.disabled = Game.cooldowns.get("Training", 0) > 0
@@ -76,9 +86,19 @@ func render() -> void:
 	var layout = UI.column(10)
 	layout.custom_minimum_size.x = 400 if compact else 0
 	panel.add_child(layout)
+	if mode == "Beach Activities":
+		beach_panel = panel
+		beach_layout = layout
+		panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		var box = UI.style(BeachStyle.PAPER,24)
+		box.border_color = BeachStyle.INK
+		panel.add_theme_stylebox_override("panel",box)
 	var top = HBoxContainer.new()
 	layout.add_child(top)
 	var title = UI.label({"Dog": "Your Puppy", "Wardrobe": "Wardrobe", "Home": "Home Décor", "Finds": "Walk Keepsakes", "Photos": "Photo Album", "Daily": "To-do Today"}.get(mode, mode), 28, UI.TEAL)
+	if mode == "Beach Activities":
+		title.text = {"Shells":"Find shells","Cleanup":"Beach cleanup","Sand Fetch":"Sand fetch"}.get(beach_mode,"Beach activities")
+		title.add_theme_color_override("font_color",BeachStyle.INK)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(title)
 	var tabs = GridContainer.new()
@@ -109,6 +129,8 @@ func render() -> void:
 		scroll.custom_minimum_size.y = 400
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	layout.add_child(scroll)
+	if mode == "Beach Activities":
+		beach_scroller = scroll
 	content = UI.column(12)
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(content)
@@ -126,10 +148,32 @@ func render() -> void:
 		"Home": decorating()
 		"Events": events()
 		"Photos": photos()
+	if mode == "Beach Activities":
+		arrange_beach()
+		content.minimum_size_changed.connect(arrange_beach)
+
+func arrange_beach() -> void:
+	if mode != "Beach Activities" or not is_instance_valid(beach_panel) or not is_instance_valid(beach_layout):
+		return
+	var width = BeachStyle.column_width(host.size,UI.safe_insets())
+	beach_panel.custom_minimum_size.x = width
+	beach_layout.custom_minimum_size.x = width-40
+	if is_instance_valid(beach_scroller) and is_instance_valid(content):
+		var safe = UI.safe_insets()
+		var chrome = beach_panel.get_theme_stylebox("panel").get_minimum_size().y+beach_layout.get_child(0).get_combined_minimum_size().y+beach_layout.get_theme_constant("separation")
+		var available = host.size.y-safe.top-safe.bottom-84
+		beach_scroller.custom_minimum_size.y = minf(content.get_combined_minimum_size().y,maxf(96,available-chrome))
 
 func tile(text: String, icon: Texture2D, action: Callable, color: Color = Color("c8eddd")) -> Button:
-	var button = UI.icon_button(text, icon, action, color)
+	var button = UI.location_button(text,icon,action,color) if mode == "Beach Activities" else UI.icon_button(text, icon, action, color)
 	button.custom_minimum_size.y = 102
+	if mode == "Beach Activities":
+		BeachStyle.style_button(button,color)
+		button.custom_minimum_size.x = 0
+		button.custom_minimum_size.y = 76
+		button.get_meta("picture").offset_right = 82
+		button.get_meta("caption").offset_left = 90
+		button.get_meta("caption").add_theme_font_size_override("font_size",22)
 	content.add_child(button)
 	return button
 
@@ -530,20 +574,22 @@ func choose_beach(kind: String) -> void:
 
 func beach_activities() -> void:
 	IslandActivities.refresh(Game)
+	beach_status = UI.label(Game.activity_block_reason(),22)
+	beach_status.visible = not Game.can_explore()
+	content.add_child(beach_status)
 	if beach_mode == "":
 		content.add_child(UI.hint_label("Kai's gentle beach games. Each earns 4 coins once a day.", 23))
 		for kind in IslandActivities.BEACH_GAMES:
 			var done = kind in Game.life.beach.done
 			tile(kind + (" · Done today" if done else ""), load("res://assets/ui/" + {"Shells":"shell", "Cleanup":"menu_bag", "Sand Fetch":"play"}[kind] + ".svg"), choose_beach.bind(kind))
 	else:
-		content.add_child(UI.label(beach_mode, 27, UI.TEAL))
 		if not feedback.is_empty():
 			content.add_child(UI.hint_label(feedback, 23, UI.TEAL))
 		if beach_mode in Game.life.beach.done:
 			content.add_child(UI.label("Completed today. Thank you!", 23))
 		elif beach_mode == "Shells":
 			var shell = TextureRect.new()
-			shell.texture = preload("res://assets/ui/shell.svg")
+			shell.texture = preload("res://assets/ui/beach_shell.svg")
 			shell.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			shell.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			shell.custom_minimum_size.y = 90
@@ -563,7 +609,8 @@ func beach_activities() -> void:
 	tile("Ask Kai", UI.resident_icon(Art.KAI), func(): host.show_resident(Art.KAI,"Kai","Beach lifeguard",IslandActivities.greeting(Game,"Kai","Choose Shells to identify a find, Cleanup to tidy the shore, or Sand Fetch for three gentle rolls. Rest first if your puppy is tired.")))
 
 func beach_button(caption: String, icon: String, choice: int) -> void:
-	var button = tile(caption, load("res://assets/ui/" + icon + ".svg"), func():
+	var picture = load("res://assets/ui/" + {"shell":"beach_shell","play":"beach_ball"}.get(icon,icon) + ".svg")
+	var button = tile(caption, picture, func():
 		var before = Game.life.beach.duplicate(true)
 		feedback = IslandActivities.beach_action(Game, beach_mode, choice)
 		if beach_mode == "Sand Fetch" and int(Game.life.beach.throws) > (int(before.throws) if before.day == IslandLife.today() else 0):
@@ -573,4 +620,4 @@ func beach_button(caption: String, icon: String, choice: int) -> void:
 		render()
 	)
 	button.set_meta("beach_action",true)
-	button.disabled = Game.cooldowns.get("Beach",0) > 0
+	button.disabled = Game.cooldowns.get("Beach",0) > 0 or not Game.can_explore()

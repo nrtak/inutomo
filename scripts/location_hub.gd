@@ -11,6 +11,8 @@ var health_button: Button
 var primary_actions: VBoxContainer
 var unavailable: Label
 var choices: GridContainer
+var beach_scroll: ScrollContainer
+var beach_content: VBoxContainer
 
 func _ready() -> void:
  mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -31,6 +33,20 @@ func _ready() -> void:
  content.custom_minimum_size.x = 380
  content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  scroll.add_child(content)
+ if location == "Beach":
+  beach_scroll = scroll
+  beach_content = content
+  var air = Control.new()
+  air.name = "BeachBreathingRoom"
+  air.custom_minimum_size.y = 80
+  air.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  content.add_child(air)
+  host.resized.connect(arrange_beach)
+ elif location == "Lighthouse":
+  var air = Control.new()
+  air.custom_minimum_size.y = 180
+  air.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  content.add_child(air)
  wallet = UI.label("", 23)
  wallet.visible = false
  content.add_child(wallet)
@@ -39,6 +55,13 @@ func _ready() -> void:
  content.add_child(description)
  feedback = UI.hint_label("", 21)
  feedback.visible = false
+ if location == "Lighthouse":
+  var note = UI.style(Color("fff6e4"))
+  note.content_margin_left = 12
+  note.content_margin_right = 12
+  note.content_margin_top = 8
+  note.content_margin_bottom = 8
+  feedback.add_theme_stylebox_override("normal", note)
  content.add_child(feedback)
  primary_actions = UI.column(10)
  content.add_child(primary_actions)
@@ -108,7 +131,7 @@ func _ready() -> void:
    add_primary("Find shells", beach_picture(0), host.open_beach_activity.bind("Shells"), Color("f9d8e2"))
    add_primary("Beach cleanup", beach_picture(1), host.open_beach_activity.bind("Cleanup"), Color("c8eddd"))
    add_primary("Sand fetch", beach_picture(2), host.open_beach_activity.bind("Sand Fetch"), Color("c2ecf4"))
-   add_choice("Resume Walk" if Game.has_outing("Walk") else "Go for a walk", preload("res://assets/ui/leaf.svg"), host.start_activity.bind("Walk"))
+   add_choice("Resume Walk" if Game.has_outing("Walk") else "Go for a walk", preload("res://assets/ui/beach_leaf.svg"), host.start_activity.bind("Walk"),BeachStyle.PAPER)
   "Puppy Club":
    description.text = "Meet Nora and your island friends."
    wallet.visible = false
@@ -138,11 +161,14 @@ func _ready() -> void:
  refresh()
  show_greeting()
  host.habitat.present_location_dog()
+ if location == "Beach":
+  arrange_beach.call_deferred()
 
 func add_primary(text: String, picture: Texture2D, action: Callable, color: Color = Color("c8eddd")) -> Button:
  var button = UI.location_button(text, picture, action, color)
  button.custom_minimum_size = Vector2(380, 112)
  primary_actions.add_child(button)
+ BeachStyle.style_button(button,color)
  return button
 
 func add_choice(text: String, picture: Texture2D, action: Callable, color: Color = Color("f9d8e2")) -> Button:
@@ -150,7 +176,19 @@ func add_choice(text: String, picture: Texture2D, action: Callable, color: Color
  button.custom_minimum_size = Vector2(380, 72)
  button.add_theme_font_size_override("font_size", 22)
  choices.add_child(button)
+ BeachStyle.style_button(button,color)
  return button
+
+func arrange_beach() -> void:
+ if not is_instance_valid(beach_scroll) or not is_instance_valid(primary_actions):
+  return
+ var width = BeachStyle.column_width(host.size,UI.safe_insets())
+ beach_scroll.custom_minimum_size.x = width
+ beach_content.custom_minimum_size.x = width
+ beach_content.get_node("BeachBreathingRoom").custom_minimum_size.y = clampf(host.size.y*0.115,56,82)
+ for button in primary_actions.get_children()+choices.get_children():
+  button.custom_minimum_size.x = width
+  button.get_meta("caption").add_theme_font_size_override("font_size",23 if width < 350 else 25)
 
 func refresh() -> void:
  var blocked = Game.activity_block_reason()
@@ -264,17 +302,20 @@ func show_greeting() -> void:
   if child.name == "LocationGreeting":
    host.world_host.remove_child(child)
    child.queue_free()
- var people = {"Puppy Club":[Art.NORA,"Nora","Welcome! A playdate or an island event?"], "Park":[Art.BEN,"Ben","Ready to play? Try Fetch or practice a trick."], "Beach":[Art.KAI,"Kai","Welcome to the beach! What shall we try?"], "Shop":[Art.JUNE,"June","Welcome! Choose a shelf to browse."], "Vet Clinic":[Art.LEAH,"Leah","I'm here to help. Checkups and treatment are free."], "Harbor":[Art.OWEN,"Owen","Welcome aboard! Parcels and island supplies are here."], "Keeper’s Cottage":[Art.REN,"Ren","Welcome to my cottage. Let's tend the island light."]}
+ var people = {"Puppy Club":[Art.NORA,"Nora","Welcome! A playdate or an island event?"], "Park":[Art.BEN,"Ben","Ready to play? Try Fetch or practice a trick."], "Beach":[Art.KAI,"Kai","Welcome to the beach! What shall we try?"], "Shop":[Art.JUNE,"June","Welcome! Choose a shelf to browse."], "Vet Clinic":[Art.LEAH,"Leah","Free checkups and gentle care."], "Harbor":[Art.OWEN,"Owen","Welcome! Let’s help the island."], "Keeper’s Cottage":[Art.REN,"Ren","Good to see you. The light needs us."]}
  if location not in people:
   return
  var person = people[location]
  var greeting = load("res://scripts/location_greeting.gd").new()
  greeting.texture = person[0]
+ greeting.scene_style = "Beach" if location == "Beach" else "Cel"
  greeting.character_name = person[1]
  var visits = maxi(1 if Game.life.friends.has(person[1]) else 0,int(host.arrival_visits.get(location, 0)))
  greeting.duration = 6.0 if visits == 0 else 3.5
  var repeats = ["Lovely to see you both!", "Welcome back! What shall we try?", "Ready for another little adventure?"]
- greeting.text = IslandStory.next_step(Game).text if location in ["Harbor", "Keeper’s Cottage"] else (person[2] if visits == 0 else repeats[visits % repeats.size()])
+ greeting.text = person[2] if visits == 0 else repeats[visits % repeats.size()]
+ if location == "Beach" and visits == 0:
+  greeting.text = "A peaceful evening by the sea." if Daylight.current_period in ["Evening","Night","Late night"] else "A perfect day for the beach!"
  host.arrival_visits[location] = visits + 1
  if not Game.life.friends.has(person[1]):
   IslandLife.talk(Game,person[1])
@@ -283,9 +324,4 @@ func show_greeting() -> void:
  host.world_host.add_child(greeting)
 
 func beach_picture(index: int) -> Texture2D:
- var sheet = preload("res://assets/ui/beach_activities.png")
- var atlas = AtlasTexture.new()
- atlas.atlas = sheet
- var cell = sheet.get_width() / 3.0
- atlas.region = Rect2(index * cell,0,cell,sheet.get_height())
- return atlas
+ return [preload("res://assets/ui/beach_shell.svg"),preload("res://assets/ui/beach_bucket.svg"),preload("res://assets/ui/beach_ball.svg")][clampi(index,0,2)]

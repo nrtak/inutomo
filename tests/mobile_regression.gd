@@ -192,11 +192,17 @@ func run() -> void:
   await process_frame
   await process_frame
   var map = main.world_host.get_child(0)
+  var safe_frame = Rect2(Vector2(105,20),Vector2(mobile_view.size.x-210,675))
+  check(safe_frame.encloses(map.map_rect.grow(-0.1)),"The complete map artwork fits the phone without cropping the tower")
+  var tower = Rect2(map.map_rect.position+Vector2(0.86,0.045)*map.map_rect.size,Vector2(0.10,0.19)*map.map_rect.size)
+  for control in [main.back_button,main.page_label,main.menu_button]:
+   check(not control.get_global_rect().intersects(tower),"The map header leaves the lighthouse visible")
   var keys = map.pins.keys()
   for i in keys.size():
    var rect: Rect2 = map.pins[keys[i]].get_global_rect()
    check(rect.position.x >= 105 and rect.end.x <= mobile_view.size.x - 105, "Map markers clear the screen cutouts")
    check(rect.position.y >= 20 and rect.end.y <= 695, "Map markers stay within the visible screen height")
+   check(not rect.intersects(tower),"Map labels leave the lighthouse roof and tower visible")
    for j in range(i + 1, keys.size()):
     check(not rect.intersects(map.pins[keys[j]].get_global_rect()), "Map markers " + str(keys[i]) + " / " + str(keys[j]) + " do not overlap at " + str(screen_size))
   map.pins["Shop"].pressed.emit()
@@ -224,6 +230,10 @@ func run() -> void:
     var header_bounds = header_item.get_global_rect()
     check(header_bounds.position.x >= 105 and header_bounds.end.x <= mobile_view.size.x - 105, place + " header clears phone cutouts")
    check(not main.camera_button.get_global_rect().intersects(main.menu_button.get_global_rect()), "Location camera does not overlap Menu")
+   if place != "Lighthouse":
+    check(main.camera_button.get_global_rect().position.x > mobile_view.size.x * 0.5,"Location camera returns to the right utility group after leaving the map")
+   else:
+    check(main.menu_button.get_global_rect().end.x < mobile_view.size.x*0.82,"Lighthouse utilities leave the tower roof unobstructed")
    var hub = main.body.get_child(0)
    for button in hub.choices.get_children() + hub.primary_actions.get_children():
     var bounds: Rect2 = button.get_global_rect()

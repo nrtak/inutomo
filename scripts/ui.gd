@@ -11,18 +11,19 @@ static func place_icon(place: String) -> Texture2D:
 	return load("res://assets/ui/" + file + ".svg")
 
 static func resident_icon(texture: Texture2D) -> Texture2D:
-	texture = Art.daily_portrait(texture)
+	var frame = Art.resident_frames(Art.daily_portrait(texture))[0] as AtlasTexture
 	var icon = AtlasTexture.new()
-	icon.atlas = texture
-	var region = Rect2(texture.get_image().get_used_rect())
+	icon.atlas = frame.atlas
+	var region = frame.region
 	region.size.y *= 0.52
 	icon.region = region
+	icon.filter_clip = true
 	return icon
 
 static func style(color: Color, radius: int = 24) -> StyleBoxFlat:
 	var s = StyleBoxFlat.new()
 	s.bg_color = color
-	s.border_color = Color("b88b59")
+	s.border_color = INK
 	s.set_border_width_all(2)
 	s.set_corner_radius_all(radius)
 	s.content_margin_left = 20
@@ -290,14 +291,7 @@ static func press_feedback(button: Button, amount: float) -> void:
 	tween.tween_property(button,"scale",Vector2.ONE*amount,0.09).set_trans(Tween.TRANS_SINE)
 
 static func location_portrait_rect(view: Vector2, image: Vector2, safe: Dictionary) -> Rect2:
-	var left: float = safe.left + 8.0
-	var width: float = maxf(1.0, view.x * 0.40 - 8.0 - left)
-	var top: float = safe.top + 86.0
-	var height: float = maxf(1.0, view.y - top + view.y * 0.22)
-	var factor: float = minf(width / maxf(image.x, 1.0), height / maxf(image.y, 1.0))
-	var fitted: Vector2 = image * factor
-	var bottom_crop: float = minf(fitted.y * 0.22, view.y * 0.22)
-	return Rect2(Vector2(left, maxf(top, view.y - fitted.y + bottom_crop)), fitted)
+	return BeachStyle.portrait_rect(view,image,safe)
 
 static func motion_toggle() -> CheckButton:
 	var game = Engine.get_main_loop().root.get_node("Game")

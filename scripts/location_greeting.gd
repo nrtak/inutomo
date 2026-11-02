@@ -4,6 +4,7 @@ var texture: Texture2D
 var character_name = ""
 var text = ""
 var duration = 6.0
+var scene_style = ""
 
 func _ready() -> void:
  name = "LocationGreeting"
@@ -19,6 +20,11 @@ func _ready() -> void:
  portrait.clip_contents = false
  add_child(portrait)
  var bubble = UI.card()
+ if not scene_style.is_empty():
+  var style = UI.style(BeachStyle.PAPER,42)
+  style.border_color = BeachStyle.INK
+  style.set_border_width_all(3)
+  bubble.add_theme_stylebox_override("panel",style)
  bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
  add_child(bubble)
  var bubble_width = minf(340, get_viewport_rect().size.x * 0.23)
@@ -27,7 +33,7 @@ func _ready() -> void:
  content.custom_minimum_size.x = bubble_width - 40
  content.mouse_filter = Control.MOUSE_FILTER_IGNORE
  bubble.add_child(content)
- content.add_child(UI.label(character_name, 25, UI.TEAL))
+ content.add_child(UI.label(character_name, 25, BeachStyle.INK))
  var speech = UI.label(text, 24)
  speech.custom_minimum_size.x = bubble_width - 40
  content.add_child(speech)
@@ -35,11 +41,18 @@ func _ready() -> void:
  tail.polygon = PackedVector2Array([Vector2(0,0),Vector2(-22,22),Vector2(35,0)])
  tail.color = Color("fff6e5")
  bubble.add_child(tail)
+ if not scene_style.is_empty():
+  var contour = Line2D.new()
+  contour.points = tail.polygon
+  contour.width = 3
+  contour.default_color = BeachStyle.INK
+  contour.antialiased = true
+  tail.add_child(contour)
  var arrange = func():
-  var bounds = UI.location_portrait_rect(size, atlas.get_size(), safe)
+  var bounds = BeachStyle.portrait_rect(size,atlas.get_size(),safe) if scene_style == "Beach" else UI.location_portrait_rect(size, atlas.get_size(), safe)
   portrait.size = bounds.size
   portrait.position = bounds.position
-  bubble.position = Vector2(size.x * 0.39, safe.top + 74)
+  bubble.position = Vector2(size.x * (0.35 if scene_style == "Beach" else 0.39), safe.top + 74)
   bubble.size = Vector2(bubble_width, bubble.get_combined_minimum_size().y)
   tail.position = Vector2(24,bubble.size.y-2)
  resized.connect(arrange)
