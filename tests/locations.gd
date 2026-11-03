@@ -83,7 +83,7 @@ func run() -> void:
 		check(not is_instance_valid(main.resident_overlay) and main.hud.visible, "Arrival leaves activities usable")
 		var portrait = greeting.get_child(0)
 		var bubble = greeting.get_child(1)
-		check(portrait.get_global_rect().position.x >= 0 and portrait.get_global_rect().end.x <= main.size.x * 0.40, "Arrival keeps the full arm width on screen")
+		check(portrait.get_global_rect().position.x >= UI.safe_insets(24).left and portrait.get_global_rect().end.x <= main.size.x * 0.445, "Arrival keeps the full arm width inside the character area")
 		check(portrait is ResidentPortrait and portrait.frames.size() >= 2 and portrait.frames[0].get_size() == portrait.frames[1].get_size(), "Arrival poses keep consistent framing for full arms")
 		check(portrait.get_global_rect().end.y >= main.size.y - 1, "Portrait reaches the screen edge without a floating cut")
 		check(bubble.size.y < main.size.y * 0.35, "Arrival bubble hugs its short text")
@@ -94,7 +94,7 @@ func run() -> void:
 	for texture in [Art.NORA, Art.NORA_CORAL, Art.JUNE, Art.JUNE_MINT, Art.BEN, Art.BEN_TRAINING, Art.LEAH, Art.LEAH_TUNIC, Art.OWEN, Art.OWEN_PARCEL, Art.REN, Art.REN_SWEATER, Art.KAI]:
 		for view in [Vector2(1280,720), Vector2(1558,720)]:
 			var framing = UI.location_portrait_rect(view, texture.get_image().get_used_rect().size, {"left":105,"right":105,"top":20,"bottom":25})
-			check(framing.position.x >= 105 and framing.end.x <= view.x * 0.40, "Both wardrobe variants preserve their full arm width at phone aspect ratios")
+			check(framing.position.x >= 105 and framing.end.x <= view.x * 0.445, "Both wardrobe variants preserve their full arm width at phone aspect ratios")
 			check(framing.position.y >= 106 and framing.end.y >= view.y, "Portrait framing keeps heads visible and crops only at the screen bottom")
 	main.show_page("Home")
 	check(main.days_label.text.begins_with("Days played:"), "Dog card includes days played")

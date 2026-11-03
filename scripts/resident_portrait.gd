@@ -13,6 +13,7 @@ func configure(source: Texture2D) -> void:
  greeting_pending = frames.size() == 3
  frame_index = 2 if greeting_pending else 0
  texture = frames[frame_index]
+ material = UI.art_cutout()
  expand_mode = TextureRect.EXPAND_IGNORE_SIZE
  stretch_mode = TextureRect.STRETCH_SCALE
  mouse_filter = Control.MOUSE_FILTER_IGNORE

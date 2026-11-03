@@ -56,8 +56,9 @@ func _ready() -> void:
 	for point in puppy.walk_area:
 		puppy.bounds = puppy.bounds.expand(point)
 	ball = Sprite2D.new()
-	ball.texture = preload("res://assets/ui/beach_ball.svg") if location == "Beach" and location_presentation else preload("res://assets/ui/play.svg")
-	ball.scale = Vector2.ONE * 0.5
+	ball.texture = Goods.picture("Toy")
+	ball.material = UI.art_cutout()
+	ball.scale = Vector2.ONE * (50.0 / ball.texture.get_width())
 	ball.visible = false
 	world.add_child(ball)
 	discovery = Sprite2D.new()
@@ -70,6 +71,7 @@ func add_home_decor() -> void:
 	if Game.items.get(Game.life.bed, 0) > 0:
 		var bed = Sprite2D.new()
 		bed.texture = Goods.picture(Game.life.bed)
+		bed.material = UI.art_cutout()
 		bed.scale = Vector2(250.0 / bed.texture.get_width(), 100.0 / bed.texture.get_height())
 		bed.position = IslandLife.home_point(Game, "Rest")
 		decor_targets.Rest = bed.position
@@ -79,6 +81,7 @@ func add_home_decor() -> void:
 		var toy = Sprite2D.new()
 		home_toy = toy
 		toy.texture = Goods.picture(Game.life.toy)
+		toy.material = UI.art_cutout()
 		toy.scale = Vector2.ONE * (55.0 / toy.texture.get_width())
 		toy.position = IslandLife.home_point(Game, "Play")
 		decor_targets.Play = toy.position
@@ -87,9 +90,10 @@ func add_home_decor() -> void:
 	if Game.life.bowl:
 		var bowl = Sprite2D.new()
 		bowl.texture = Goods.picture("PuppyMeal")
+		bowl.material = UI.art_cutout()
 		bowl.scale = Vector2.ONE * (110.0 / bowl.texture.get_width())
 		bowl.position = IslandLife.home_point(Game, "Feed")
-		bowl.offset.y = -12
+		bowl.offset.y = -48
 		decor_targets.Feed = bowl.position
 		decor_sprites.Feed = bowl
 		world.add_child(bowl)

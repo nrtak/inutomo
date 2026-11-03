@@ -17,6 +17,7 @@ var clock = 0.0
 var transition: Tween
 var location_materials: Dictionary = {}
 const MOTION = {
+ "Lighthouse Room":[Vector4(0.29,0.39,0.53,0.15)],
  "Island":[Vector4(0,0.16,1,0.84),Vector4(0,0.02,0.4,0.96),Vector4(0.56,0.02,0.44,0.96),Vector4(0.335,0.61,0.03,0.14),Vector4(0.145,0.57,0.04,0.20),Vector4(0.075,0.34,0.04,0.16),Vector4(0.485,0.375,0.055,0.10)],
  "Home":[Vector4(0.36,0.15,0.6,0.47),Vector4(0.02,0.08,0.32,0.7),Vector4(0.83,0,0.17,0.45)],
  "Park":[Vector4(0.3,0.24,0.5,0.3),Vector4(0,0,0.25,0.95),Vector4(0.73,0,0.27,0.96)],
@@ -44,6 +45,7 @@ const TREE_TOPS = {
  "Lighthouse":[Vector4(0.0,0.0,0.30,0.25),Vector4(0.92,0.12,0.08,0.15)]
 }
 const LIGHTS = {
+	"Lighthouse Room": [Vector4(0.18,0.34,0.12,0.18),Vector4(0.90,0.17,0.06,0.10),Vector4(0.50,0.82,0.60,0.40),Vector4.ZERO],
 	"Beach Arrival": [Vector4(0.10,0.28,0.05,0.12),Vector4(0.30,0.76,0.55,0.45),Vector4.ZERO,Vector4.ZERO],
 	"Beach": [Vector4(0.10,0.55,0.06,0.12),Vector4(0.45,0.85,0.6,0.4),Vector4.ZERO,Vector4.ZERO],
 	"Harbor": [Vector4(0.08, 0.44, 0.035, 0.07), Vector4(0.235, 0.43, 0.035, 0.07), Vector4.ZERO, Vector4.ZERO],

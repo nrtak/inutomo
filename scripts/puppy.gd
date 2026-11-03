@@ -78,18 +78,18 @@ func set_breed() -> void:
 
 func set_pose(asleep: bool) -> void:
 	var unified = presentation_style == "Beach"
-	var texture: Texture2D = BeachStyle.dog_texture(Game.breed,asleep) if unified else (Art.SLEEP_TEXTURES[Game.breed] if asleep else Art.PUPPIES[Game.breed])
-	sprite.material = sleep_material if asleep and Game.breed != "Puppy" and not unified else null
+	var texture: Texture2D = Art.SLEEP_TEXTURES[Game.breed] if asleep else Art.PUPPIES[Game.breed]
+	sprite.material = sleep_material if asleep and Game.breed != "Puppy" else null
 	var accessory: String = preview_accessory if not preview_accessory.is_empty() else Game.life.accessory
 	if Goods.ITEMS.has(accessory) and Goods.ITEMS[accessory].has("color") and (not preview_accessory.is_empty() or Game.items.get(accessory, 0) > 0):
 		style_material.set_shader_parameter("bandana", Goods.ITEMS[accessory].color)
 		style_material.set_shader_parameter("recolor", true)
-		style_material.set_shader_parameter("sleeping_cutout", asleep and Game.breed != "Puppy" and not unified)
+		style_material.set_shader_parameter("sleeping_cutout", asleep and Game.breed != "Puppy")
 		sprite.material = style_material
 	if sprite.texture != texture:
 		sprite.texture = texture
 		if not pose_bounds.has(texture):
-			pose_bounds[texture] = Art.SLEEP_REGIONS[Game.breed] if asleep and not unified else texture.get_image().get_used_rect()
+			pose_bounds[texture] = Rect2i(Vector2i.ZERO,texture.get_size())
 		var visible_rect: Rect2i = pose_bounds[texture]
 		sprite.region_enabled = true
 		sprite.region_rect = visible_rect
@@ -445,6 +445,8 @@ func show_trick_pose() -> void:
 	var index: int = order[mini(order.size()-1,int(phase*order.size()))]
 	if Game.reduce_motion:
 		index = 1
+	if sprite.material == null:
+		sprite.material = sleep_material
 	sprite.texture = Art.trick_sheet(Game.breed)
 	sprite.region_enabled = true
 	sprite.region_rect = frames[index]

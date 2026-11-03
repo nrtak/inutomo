@@ -1,0 +1,338 @@
+{
+  "nora": {
+    "atlas": "assets/characters/nora_anime_greeting_v2.png",
+    "rows": [
+      [
+        [
+          80,
+          0,
+          331,
+          508
+        ],
+        [
+          592,
+          0,
+          331,
+          508
+        ],
+        [
+          1104,
+          0,
+          331,
+          508
+        ]
+      ],
+      [
+        [
+          77,
+          512,
+          338,
+          512
+        ],
+        [
+          589,
+          512,
+          338,
+          512
+        ],
+        [
+          1101,
+          512,
+          338,
+          512
+        ]
+      ]
+    ],
+    "registration": [
+      {
+        "offsets": [
+          0.0,
+          47.88,
+          53.19
+        ],
+        "padding": 54
+      },
+      {
+        "offsets": [
+          0.0,
+          47.41,
+          55.19
+        ],
+        "padding": 56
+      }
+    ]
+  },
+  "june": {
+    "atlas": "assets/characters/june_idle_sheet.png",
+    "rows": [
+      [
+        [
+          0,
+          2,
+          512,
+          766
+        ],
+        [
+          512,
+          2,
+          512,
+          766
+        ]
+      ],
+      [
+        [
+          0,
+          768,
+          512,
+          768
+        ],
+        [
+          512,
+          768,
+          512,
+          768
+        ]
+      ]
+    ],
+    "registration": [
+      {
+        "offsets": [
+          0.0,
+          87.23
+        ],
+        "padding": 88
+      },
+      {
+        "offsets": [
+          0.0,
+          85.65
+        ],
+        "padding": 86
+      }
+    ]
+  },
+  "ben": {
+    "atlas": "assets/characters/ben_idle_sheet.png",
+    "rows": [
+      [
+        [
+          0,
+          12,
+          499,
+          756
+        ],
+        [
+          512,
+          12,
+          499,
+          756
+        ]
+      ],
+      [
+        [
+          0,
+          768,
+          499,
+          768
+        ],
+        [
+          512,
+          768,
+          499,
+          768
+        ]
+      ]
+    ],
+    "registration": [
+      {
+        "offsets": [
+          0.0,
+          46.6
+        ],
+        "padding": 47
+      },
+      {
+        "offsets": [
+          0.0,
+          46.32
+        ],
+        "padding": 47
+      }
+    ]
+  },
+  "leah": {
+    "atlas": "assets/characters/leah_idle_sheet.png",
+    "rows": [
+      [
+        [
+          9,
+          10,
+          497,
+          758
+        ],
+        [
+          521,
+          10,
+          497,
+          758
+        ]
+      ],
+      [
+        [
+          2,
+          768,
+          496,
+          768
+        ],
+        [
+          514,
+          768,
+          496,
+          768
+        ]
+      ]
+    ],
+    "registration": [
+      {
+        "offsets": [
+          0.0,
+          99.22
+        ],
+        "padding": 100
+      },
+      {
+        "offsets": [
+          0.0,
+          100.84
+        ],
+        "padding": 101
+      }
+    ]
+  },
+  "owen": {
+    "atlas": "assets/characters/owen_idle_sheet.png",
+    "rows": [
+      [
+        [
+          0,
+          2,
+          496,
+          766
+        ],
+        [
+          512,
+          2,
+          496,
+          766
+        ]
+      ],
+      [
+        [
+          0,
+          768,
+          496,
+          768
+        ],
+        [
+          512,
+          768,
+          496,
+          768
+        ]
+      ]
+    ],
+    "registration": [
+      {
+        "offsets": [
+          0.0,
+          60.44
+        ],
+        "padding": 61
+      },
+      {
+        "offsets": [
+          0.0,
+          58.06
+        ],
+        "padding": 59
+      }
+    ]
+  },
+  "ren": {
+    "atlas": "assets/characters/ren_idle_sheet.png",
+    "rows": [
+      [
+        [
+          25,
+          5,
+          477,
+          763
+        ],
+        [
+          537,
+          5,
+          477,
+          763
+        ]
+      ],
+      [
+        [
+          29,
+          772,
+          478,
+          764
+        ],
+        [
+          541,
+          772,
+          478,
+          764
+        ]
+      ]
+    ],
+    "registration": [
+      {
+        "offsets": [
+          0.1,
+          0.0
+        ],
+        "padding": 1
+      },
+      {
+        "offsets": [
+          0.0,
+          0.53
+        ],
+        "padding": 1
+      }
+    ]
+  },
+  "kai": {
+    "atlas": "assets/characters/kai_idle_sheet.png",
+    "rows": [
+      [
+        [
+          3,
+          4,
+          489,
+          764
+        ],
+        [
+          515,
+          4,
+          489,
+          764
+        ]
+      ]
+    ],
+    "registration": [
+      {
+        "offsets": [
+          0.0,
+          56.66
+        ],
+        "padding": 57
+      }
+    ]
+  }
+}

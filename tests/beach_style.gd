@@ -37,11 +37,11 @@ func run():
   main.show_page("Beach")
   await process_frame
   await process_frame
-  check(main.habitat.background.texture == BeachStyle.BACKGROUND,"The playable beach uses the approved cel scenery")
-  check(is_zero_approx(main.habitat.background.material.get_shader_parameter("water_shimmer")),"The cel ocean has no diagonal glossy overlay")
+  check(main.habitat.background.texture == BeachStyle.BACKGROUND,"The playable beach uses the restored anime scenery")
+  check(is_zero_approx(main.habitat.background.material.get_shader_parameter("water_shimmer")),"The ocean has no diagonal glossy overlay")
   var greeting = main.world_host.get_node("LocationGreeting")
   var resident = greeting.get_child(0)
-  check(resident.frames[0].atlas == BeachStyle.KAI,"Kai shares the scenery's cel art direction")
+  check(resident.frames[0].atlas == BeachStyle.KAI,"Kai shares the restored anime art direction")
   check(resident.get_global_rect().position.y >= 80 and resident.get_global_rect().position.y < 210,"Kai remains large and his head stays visible on phone screens")
   var menu_picture = main.menu_button.get_meta("picture")
   check(main.menu_button.get_global_rect().encloses(menu_picture.get_global_rect()),"Styling the menu never pushes its icon outside the button")
@@ -56,7 +56,7 @@ func run():
    for asleep in [false,true]:
     game.resting = asleep
     dog._process(0)
-    check(dog.sprite.texture == BeachStyle.dog_texture(breed,asleep),"Resting selects the matching cel sleep pose")
+    check(dog.sprite.texture == BeachStyle.dog_texture(breed,asleep),"Resting selects the matching anime sleep pose")
     var bounds: Rect2 = dog.sprite.get_global_transform()*dog.sprite.get_rect()
     check(bounds.end.y <= view_size.y-20 and bounds.position.y > 200,"The whole dog is grounded above the bottom safe area")
     for button in buttons:
@@ -78,7 +78,7 @@ func run():
   game.items.CoralBandana = 1
   game.life.accessory = "CoralBandana"
   main.habitat.puppy._process(0)
-  check(main.habitat.puppy.sprite.material == main.habitat.puppy.style_material,"The cel dog retains the player's equipped bandana")
+  check(main.habitat.puppy.sprite.material == main.habitat.puppy.style_material,"The dog retains the player's equipped bandana")
   hub.primary_actions.get_child(0).pressed.emit()
   check(main.page == "Life:Beach Activities" and main.body.get_child(0).beach_mode == "Shells","One tap opens the selected shell game")
   check(main.habitat.background.texture == BeachStyle.BACKGROUND and main.habitat.puppy.presentation_style == "Beach","Playing a beach game preserves the unified artwork")
@@ -115,7 +115,7 @@ func run():
   check(main.body.get_child(0).primary_actions.get_child(0).disabled,"Activities still respect the dog's resting state")
   game.resting = false
   main.show_page("Home")
-  check(main.habitat.puppy.presentation_style.is_empty(),"The beach art pass does not replace other locations prematurely")
+  check(main.habitat.puppy.presentation_style.is_empty(),"The beach art pass keeps its own layout while sharing actor artwork")
   view.queue_free()
   await process_frame
  UI.safe_override.clear()

@@ -2,41 +2,41 @@ class_name Art
 extends RefCounted
 
 # Stable slots: replace these textures with layered production artwork.
-const HOME = preload("res://assets/backgrounds/home_cel.png")
-const PARK = preload("res://assets/backgrounds/park_cel.png")
-const BEACH = preload("res://assets/backgrounds/walk_cel.png")
-const ISLAND = preload("res://assets/backgrounds/island_cel.png")
+const HOME = preload("res://assets/backgrounds/home_anime.png")
+const PARK = preload("res://assets/backgrounds/park_anime.png")
+const BEACH = preload("res://assets/backgrounds/beach_anime.png")
+const ISLAND = preload("res://assets/backgrounds/island_anime_connected.png")
 const PUPPIES = {
-	"Puppy": preload("res://assets/puppies/puppy_cel.tres"),
-	"Shiba Inu": preload("res://assets/puppies/shiba_cel.tres"),
-	"Golden Retriever": preload("res://assets/puppies/golden_cel.tres")
+	"Puppy": preload("res://assets/puppies/puppy_anime.tres"),
+	"Shiba Inu": preload("res://assets/puppies/shiba_anime.tres"),
+	"Golden Retriever": preload("res://assets/puppies/golden_anime.tres")
 }
-const PUPPY_SLEEP = preload("res://assets/puppies/puppy_sleep_cel.tres")
-const PUPPY_SLEEP_REGION = Rect2i(0, 0, 396, 234)
+const PUPPY_SLEEP = preload("res://assets/puppies/puppy_sleep_anime.tres")
+const PUPPY_SLEEP_REGION = Rect2i(0, 0, 1302, 712)
 const SLEEP_TEXTURES = {
 	"Puppy": PUPPY_SLEEP,
-	"Shiba Inu": preload("res://assets/puppies/shiba_sleep_cel.tres"),
-	"Golden Retriever": preload("res://assets/puppies/golden_sleep_cel.tres")
+	"Shiba Inu": preload("res://assets/puppies/shiba_sleep_anime.tres"),
+	"Golden Retriever": preload("res://assets/puppies/golden_sleep_anime.tres")
 }
 const SLEEP_REGIONS = {
 	"Puppy": PUPPY_SLEEP_REGION,
-	"Shiba Inu": Rect2i(0, 0, 429, 258),
-	"Golden Retriever": Rect2i(0, 0, 519, 276)
+	"Shiba Inu": Rect2i(0, 0, 1446, 825),
+	"Golden Retriever": Rect2i(0, 0, 1494, 619)
 }
-const NORA = preload("res://assets/characters/nora_cel_0.tres")
+const NORA = preload("res://assets/characters/nora_anime_0.tres")
 
 const WALKS = {
-	"Puppy": preload("res://assets/puppies/puppy_walk_cel.png"),
-	"Shiba Inu": preload("res://assets/puppies/shiba_walk_cel.png"),
-	"Golden Retriever": preload("res://assets/puppies/golden_walk_cel.png")
+	"Puppy": preload("res://assets/puppies/puppy_walk_anime.png"),
+	"Shiba Inu": preload("res://assets/puppies/shiba_walk_anime.png"),
+	"Golden Retriever": preload("res://assets/puppies/golden_walk_anime.png")
 }
 
 # Registered ground bounds and torso anchors keep the eight phases aligned.
-static var WALK_DATA: Dictionary = preload("res://assets/puppies/walk_cel_frames.json").data
+static var WALK_DATA: Dictionary = preload("res://assets/puppies/walk_anime_frames.json").data
 static var WALK_REGIONS: Dictionary = walk_values("regions")
 static var WALK_ANCHORS: Dictionary = walk_values("anchors")
 static var WALK_HEIGHTS: Dictionary = walk_values("height")
-static var CEL_RESIDENTS: Dictionary = preload("res://assets/characters/cel_frames.json").data
+static var RESIDENT_DATA: Dictionary = preload("res://assets/characters/anime_frames.json").data
 
 static func walk_values(field: String) -> Dictionary:
 	var result = {}
@@ -49,27 +49,27 @@ static func walk_values(field: String) -> Dictionary:
 			result[breed] = WALK_DATA[breed][field]
 	return result
 
-const REN = preload("res://assets/characters/ren_cel_0.tres")
-const BACKGROUNDS = {"Lighthouse Room":preload("res://assets/backgrounds/lighthouse_room_cel.png"),"Harbor": preload("res://assets/backgrounds/harbor_cel.png"), "Keeper’s Cottage": preload("res://assets/backgrounds/cottage_cel.png"),"Home": HOME, "Park": PARK, "Beach": BEACH,
-	"Puppy Club": preload("res://assets/backgrounds/club_cel.png"),
-	"Shop": preload("res://assets/backgrounds/shop_cel.png"),
-	"Vet Clinic": preload("res://assets/backgrounds/vet_cel.png"),
-	"Lighthouse": preload("res://assets/backgrounds/lighthouse_cel.png"),
+const REN = preload("res://assets/characters/ren_anime_0.tres")
+const BACKGROUNDS = {"Lighthouse Room":preload("res://assets/backgrounds/lighthouse_room_anime.png"),"Harbor": preload("res://assets/backgrounds/harbor_anime.png"), "Keeper’s Cottage": preload("res://assets/backgrounds/cottage_anime.png"),"Home": HOME, "Park": PARK, "Beach": BEACH,
+	"Puppy Club": preload("res://assets/backgrounds/club_anime.png"),
+	"Shop": preload("res://assets/backgrounds/shop_anime.png"),
+	"Vet Clinic": preload("res://assets/backgrounds/vet_anime.png"),
+	"Lighthouse": preload("res://assets/backgrounds/lighthouse_anime.png"),
 }
-const JUNE = preload("res://assets/characters/june_cel_0.tres")
-const LEAH = preload("res://assets/characters/leah_cel_0.tres")
+const JUNE = preload("res://assets/characters/june_anime_0.tres")
+const LEAH = preload("res://assets/characters/leah_anime_0.tres")
 
-const BEN = preload("res://assets/characters/ben_cel_0.tres")
-const KAI = preload("res://assets/characters/kai_cel_0.tres")
-const OWEN = preload("res://assets/characters/owen_cel_0.tres")
+const BEN = preload("res://assets/characters/ben_anime_0.tres")
+const KAI = preload("res://assets/characters/kai_anime_0.tres")
+const OWEN = preload("res://assets/characters/owen_anime_0.tres")
 
-const NORA_CORAL = preload("res://assets/characters/nora_cel_1.tres")
-const JUNE_MINT = preload("res://assets/characters/june_cel_1.tres")
+const NORA_CORAL = preload("res://assets/characters/nora_anime_1.tres")
+const JUNE_MINT = preload("res://assets/characters/june_anime_1.tres")
 
-const BEN_TRAINING = preload("res://assets/characters/ben_cel_1.tres")
-const LEAH_TUNIC = preload("res://assets/characters/leah_cel_1.tres")
-const OWEN_PARCEL = preload("res://assets/characters/owen_cel_1.tres")
-const REN_SWEATER = preload("res://assets/characters/ren_cel_1.tres")
+const BEN_TRAINING = preload("res://assets/characters/ben_anime_1.tres")
+const LEAH_TUNIC = preload("res://assets/characters/leah_anime_1.tres")
+const OWEN_PARCEL = preload("res://assets/characters/owen_anime_1.tres")
+const REN_SWEATER = preload("res://assets/characters/ren_anime_1.tres")
 
 static func daily_portrait(texture: Texture2D, date: String = "") -> Texture2D:
 	if date.is_empty():
@@ -84,8 +84,6 @@ static func daily_portrait(texture: Texture2D, date: String = "") -> Texture2D:
 static var resident_cache: Dictionary = {}
 
 static func resident_frames(source: Texture2D) -> Array[Texture2D]:
-	if source == KAI:
-		return BeachStyle.resident_frames()
 	var outfits = [[NORA,NORA_CORAL],[JUNE,JUNE_MINT],[BEN,BEN_TRAINING],[LEAH,LEAH_TUNIC],[OWEN,OWEN_PARCEL],[REN,REN_SWEATER],[KAI]]
 	var names = ["nora","june","ben","leah","owen","ren","kai"]
 	for index in outfits.size():
@@ -95,7 +93,7 @@ static func resident_frames(source: Texture2D) -> Array[Texture2D]:
 		var key: String = names[index]+str(row)
 		if resident_cache.has(key):
 			return resident_cache[key]
-		var registered: Dictionary = CEL_RESIDENTS[names[index]]
+		var registered: Dictionary = RESIDENT_DATA[names[index]]
 		var sheet: Texture2D = load("res://"+registered.atlas)
 		var result: Array[Texture2D] = []
 		var pose_index = 0
@@ -115,7 +113,7 @@ static func resident_frames(source: Texture2D) -> Array[Texture2D]:
 	frame.region = source.get_image().get_used_rect()
 	return [frame]
 
-static var TRICK_DATA: Dictionary = preload("res://assets/puppies/trick_cel_frames.json").data
+static var TRICK_DATA: Dictionary = preload("res://assets/puppies/trick_anime_frames.json").data
 static var trick_cache: Dictionary = {}
 static func trick_frames(breed: String, command: String) -> Array[Rect2]:
 	var result: Array[Rect2] = []

@@ -1,48 +1,37 @@
 class_name BeachStyle
 extends RefCounted
 
-const BACKGROUND = preload("res://assets/backgrounds/beach_cel.png")
-const KAI = preload("res://assets/characters/kai_cel_sheet.png")
-const DOGS = preload("res://assets/puppies/beach_cel_dogs.png")
+const BACKGROUND = preload("res://assets/backgrounds/beach_arrival.png")
+const KAI = preload("res://assets/characters/kai_idle_sheet.png")
 const INK = Color("603e29")
 const PAPER = Color("fff6e5")
-static var cache: Dictionary = {}
+const ACTIVITIES = preload("res://assets/ui/beach_activities.png")
+static var activity_cache: Dictionary = {}
 
-static func resident_frames() -> Array[Texture2D]:
-	if cache.has("Kai"):
-		return cache.Kai
-	var cell = Vector2i(KAI.get_width()/2,KAI.get_height())
-	# Explicit registration ignores nearly transparent pixels around the cutout.
-	var trim = Rect2i(198,2,502,885)
-	var frames: Array[Texture2D] = []
-	for column in 2:
+static func activity_picture(index: int) -> Texture2D:
+	index = clampi(index,0,2)
+	if not activity_cache.has(index):
 		var frame = AtlasTexture.new()
-		frame.atlas = KAI
-		frame.region = Rect2(Vector2i(column*cell.x,0)+trim.position,trim.size)
+		frame.atlas = ACTIVITIES
+		var cell = ACTIVITIES.get_width()/3.0
+		frame.region = Rect2(index*cell,0,cell,ACTIVITIES.get_height())
 		frame.filter_clip = true
-		frames.append(frame)
-	cache.Kai = frames
-	return frames
+		activity_cache[index] = frame
+	return activity_cache[index]
+
+# Beach layout and the other locations share the same actor artwork.
+static func resident_frames() -> Array[Texture2D]:
+	return Art.resident_frames(Art.KAI)
 
 static func dog_texture(breed: String, asleep: bool) -> Texture2D:
-	var key = breed+str(asleep)
-	if not cache.has(key):
-		var column = ["Puppy","Shiba Inu","Golden Retriever"].find(breed)
-		var regions = [Rect2i(51,727,396,234),Rect2i(505,703,429,258),Rect2i(989,688,519,276)] if asleep else [Rect2i(64,146,361,444),Rect2i(516,53,425,538),Rect2i(999,39,474,558)]
-		var region: Rect2i = regions[maxi(0,column)]
-		var frame = AtlasTexture.new()
-		frame.atlas = DOGS
-		frame.region = Rect2(region)
-		frame.filter_clip = true
-		cache[key] = frame
-	return cache[key]
+	return Art.SLEEP_TEXTURES[breed] if asleep else Art.PUPPIES[breed]
 
 static func column_width(view: Vector2, safe: Dictionary) -> float:
 	return floorf(clampf((view.x-safe.left-safe.right)*0.34,300,440))
 
 static func portrait_rect(view: Vector2, image: Vector2, safe: Dictionary) -> Rect2:
 	var left = safe.left+8.0
-	var factor = minf((view.x*0.40-left)/image.x,(view.y-safe.top-16)/image.y)
+	var factor = minf(floorf(view.x*0.445-left)/image.x,(view.y-safe.top-16)/image.y)
 	var fitted = image*factor
 	return Rect2(Vector2(left,view.y+70-fitted.y),fitted)
 

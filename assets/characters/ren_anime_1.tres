@@ -1,0 +1,9 @@
+[gd_resource type="AtlasTexture" load_steps=2 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/characters/ren_idle_sheet.png" id="1"]
+
+[resource]
+atlas = ExtResource("1")
+region = Rect2(29, 772, 478, 764)
+margin = Rect2(0.0, 0, 1, 0)
+filter_clip = true

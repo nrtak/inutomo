@@ -316,7 +316,7 @@ func show_greeting() -> void:
  var person = people[location]
  var greeting = load("res://scripts/location_greeting.gd").new()
  greeting.texture = person[0]
- greeting.scene_style = "Beach" if location == "Beach" else "Cel"
+ greeting.scene_style = "Beach" if location == "Beach" else "Anime"
  greeting.character_name = person[1]
  var visits = maxi(1 if Game.life.friends.has(person[1]) else 0,int(host.arrival_visits.get(location, 0)))
  greeting.duration = 6.0 if visits == 0 else 3.5
@@ -333,4 +333,4 @@ func show_greeting() -> void:
  host.world_host.add_child(greeting)
 
 func beach_picture(index: int) -> Texture2D:
- return [preload("res://assets/ui/beach_shell.svg"),preload("res://assets/ui/beach_bucket.svg"),preload("res://assets/ui/beach_ball.svg")][clampi(index,0,2)]
+ return BeachStyle.activity_picture(index)

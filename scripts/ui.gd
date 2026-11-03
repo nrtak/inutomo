@@ -10,6 +10,13 @@ static func place_icon(place: String) -> Texture2D:
 	var file: String = {"Harbor": "harbor", "Keeper’s Cottage": "cottage","Home": "home", "Puppy Club": "club", "Park": "leaf", "Shop": "menu_bag", "Vet Clinic": "clinic", "Beach": "shell", "Lighthouse": "lighthouse"}.get(place, "island")
 	return load("res://assets/ui/" + file + ".svg")
 
+static var cutout_material: ShaderMaterial
+static func art_cutout() -> ShaderMaterial:
+	if cutout_material == null:
+		cutout_material = ShaderMaterial.new()
+		cutout_material.shader = preload("res://scripts/sleep_cutout.gdshader")
+	return cutout_material
+
 static func resident_icon(texture: Texture2D) -> Texture2D:
 	var frame = Art.resident_frames(Art.daily_portrait(texture))[0] as AtlasTexture
 	var icon = AtlasTexture.new()
@@ -151,6 +158,8 @@ static func icon_button(text: String, texture: Texture2D, action: Callable, colo
 		tile.add_theme_color_override(state, Color.TRANSPARENT)
 	var picture = TextureRect.new()
 	picture.texture = texture
+	if picture.texture is AtlasTexture:
+		picture.material = art_cutout()
 	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -230,6 +239,8 @@ static func picture_button(text: String, texture: Texture2D, action: Callable, c
 		tile.add_theme_color_override(state, Color.TRANSPARENT)
 	var picture = TextureRect.new()
 	picture.texture = texture
+	if picture.texture is AtlasTexture:
+		picture.material = art_cutout()
 	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED if cover else TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -259,6 +270,8 @@ static func location_button(text: String, texture: Texture2D, action: Callable, 
 		tile.add_theme_color_override(state,Color.TRANSPARENT)
 	var picture = TextureRect.new()
 	picture.texture = texture
+	if picture.texture is AtlasTexture:
+		picture.material = art_cutout()
 	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE

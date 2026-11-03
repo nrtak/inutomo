@@ -9,7 +9,7 @@ func check(value: bool, message: String):
 func run():
  var game = root.get_node("Game")
  game.set_process(false)
- game.storage_path = "user://cel_world_test.json"
+ game.storage_path = "user://art_consistency_test.json"
  game.intro_seen = true
  game.pending_stage = ""
  game.health = PuppyHealth.fresh()
@@ -20,10 +20,12 @@ func run():
  game.active_seconds = 0
  game.set_reduce_motion(false,false)
  for texture in Art.BACKGROUNDS.values()+[Art.ISLAND]:
-  check(texture.resource_path.ends_with("_cel.png"),"Every location and the island map uses the shared cel backgrounds")
+  check(texture.resource_path.ends_with("_anime.png") or texture == Art.ISLAND,"Every location and map uses the detailed anime backgrounds")
  for breed in Art.PUPPIES:
-  check(Art.PUPPIES[breed].atlas == BeachStyle.DOGS and Art.SLEEP_TEXTURES[breed].atlas == BeachStyle.DOGS,"Every dog pose shares the approved artwork at every location")
-  check(Art.WALKS[breed].resource_path.ends_with("_walk_cel.png"),"Walking preserves the same dog art style")
+  check(Art.PUPPIES[breed] == BeachStyle.dog_texture(breed,false) and Art.SLEEP_TEXTURES[breed] == BeachStyle.dog_texture(breed,true),"Every location uses the same dog poses")
+  check(Art.PUPPIES[breed].atlas.resource_path.ends_with("_anime.png") and Art.SLEEP_TEXTURES[breed].atlas.resource_path.ends_with("_anime.png"),"Resting and awake dogs keep the restored art style")
+  check(Art.trick_sheet(breed).resource_path.ends_with("_tricks_anime.png"),"New tricks match the restored breed artwork")
+  check(Art.WALKS[breed].resource_path.ends_with("_walk_anime.png"),"Walking preserves the same dog art style")
   var sheet_bounds = Rect2(Vector2.ZERO,Art.WALKS[breed].get_size())
   for region in Art.WALK_REGIONS[breed]:
    check(sheet_bounds.encloses(region),"Every walk phase stays within its source sheet")
@@ -31,7 +33,7 @@ func run():
   var frames = Art.resident_frames(source)
   check(frames.size() >= 2,"Both outfits keep their resident expression cycle")
   for frame in frames:
-   check(frame.atlas.resource_path.ends_with("_cel_sheet.png") and Rect2(Vector2.ZERO,frame.atlas.get_size()).encloses(frame.region),"All resident poses use registered, unclipped cel art")
+   check((frame.atlas.resource_path.ends_with("_idle_sheet.png") or frame.atlas.resource_path.ends_with("_anime_greeting_v2.png")) and Rect2(Vector2.ZERO,frame.atlas.get_size()).encloses(frame.region),"All resident poses use registered, unclipped detailed anime art")
   check(UI.resident_icon(source).atlas == frames[0].atlas,"Menu and help portraits match the current character artwork")
  UI.safe_override = {"left":105,"right":105,"top":20,"bottom":25}
  for width in [1280,1558]:
@@ -64,5 +66,5 @@ func run():
  for suffix in ["", ".tmp", ".bak"]:
   if FileAccess.file_exists(game.storage_path+suffix):
    DirAccess.remove_absolute(ProjectSettings.globalize_path(game.storage_path+suffix))
- print("Cel world checks: ","PASS" if failures == 0 else "FAIL")
+ print("Artwork consistency checks: ","PASS" if failures == 0 else "FAIL")
  quit(0 if failures == 0 else 1)

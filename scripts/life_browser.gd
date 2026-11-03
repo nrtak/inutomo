@@ -646,6 +646,8 @@ func beach_activities() -> void:
 
 func beach_button(caption: String, icon: String, choice: int) -> void:
 	var picture = load("res://assets/ui/" + {"shell":"beach_shell","play":"beach_ball"}.get(icon,icon) + ".svg")
+	if icon in ["shell","play"]:
+		picture = BeachStyle.activity_picture(0 if icon == "shell" else 2)
 	var button = tile(caption, picture, func():
 		var before = Game.life.beach.duplicate(true)
 		feedback = IslandActivities.beach_action(Game, beach_mode, choice)

@@ -40,12 +40,28 @@ static func prices() -> Dictionary:
 static func icon(kind: String) -> Texture2D:
  return load("res://assets/ui/" + ITEMS[kind].icon + ".svg")
 
+const PICTURE_SHEET = preload("res://assets/goods/goods_anime.png")
+const EXPANDED_SHEET = preload("res://assets/goods/expanded_goods_anime.png")
+const PICTURE_REGIONS = {
+ "Treat": Rect2(53,57,459,412), "TrainingTreat": Rect2(564,100,441,344),
+ "Toy": Rect2(1118,96,361,361), "Brush": Rect2(50,512,462,457),
+ "Shampoo": Rect2(643,512,381,461), "Bed": Rect2(1024,597,505,357)
+}
+const EXPANDED_REGIONS = {
+ "PuppyMeal": Rect2(65,163,298,194), "AdultMeal": Rect2(429,123,395,251),
+ "PicnicPack": Rect2(870,33,357,368), "CelebrationTreat": Rect2(82,504,280,256),
+ "PlushToy": Rect2(452,457,348,328), "TugRope": Rect2(852,475,376,313),
+ "CloudBed": Rect2(25,867,392,313), "CoolingMat": Rect2(439,920,381,253),
+ "Blanket": Rect2(847,892,383,289)
+}
+static var picture_cache: Dictionary = {}
 static func picture(kind: String) -> Texture2D:
- if kind == "Toy":
-  return preload("res://assets/ui/beach_ball.svg")
- if kind in ["PuppyMeal","AdultMeal"]:
-  return preload("res://assets/goods/bowl_cel.svg")
- var cel_props = {"Bed":"bed","CloudBed":"cloud_bed","CoolingMat":"mat","Blanket":"blanket","PlushToy":"plush","TugRope":"rope","PicnicPack":"picnic"}
- if cel_props.has(kind):
-  return load("res://assets/goods/"+cel_props[kind]+"_cel.svg")
- return icon(kind)
+ if not PICTURE_REGIONS.has(kind) and not EXPANDED_REGIONS.has(kind):
+  return icon(kind)
+ if not picture_cache.has(kind):
+  var frame = AtlasTexture.new()
+  frame.atlas = PICTURE_SHEET if PICTURE_REGIONS.has(kind) else EXPANDED_SHEET
+  frame.region = PICTURE_REGIONS[kind] if PICTURE_REGIONS.has(kind) else EXPANDED_REGIONS[kind]
+  frame.filter_clip = true
+  picture_cache[kind] = frame
+ return picture_cache[kind]
