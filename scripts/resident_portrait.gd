@@ -6,9 +6,11 @@ var frame_index = 0
 var elapsed = 0.0
 var next_change = 11.0
 var greeting_pending = false
+var hit_source: Texture2D
+var hit_image: Image
 
 func configure(source: Texture2D) -> void:
- frames = Art.resident_frames(Art.daily_portrait(source))
+ frames = Art.resident_frames(Art.daily_portrait(source),true)
  # Nora opens with a hello, then joins the quieter conversation cycle.
  greeting_pending = frames.size() == 3
  frame_index = 2 if greeting_pending else 0
@@ -38,3 +40,23 @@ func show_frame(index: int) -> void:
  # Draw one clean pose, avoiding doubled eyes and arms from blended cutouts.
  frame_index = index
  texture = frames[index]
+
+func _has_point(point: Vector2) -> bool:
+ # Transparent padding must not steal a tap intended for the dog or scenery.
+ if texture == null or size.x <= 0 or size.y <= 0 or not Rect2(Vector2.ZERO,size).has_point(point):
+  return false
+ var source = texture
+ var pixel = point/size*texture.get_size()
+ if texture is AtlasTexture:
+  var frame = texture as AtlasTexture
+  pixel -= frame.margin.position
+  if not Rect2(Vector2.ZERO,frame.region.size).has_point(pixel):
+   return false
+  pixel += frame.region.position
+  source = frame.atlas
+ if source != hit_source:
+  hit_source = source
+  hit_image = source.get_image()
+ if hit_image == null or not Rect2i(Vector2i.ZERO,hit_image.get_size()).has_point(Vector2i(pixel)):
+  return false
+ return hit_image.get_pixelv(Vector2i(pixel)).a >= 0.5

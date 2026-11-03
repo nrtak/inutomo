@@ -6,6 +6,40 @@ func check(value: bool, message: String):
  if not value:
   push_error(message)
   failures += 1
+func check_greetings():
+ for dimensions in [Vector2i(1152,648),Vector2i(1280,720),Vector2i(1558,720)]:
+  var view = SubViewport.new()
+  view.size = dimensions
+  root.add_child(view)
+  var main = load("res://scenes/main.tscn").instantiate()
+  view.add_child(main)
+  for weather in IslandWeather.TYPES:
+   IslandWeather.preview = weather
+   for place in ["Puppy Club","Park","Beach","Shop","Vet Clinic","Harbor","Keeper’s Cottage"]:
+    main.show_page(place)
+    await process_frame
+    await process_frame
+    var greeting = main.world_host.get_node("LocationGreeting")
+    var bubble: Rect2 = greeting.get_child(1).get_global_rect()
+    var hub = main.body.get_child(0)
+    var dog = main.habitat.puppy
+    var dog_bounds: Rect2 = dog.sprite.get_global_transform()*dog.sprite.get_rect()
+    check(not bubble.intersects(dog_bounds),"Long greetings leave the dog visible: "+place+" "+weather+" "+str(dimensions))
+    for button in hub.primary_actions.get_children()+hub.choices.get_children():
+     check(not bubble.intersects(button.get_global_rect()),"A greeting never covers an activity button")
+    check(bubble.end.x <= dimensions.x-105 and bubble.end.y <= dimensions.y-25,"Greetings remain inside the phone safe area")
+  main.show_page("Beach")
+  await process_frame
+  var greeting = main.world_host.get_node("LocationGreeting")
+  var before = greeting.get_child(1).size.x
+  view.size = Vector2i(1558,720) if dimensions.x<1558 else Vector2i(1152,648)
+  await process_frame
+  await process_frame
+  var after = greeting.get_child(1).size.x
+  check(after > before if dimensions.x<1558 else after < before,"An existing speech bubble adapts when the screen changes size")
+  view.queue_free()
+  await process_frame
+ IslandWeather.preview = ""
 func run():
  var game = root.get_node("Game")
  game.set_process(false)
@@ -35,6 +69,10 @@ func run():
   for frame in frames:
    check((frame.atlas.resource_path.ends_with("_idle_sheet.png") or frame.atlas.resource_path.ends_with("_anime_greeting_v2.png")) and Rect2(Vector2.ZERO,frame.atlas.get_size()).encloses(frame.region),"All resident poses use registered, unclipped detailed anime art")
   check(UI.resident_icon(source).atlas == frames[0].atlas,"Menu and help portraits match the current character artwork")
+  var torso_frames = Art.resident_frames(source,true)
+  for frame in torso_frames:
+   check(frame.get_size() == torso_frames[0].get_size(),"Every outfit keeps its torso dimensions when gestures change")
+   check(Rect2(Vector2.ZERO,frame.atlas.get_size()).encloses(frame.region),"All torso poses remain inside their artwork")
  UI.safe_override = {"left":105,"right":105,"top":20,"bottom":25}
  for width in [1280,1558]:
   var view = SubViewport.new()
@@ -62,6 +100,7 @@ func run():
     check(main.habitat.background.get_global_rect().position.y >= -0.1,"Tall landmarks keep their roofs inside the screen")
   view.queue_free()
   await process_frame
+ await check_greetings()
  UI.safe_override.clear()
  for suffix in ["", ".tmp", ".bak"]:
   if FileAccess.file_exists(game.storage_path+suffix):

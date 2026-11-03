@@ -31,9 +31,9 @@ static func column_width(view: Vector2, safe: Dictionary) -> float:
 
 static func portrait_rect(view: Vector2, image: Vector2, safe: Dictionary) -> Rect2:
 	var left = safe.left+8.0
-	var factor = minf(floorf(view.x*0.445-left)/image.x,(view.y-safe.top-16)/image.y)
+	var factor = minf(floorf(view.x*0.46-left)/image.x,(view.y-safe.top-96)/image.y)
 	var fitted = image*factor
-	return Rect2(Vector2(left,view.y+70-fitted.y),fitted)
+	return Rect2(Vector2(left,view.y+2-fitted.y),fitted)
 
 static func style_button(button: Button, color: Color) -> void:
 	if not button.has_meta("beach_original_styles"):

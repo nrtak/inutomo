@@ -19,7 +19,7 @@ def residents():
         image = Image.open(ROOT / atlas).convert('RGBA')
         columns = 3 if name == 'nora' else 2
         width, height = image.width // columns, image.height // 2
-        rows, registrations = [], []
+        rows, registrations, torso_rows, torso_margins = [], [], [], []
         for row in range(1 if name == 'kai' else 2):
             boxes = [bounds(image, (c*width, row*height, (c+1)*width, (row+1)*height)) for c in range(columns)]
             union = [min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes)]
@@ -29,8 +29,9 @@ def residents():
             for column in range(columns):
                 cell = image.crop((column*width, row*height, (column+1)*width, (row+1)*height))
                 samples = []
-                for y in range(int(height*.17), int(height*.40)):
-                    for x in range(int(width*.15), int(width*.77)):
+                # Sample the upper face, excluding a raised hand or bare arm.
+                for y in range(int(height*.14), int(height*.28)):
+                    for x in range(int(width*.25), int(width*.72)):
                         r,g,b,a = cell.getpixel((x,y))
                         if a >= 128 and r > 150 and g > 85 and b > 45 and r > g*1.1 and g > b*1.05 and r-b > 35:
                             samples.append(x)
@@ -39,7 +40,18 @@ def residents():
             padding = ceil(max(offsets))
             registrations.append({'offsets':offsets, 'padding':padding})
             texture(ROOT/f'assets/characters/{name}_anime_{row}.tres', atlas, frames[0], offsets[0], padding)
-        result[name] = {'atlas':atlas, 'rows':rows, 'registration':registrations}
+            # Register the upper body independently: lower arms and hips no longer
+            # force a small face or leave unused transparent space beside it.
+            bottom = union[1] + round((union[3]-union[1])*(.65 if name == 'nora' else .74))
+            upper = [bounds(image, (c*width, row*height, (c+1)*width, row*height+bottom), 2) for c in range(columns)]
+            left = min(box[0]+offsets[c] for c,box in enumerate(upper))
+            right = max(box[2]+offsets[c] for c,box in enumerate(upper))
+            top = min(box[1] for box in upper)
+            extent = [ceil(right-left), bottom-top]
+            torso_rows.append([[c*width+b[0],row*height+b[1],b[2]-b[0],b[3]-b[1]] for c,b in enumerate(upper)])
+            torso_margins.append([[round(b[0]+offsets[c]-left,2),b[1]-top,extent[0]-(b[2]-b[0]),extent[1]-(b[3]-b[1])] for c,b in enumerate(upper)])
+        result[name] = {'atlas':atlas, 'rows':rows, 'registration':registrations,
+                        'torso_rows':torso_rows, 'torso_margins':torso_margins}
     write_json('assets/characters/anime_frames.json', result)
 
 

@@ -95,7 +95,7 @@ static func column(gap: int = 12) -> VBoxContainer:
 	v.add_theme_constant_override("separation", gap)
 	return v
 
-# Waist-up portraits at the screen edge, with a speech bubble above and beside them.
+# Torso portraits at the screen edge, with a speech bubble above and beside them.
 static func conversation_body(parent: Control, texture: Texture2D, character_name: String) -> VBoxContainer:
 	texture = Art.daily_portrait(texture)
 	var safe = safe_insets(24)
@@ -137,9 +137,9 @@ static func conversation_body(parent: Control, texture: Texture2D, character_nam
 	content.add_child(label(character_name, 29, TEAL))
 	var arrange = func():
 		var image_size = Vector2(cutout.get_size())
-		var factor = minf(stage.size.x * 0.50 / image_size.x, (stage.size.y + 64) / image_size.y)
+		var factor = minf(stage.size.x * 0.50 / image_size.x, maxf(1,stage.size.y - 84) / image_size.y)
 		portrait.size = image_size * factor
-		portrait.position = Vector2((stage.size.x * 0.50 - portrait.size.x) * 0.5, stage.size.y - portrait.size.y + 64)
+		portrait.position = Vector2((stage.size.x * 0.50 - portrait.size.x) * 0.5, stage.size.y - portrait.size.y + 2)
 		var bubble_width = minf(500, stage.size.x * 0.47)
 		panel.offset_left = -safe.right - bubble_width - 56
 		panel.offset_bottom = safe.top + 20 + panel.get_combined_minimum_size().y

@@ -83,27 +83,32 @@ static func daily_portrait(texture: Texture2D, date: String = "") -> Texture2D:
 
 static var resident_cache: Dictionary = {}
 
-static func resident_frames(source: Texture2D) -> Array[Texture2D]:
+static func resident_frames(source: Texture2D, torso_up: bool = false) -> Array[Texture2D]:
 	var outfits = [[NORA,NORA_CORAL],[JUNE,JUNE_MINT],[BEN,BEN_TRAINING],[LEAH,LEAH_TUNIC],[OWEN,OWEN_PARCEL],[REN,REN_SWEATER],[KAI]]
 	var names = ["nora","june","ben","leah","owen","ren","kai"]
 	for index in outfits.size():
 		var row = outfits[index].find(source)
 		if row < 0:
 			continue
-		var key: String = names[index]+str(row)
+		var key: String = names[index]+str(row)+("torso" if torso_up else "")
 		if resident_cache.has(key):
 			return resident_cache[key]
 		var registered: Dictionary = RESIDENT_DATA[names[index]]
 		var sheet: Texture2D = load("res://"+registered.atlas)
 		var result: Array[Texture2D] = []
 		var pose_index = 0
-		for bounds in registered.rows[row]:
+		var poses: Array = registered.torso_rows[row] if torso_up else registered.rows[row]
+		for bounds in poses:
 			var frame = AtlasTexture.new()
 			frame.atlas = sheet
 			frame.region = Rect2(bounds[0],bounds[1],bounds[2],bounds[3])
 			frame.filter_clip = true
-			var registration: Dictionary = registered.registration[row]
-			frame.margin = Rect2(Vector2(registration.offsets[pose_index],0),Vector2(registration.padding,0))
+			if torso_up:
+				var margin: Array = registered.torso_margins[row][pose_index]
+				frame.margin = Rect2(margin[0],margin[1],margin[2],margin[3])
+			else:
+				var registration: Dictionary = registered.registration[row]
+				frame.margin = Rect2(Vector2(registration.offsets[pose_index],0),Vector2(registration.padding,0))
 			result.append(frame)
 			pose_index += 1
 		resident_cache[key] = result
