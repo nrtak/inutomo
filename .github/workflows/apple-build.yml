@@ -50,7 +50,7 @@ jobs:
       - name: Gameplay and save regression tests
         run: |
           set -euo pipefail
-          for suite in smoke start_menu growth gait walk_areas player_features island_moments daylight expansion harbor_story health island_activities steps_flow comfort_flow calm_residents beach_style art_consistency adventure ambient_travel locations mobile_regression reminders widgets; do
+          for suite in smoke start_menu growth gait walk_areas player_features island_moments daylight expansion harbor_story health island_activities steps_flow comfort_flow calm_residents beach_style art_consistency adventure ambient_travel locations mobile_regression reminders widgets lifecycle welcome_day concept_moments; do
             log="$RUNNER_TEMP/test-${suite}.log"
             Godot --headless --path . --script "tests/${suite}.gd" 2>&1 | tee "$log"
             if grep -E 'SCRIPT ERROR|Parse Error|^ERROR:' "$log"; then exit 1; fi

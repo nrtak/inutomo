@@ -461,6 +461,10 @@ func move_bed(index: int) -> void:
 
 func events() -> void:
 	IslandLife.refresh_day(Game)
+	var welcome = UI.location_button("Island Welcome Day", preload("res://assets/ui/heart.svg"), host.request_page.bind("Life:Welcome Day"), Color("f9d8e2"))
+	welcome.custom_minimum_size.y = 76
+	content.add_child(welcome)
+	content.add_child(UI.label("Nora's invitation stays open across visits.", 21, UI.TEAL))
 	var event = IslandLife.event_info()
 	content.add_child(UI.label(event.name, 30, UI.TEAL))
 	var completed = 0
@@ -661,6 +665,13 @@ func beach_button(caption: String, icon: String, choice: int) -> void:
 	button.disabled = Game.cooldowns.get("Beach",0) > 0 or not Game.can_explore()
 
 func dog_friends() -> void:
+	if Game.life.welcome_day.celebrated:
+		var guest = UI.button("Say goodbye to Momo at Home" if Game.life.welcome_day.guest else "Invite Momo Home", func():
+			WelcomeDay.invite_momo(Game, not Game.life.welcome_day.guest)
+			host.request_page("Home")
+		, Color("f9d8e2"))
+		guest.custom_minimum_size.y = 64
+		content.add_child(guest)
 	content.add_child(UI.hint_label("Meet the same friends again. Two playdates unlock Mirror tricks; four unlock Treasure pals.",23))
 	var grid = GridContainer.new()
 	grid.columns = 3

@@ -502,7 +502,7 @@ func valid_save(data: Variant) -> bool:
 		return false
 	for key in saved_cooldowns:
 		var remaining = saved_cooldowns[key]
-		if key not in ["Feed", "Play", "Care", "Goods", "Pet", "IslandMoment", "Training", "Playdate", "Beach", "Scent"] or not (remaining is float or remaining is int) or not is_finite(float(remaining)) or remaining < 0 or remaining > (30 if key in ["IslandMoment", "Training"] else 12):
+		if key not in ["Feed", "Play", "Care", "Goods", "Pet", "IslandMoment", "Training", "Playdate", "Beach", "Scent", "WelcomePicnic"] or not (remaining is float or remaining is int) or not is_finite(float(remaining)) or remaining < 0 or remaining > (30 if key in ["IslandMoment", "Training"] else 12):
 			return false
 	var outings = data.get("saved_outings", {})
 	if not outings is Dictionary:
@@ -549,6 +549,7 @@ func load_game() -> void:
 		if FileAccess.file_exists(storage_path):
 			save_error = "Save could not be read. Starting a fresh island."
 		return
+	save_error = ""
 	for key in NEEDS:
 		needs[key] = clampf(float(data.needs[key]), 0, 100)
 	walking = PuppySteps.normalized(data.get("walking", {}))
@@ -598,7 +599,7 @@ func load_game() -> void:
 		reminders.sync_preference()
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_APPLICATION_PAUSED:
+	if what == NOTIFICATION_APPLICATION_PAUSED and paused_at <= 0.0:
 		paused_at = Time.get_unix_time_from_system()
 		save_game()
 	elif what == NOTIFICATION_APPLICATION_RESUMED and paused_at > 0:

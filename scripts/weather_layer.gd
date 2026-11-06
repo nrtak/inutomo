@@ -5,8 +5,8 @@ var location = "Home"
 var clock = 0.0
 var weather = ""
 var rain_strength = 0.0
-const INDOOR = ["Home","Shop","Vet Clinic","Lighthouse Room"]
-const WINDOWS = {"Home":Rect2(0.38,0.08,0.54,0.39),"Shop":Rect2(0.53,0.15,0.39,0.34),"Vet Clinic":Rect2(0.34,0.12,0.32,0.36),"Lighthouse Room":Rect2(0.28,0.10,0.65,0.37)}
+const INDOOR = ["Home","Moment:Home","Shop","Vet Clinic","Lighthouse Room"]
+const WINDOWS = {"Home":Rect2(0.38,0.08,0.54,0.39),"Moment:Home":Rect2(0.38,0.08,0.54,0.39),"Shop":Rect2(0.53,0.15,0.39,0.34),"Vet Clinic":Rect2(0.34,0.12,0.32,0.36),"Lighthouse Room":Rect2(0.28,0.10,0.65,0.37)}
 
 func _process(delta: float) -> void:
  if not is_visible_in_tree() or Game.paused_at>0:

@@ -28,6 +28,7 @@ func run():
  game.set_reduce_motion(false,false)
  UI.safe_override = {"left":105,"right":105,"top":20,"bottom":25}
  for view_size in [Vector2i(1152,648),Vector2i(1280,720),Vector2i(1281,720),Vector2i(1558,720)]:
+  game.life.accessory = ""
   var view = SubViewport.new()
   view.size = view_size
   view.handle_input_locally = false
@@ -80,8 +81,9 @@ func run():
   main.habitat.puppy._process(0)
   check(main.habitat.puppy.sprite.material == main.habitat.puppy.style_material,"The dog retains the player's equipped bandana")
   hub.primary_actions.get_child(0).pressed.emit()
-  check(main.page == "Life:Beach Activities" and main.body.get_child(0).beach_mode == "Shells","One tap opens the selected shell game")
-  check(main.habitat.background.texture == BeachStyle.BACKGROUND and main.habitat.puppy.presentation_style == "Beach","Playing a beach game preserves the unified artwork")
+  check(main.page == "Moment:Beach" and main.world_host.has_node("IslandMomentView"),"One tap opens the shared shell discovery directly")
+  check(main.habitat.background.texture == BeachStyle.BACKGROUND,"Playing a beach game preserves the unified artwork")
+  main.open_beach_activity("Cleanup")
   await process_frame
   await process_frame
   var browser = main.body.get_child(0)

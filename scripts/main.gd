@@ -18,6 +18,7 @@ var photo_reward: WeakRef
 var photo_reward_was_visible = false
 var photo_greeting: WeakRef
 var photo_greeting_was_visible = false
+var photo_moment: WeakRef
 var photo_was_processing = true
 var back_button: Button
 var page_history: Array[String] = []
@@ -271,7 +272,7 @@ func _ready() -> void:
 	var action_colors = [Color("ffe0a0"), Color("bdeab0"), Color("b7def4"), Color("d9c9f6")]
 	for i in 4:
 		var kind: String = ["Feed", "Play", "Care", "Rest"][i]
-		var b = UI.icon_button(kind, load("res://assets/ui/" + kind.to_lower() + ".svg"), Game.action.bind(kind), action_colors[i])
+		var b = UI.icon_button(kind, load("res://assets/ui/" + kind.to_lower() + ".svg"), home_action.bind(kind), action_colors[i])
 		b.expand_icon = true
 		b.add_theme_constant_override("icon_max_width", 44)
 		b.add_theme_constant_override("h_separation", 12)
@@ -427,8 +428,17 @@ func update_navigation() -> void:
 	back_button.text = "‹ Back to Lighthouse" if page == "Lighthouse Room" else ("‹ Back to Park" if page == "Scent Trail" else ("‹ Back to Island" if page in LOCATION_PAGES else ("‹ Back to Beach" if page == "Life:Beach Activities" else "‹ Back")))
 	back_button.custom_minimum_size = Vector2(220 if page == "Lighthouse Room" else (190 if page in LOCATION_PAGES or page == "Life:Beach Activities" else 112), 68)
 	page_label.visible = page != "Home" and page not in ["Fetch", "Walk"]
+	if page == "Life:Welcome Day":
+		back_button.text = "‹ Back to Puppy Club"
+		back_button.custom_minimum_size.x = 250
 	page_label.text = {"Life:Training":"Training", "Life:Wardrobe":"Wardrobe", "Life:Friends":"Friends", "Lighthouse Room":"Lighthouse Visit", "Life:Stories":"Island Stories", "Life:Dog Friends":"Dog Friends", "Life:Beach Activities":"Kai’s Beach Activities", "Life:Daily":"To-do Today", "Life:Health Record": "Health History", "Life:Deliveries": "Harbor Parcels", "Life:Playdate": "Puppy Playdate", "Island": "Island Map", "Shop": "June’s Shop", "Vet Supplies": "Vet Supplies", "Bag": "Your Bag", "Journal": "Puppy Journal", "My Dogs": "My Dogs"}.get(page, "Puppy Playdate" if page == "Life:Playdate" else ("Island Life" if page.begins_with("Life") else page))
 	daily_button.visible = page == "Home"
+	if page.begins_with("Moment:"):
+		page_label.text = IslandMoments.PLACES.get(page.get_slice(":",1),"Island moment")
+		back_button.text = "‹ Back"
+		camera_button.visible = true
+	if page == "Life:Welcome Day":
+		page_label.text = "Welcome Day"
 	island_button.get_parent().visible = page == "Home"
 	actions.visible = page == "Home"
 	needs_card.visible = page in ["Home", "Fetch", "Walk", "Scent Trail"]
@@ -479,6 +489,16 @@ func show_page(dest: String) -> void:
 		current_place = "Lighthouse" if dest == "Lighthouse Room" else dest
 	clear_body()
 	update_navigation()
+	if dest.begins_with("Moment:"):
+		var kind = dest.get_slice(":",1)
+		if kind in IslandMoments.PLACES:
+			current_place = IslandMoments.PLACES[kind]
+			set_scenery(current_place)
+			var moment = load("res://scripts/island_moment_view.gd").new()
+			moment.host = self
+			moment.kind = kind
+			world_host.add_child(moment)
+		return
 	if dest.begins_with("Life"):
 		life_page(dest.get_slice(":", 1) if ":" in dest else "Dog")
 		return
@@ -506,6 +526,12 @@ func show_page(dest: String) -> void:
 		"Vet Supplies": goods_page(true, true)
 
 func go_back() -> void:
+	if page.begins_with("Moment:"):
+		request_page(IslandMoments.PLACES.get(page.get_slice(":",1),"Home"))
+		return
+	if page == "Life:Welcome Day":
+		request_page("Puppy Club")
+		return
 	if page == "Lighthouse Room":
 		request_page("Lighthouse")
 		return
@@ -647,6 +673,10 @@ func journal_page() -> void:
 	content.add_child(UI.button(chapter.button, request_page.bind(chapter.place), Color("c2ecf4")))
 	content.add_child(UI.button("Island life: training, friends and keepsakes", show_page.bind("Life"), Color("c8eddd")))
 	content.add_child(UI.label("Little memories", 26))
+	if Game.life.welcome_day.started:
+		var memory = UI.location_button("Our Welcome Day memory" if Game.life.welcome_day.celebrated else "Nora's Welcome Day invitation", preload("res://assets/ui/heart.svg"), request_page.bind("Life:Welcome Day"), Color("f9d8e2"))
+		memory.custom_minimum_size.y = 76
+		content.add_child(memory)
 	if Game.journal.is_empty():
 		content.add_child(UI.label("Your first chapter is waiting. Try a little care at Home.", 22))
 	for entry in Game.journal:
@@ -938,6 +968,13 @@ func close_navigation() -> void:
 	navigation_overlay = null
 
 func life_page(section: String) -> void:
+	if section == "Welcome Day":
+		set_scenery("Puppy Club")
+		habitat.background.texture = preload("res://assets/backgrounds/club_picnic_anime.png")
+		var welcome = load("res://scripts/welcome_day_view.gd").new()
+		welcome.host = self
+		world_host.add_child(welcome)
+		return
 	var scenery = {"Beach Activities":"Beach", "Deliveries":"Harbor", "Health Record":"Vet Clinic", "Playdate":"Puppy Club", "Training":"Park", "Events":"Puppy Club", "Friends":"Puppy Club", "Dog Friends":"Puppy Club", "Stories":"Puppy Club"}.get(section,"Home")
 	set_scenery(scenery)
 	var browser = load("res://scripts/life_browser.gd").new()
@@ -950,11 +987,23 @@ func life_page(section: String) -> void:
 		habitat.present_location_dog()
 	body.add_child(browser)
 
+func start_welcome_lesson() -> void:
+	request_page("Moment:Recall")
+
+func home_action(kind: String) -> void:
+	if kind == "Play" and Game.can_explore() and Game.cooldowns.get("Play",0)<=0:
+		request_page("Moment:Home")
+	else:
+		Game.action(kind)
+
 func open_photo_mode() -> void:
 	if is_instance_valid(photo_overlay):
 		return
-	if page not in ["Home", "Shop", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Lighthouse Room", "Harbor", "Keeper’s Cottage"]:
+	if not page.begins_with("Moment:") and page not in ["Home", "Shop", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Lighthouse Room", "Harbor", "Keeper’s Cottage"]:
 		show_page("Home")
+	var moment = world_host.get_node_or_null("IslandMomentView")
+	photo_moment = weakref(moment) if is_instance_valid(moment) else null
+	if is_instance_valid(moment): moment.set_photo_mode(true)
 	photo_reward = weakref(reward_notice) if is_instance_valid(reward_notice) else null
 	photo_reward_was_visible = reward_notice.visible if is_instance_valid(reward_notice) else false
 	if is_instance_valid(reward_notice):
@@ -1028,6 +1077,9 @@ func close_photo_mode() -> void:
 	if photo_greeting != null and is_instance_valid(photo_greeting.get_ref()):
 		photo_greeting.get_ref().visible = photo_greeting_was_visible
 	photo_greeting = null
+	if photo_moment != null and is_instance_valid(photo_moment.get_ref()):
+		photo_moment.get_ref().set_photo_mode(false)
+	photo_moment = null
 	if photo_reward != null and is_instance_valid(photo_reward.get_ref()):
 		photo_reward.get_ref().visible = photo_reward_was_visible
 	photo_reward = null

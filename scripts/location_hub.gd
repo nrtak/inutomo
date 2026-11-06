@@ -126,10 +126,10 @@ func _ready() -> void:
    var text = "Resume Fetch" if Game.has_outing("Fetch") else "Play Fetch"
    add_primary(text, preload("res://assets/ui/play.svg"), host.start_activity.bind("Fetch"), Color("c8eddd"))
    add_choice("Scent trail", preload("res://assets/ui/leaf.svg"), host.start_scent_trail, Color("fff0bd"))
-   add_choice("Training", preload("res://assets/ui/training_treat.svg"), host.show_page.bind("Life:Training"), Color("f9d8e2"))
+   add_choice("Training", preload("res://assets/ui/training_treat.svg"), host.request_page.bind("Moment:Recall"), Color("f9d8e2"))
    feedback.text = "Three throws. Earn island coins."
   "Beach":
-   add_primary("Find shells", beach_picture(0), host.open_beach_activity.bind("Shells"), Color("f9d8e2"))
+   add_primary("Find shells", beach_picture(0), host.request_page.bind("Moment:Beach"), Color("f9d8e2"))
    add_primary("Beach cleanup", beach_picture(1), host.open_beach_activity.bind("Cleanup"), Color("c8eddd"))
    add_primary("Sand fetch", beach_picture(2), host.open_beach_activity.bind("Sand Fetch"), Color("c2ecf4"))
    add_choice("Resume Walk" if Game.has_outing("Walk") else "Go for a walk", preload("res://assets/ui/beach_leaf.svg"), host.start_activity.bind("Walk"),BeachStyle.PAPER)
@@ -137,7 +137,8 @@ func _ready() -> void:
    description.text = "Meet Nora and your island friends."
    wallet.visible = false
    add_choice(("Cozy playdate" if IslandWeather.current()=="Light rain" else "Puppy playdate"), preload("res://assets/ui/heart.svg"), host.show_page.bind("Life:Playdate"))
-   add_primary("Today's event", preload("res://assets/ui/heart.svg"), host.show_page.bind("Life:Events"), Color("f9d8e2"))
+   add_primary("Island Welcome Day", preload("res://assets/ui/heart.svg"), host.show_page.bind("Life:Welcome Day"), Color("f9d8e2"))
+   add_choice("Other events", preload("res://assets/ui/sunset.svg"), host.show_page.bind("Life:Events"), Color("fff0bd"))
    add_choice("Friends", preload("res://assets/ui/club.svg"), host.show_page.bind("Life:Friends"), Color("e1d9f6"))
   "Shop":
    add_primary("Food & treats", Goods.picture("Treat"), host.browse_shop.bind("Food"), Color("ffdfb5"))
@@ -162,7 +163,16 @@ func _ready() -> void:
    add_primary("The lighthouse story", UI.resident_icon(Art.REN), func(): host.show_resident(Art.REN,"Ren","Lighthouse keeper","Welcome to the observation room! The lens is safely behind its rail. That light has welcomed island families home for years. Enjoy the view with your little friend."))
    add_choice("Take a keepsake photo", preload("res://assets/ui/beach_camera.svg"),host.open_photo_mode, Color("f9d8e2"))
    add_choice("Back to the lookout",UI.place_icon("Lighthouse"),host.request_page.bind("Lighthouse"))
+ if Game.life.welcome_day.started and not Game.life.welcome_day.celebrated:
+  if location == "Shop" and not Game.life.welcome_day.treats:
+   add_choice("Pack picnic treats", Goods.picture("Treat"), prepare_picnic, Color("fff0bd"))
+  elif location in ["Park", "Beach"]:
+   add_choice("Welcome Day plans", preload("res://assets/ui/heart.svg"), host.request_page.bind("Life:Welcome Day"), Color("fff0bd"))
  Game.changed.connect(refresh)
+ if location == "Keeper’s Cottage" and (not Game.life.story.get("path_repaired",false) or "Sea glass" in Game.life.keepsakes):
+  add_choice("Explore with Ren", preload("res://assets/ui/sea_glass.svg"), host.request_page.bind("Moment:Cottage"), Color("c8eddd"))
+ if location == "Lighthouse":
+  add_choice("Gather with friends", preload("res://assets/ui/heart.svg"), host.request_page.bind("Moment:Lighthouse"), Color("f9d8e2"))
  if Game.life.delivery.recipient != "" and IslandLife.delivery_info(Game).place == location:
   add_choice("Deliver parcel", preload("res://assets/ui/menu_bag.svg"), deliver_parcel, Color("fff0bd"))
  feedback.visible = location == "Lighthouse" and not feedback.text.is_empty()
@@ -325,6 +335,7 @@ func show_greeting() -> void:
  greeting.talk = func(): host.show_resident(person[0],person[1],"Island friend",IslandAdventure.chapter(Game,person[1]))
  if location == "Beach" and visits == 0 and IslandWeather.current()=="Sunny":
   greeting.text = "A peaceful evening by the sea." if Daylight.current_period in ["Evening","Night","Late night"] else "A perfect day for the beach!"
+ greeting.text = WelcomeDay.greeting(Game, person[1], greeting.text)
  host.arrival_visits[location] = visits + 1
  if not Game.life.friends.has(person[1]):
   IslandLife.talk(Game,person[1])
@@ -334,3 +345,8 @@ func show_greeting() -> void:
 
 func beach_picture(index: int) -> Texture2D:
  return BeachStyle.activity_picture(index)
+
+func prepare_picnic() -> void:
+ var reply = WelcomeDay.pack_treats(Game)
+ host.show_resident(Art.JUNE, "June", "Shopkeeper", reply if Game.save_error.is_empty() else Game.save_error)
+ host.call_deferred("location_story_refresh", location)

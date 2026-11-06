@@ -102,7 +102,6 @@ func show_guide() -> void:
 	panel.custom_minimum_size = Vector2(800, 620)
 	center.add_child(panel)
 	var content = UI.column(16)
-	content.custom_minimum_size.x = 760
 	var scroll = ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -116,6 +115,19 @@ func show_guide() -> void:
 	content.add_child(UI.hint_label("GROWTH\nJournal tracks growth and memories. Adulthood needs 40 care moments and 60 minutes together. Walks favor Shiba Inu; Fetch and ties favor Golden Retriever.", 25))
 	content.add_child(UI.hint_label("Open Journal for Island Life: training, friends, events and decorating. Tap the camera to take a picture; find it in Photos. Progress saves automatically.", 22))
 	content.add_child(UI.button("Got it!", close_guide, Color("bdeab0")))
+	var overlay = guide_overlay
+	var fit_guide = func():
+		if overlay.is_queued_for_deletion():
+			return
+		var safe = UI.safe_insets(20)
+		center.offset_left = safe.left
+		center.offset_right = -safe.right
+		center.offset_top = safe.top
+		center.offset_bottom = -safe.bottom
+		var available = (overlay.size - Vector2(safe.left + safe.right, safe.top + safe.bottom)).max(Vector2.ONE)
+		panel.custom_minimum_size = Vector2(minf(800, available.x), minf(620, available.y))
+	guide_overlay.resized.connect(fit_guide)
+	fit_guide.call()
 
 func close_guide() -> void:
 	if is_instance_valid(guide_overlay):

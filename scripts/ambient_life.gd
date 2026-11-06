@@ -4,6 +4,11 @@ extends Node2D
 var location = "Island"
 var clock = 12.0
 const LANES = {
+ "Moment:Home":[Vector4(0.53,0.39,0.77,0.39)],
+ "Moment:Recall":[Vector4(0.45,0.39,0.67,0.39)],
+ "Moment:Beach":[Vector4(0.31,0.43,0.76,0.43)],
+ "Moment:Cottage":[Vector4(0.55,0.46,0.73,0.46)],
+ "Moment:Lighthouse":[Vector4(0.19,0.48,0.40,0.48)],
  "Lighthouse Room":[Vector4(0.70,0.46,0.78,0.46)],
  "Island":[Vector4(0.015,0.20,0.095,0.20),Vector4(0.935,0.40,0.99,0.40)],
  "Home":[Vector4(0.53,0.39,0.77,0.39)],

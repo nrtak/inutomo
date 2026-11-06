@@ -88,7 +88,7 @@ static func daily_card(game: Node) -> Array:
  IslandLife.refresh_day(game)
  if PuppyHealth.unwell(game):
   return [{"focus":"", "title":"Visit Leah", "place":"Vet Clinic", "icon":"clinic", "done":game.health.diagnosed}, {"focus":"Care", "title":"Brush your puppy", "place":"Home", "icon":"care", "done":game.life.daily.get("Care",0)>0}, {"focus":"Rest", "title":"Rest at Home", "place":"Home", "icon":"rest", "done":game.resting}]
- return [{"focus":"Feed", "title":"Feed your puppy", "place":"Home", "icon":"feed", "done":game.life.daily.get("Feed",0)>0}, {"focus":"", "title":"Try a beach game", "place":"Beach", "icon":"island", "done":game.life.daily.get("Walk",0)+game.life.daily.get("Fetch",0)>0 or (game.life.beach.day == IslandLife.today() and not game.life.beach.done.is_empty())}, {"focus":"", "title":"Start a puppy playdate", "place":"Life:Playdate", "icon":"heart", "done":game.life.playdate.claimed >= IslandLife.today()}]
+ return [{"focus":"Feed", "title":"Feed your puppy", "place":"Home", "icon":"feed", "done":game.life.daily.get("Feed",0)>0}, {"focus":"", "title":"Try a beach game", "place":"Beach", "icon":"island", "done":game.life.daily.get("Walk",0)+game.life.daily.get("Fetch",0)+game.life.daily.get("Discovery",0)>0 or (game.life.beach.day == IslandLife.today() and not game.life.beach.done.is_empty())}, {"focus":"", "title":"Start a puppy playdate", "place":"Life:Playdate", "icon":"heart", "done":game.life.playdate.claimed >= IslandLife.today()}]
 
 static func greeting(game: Node, person: String, fallback: String) -> String:
  var name: String = game.puppy_name

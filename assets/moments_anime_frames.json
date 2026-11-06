@@ -1,0 +1,136 @@
+{
+  "residents": {
+    "atlas": "assets/characters/residents_moments_anime.png",
+    "frames": {
+      "Ben": [
+        79,
+        7,
+        510,
+        611
+      ],
+      "Nora": [
+        756,
+        4,
+        326,
+        606
+      ],
+      "Kai": [
+        108,
+        630,
+        390,
+        624
+      ],
+      "Ren": [
+        708,
+        629,
+        459,
+        618
+      ]
+    }
+  },
+  "dogs": {
+    "atlas": "assets/puppies/dogs_moments_anime.png",
+    "frames": {
+      "Puppy:Bow": [
+        33,
+        29,
+        452,
+        414
+      ],
+      "Puppy:Sniff": [
+        543,
+        31,
+        455,
+        400
+      ],
+      "Shiba Inu:Bow": [
+        24,
+        476,
+        481,
+        469
+      ],
+      "Shiba Inu:Sniff": [
+        544,
+        475,
+        437,
+        454
+      ],
+      "Golden Retriever:Bow": [
+        6,
+        966,
+        524,
+        546
+      ],
+      "Golden Retriever:Sniff": [
+        530,
+        972,
+        491,
+        524
+      ]
+    }
+  },
+  "bare_dogs": {
+    "atlas": "assets/puppies/dogs_bare_moments_anime.png",
+    "frames": {
+      "Puppy:Bow": [
+        33,
+        29,
+        453,
+        414
+      ],
+      "Puppy:Sniff": [
+        544,
+        30,
+        454,
+        401
+      ],
+      "Shiba Inu:Bow": [
+        23,
+        475,
+        483,
+        470
+      ],
+      "Shiba Inu:Sniff": [
+        544,
+        475,
+        439,
+        454
+      ],
+      "Golden Retriever:Bow": [
+        6,
+        966,
+        524,
+        546
+      ],
+      "Golden Retriever:Sniff": [
+        530,
+        972,
+        491,
+        525
+      ]
+    }
+  },
+  "props": {
+    "atlas": "assets/goods/moment_keepsakes_anime.png",
+    "frames": {
+      "Shell": [
+        67,
+        117,
+        600,
+        494
+      ],
+      "Glass": [
+        825,
+        187,
+        511,
+        355
+      ],
+      "Star": [
+        1493,
+        83,
+        594,
+        546
+      ]
+    }
+  }
+}

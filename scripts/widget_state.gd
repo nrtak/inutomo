@@ -26,7 +26,9 @@ static func artwork_key(game: Node) -> String:
 	return game.breed + ":" + accessory
 
 static func artwork_image(game: Node) -> Image:
-	var picture: Image = Art.PUPPIES[game.breed].get_image()
+	var outfit: String = game.life.get("accessory", "")
+	var clothed = game.items.get(outfit,0)>0 and Goods.ITEMS.has(outfit) and Goods.ITEMS[outfit].has("color")
+	var picture: Image = (Art.DRESSED_PUPPIES if clothed else Art.PUPPIES)[game.breed].get_image()
 	if picture.is_compressed():
 		picture.decompress()
 	picture = picture.get_region(picture.get_used_rect())

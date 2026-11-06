@@ -85,7 +85,7 @@ func run():
   check(game.life.story.get(task,false), "Restoration location button completes " + task)
  game.life.keepsakes = []
  IslandStory.advance(game,"lens_polished")
- check(not game.life.story.get("lens_polished",false) and IslandStory.next_step(game).place == "Beach", "Display requires a sea-glass discovery and points to Beach")
+ check(not game.life.story.get("lens_polished",false) and IslandStory.next_step(game).place == "Moment:Cottage", "Display requires a sea-glass discovery and points to the hands-on cottage scene")
  IslandLife.discover(game,2)
  IslandStory.advance(game,"lens_polished")
  check("Sea glass" in game.life.keepsakes, "Restoration does not consume collected keepsakes")

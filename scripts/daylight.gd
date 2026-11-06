@@ -17,6 +17,10 @@ var clock = 0.0
 var transition: Tween
 var location_materials: Dictionary = {}
 const MOTION = {
+ "Moment:Home":[Vector4(0.36,0.15,0.6,0.47)],
+ "Moment:Recall":[Vector4(0.36,0.34,0.48,0.13),Vector4.ZERO,Vector4.ZERO,Vector4(0.855,0.36,0.06,0.13)],
+ "Moment:Beach":[Vector4(0,0.35,1,0.34)],
+ "Moment:Cottage":[Vector4(0.45,0.40,0.53,0.14)],
  "Lighthouse Room":[Vector4(0.29,0.39,0.53,0.15)],
  "Island":[Vector4(0,0.16,1,0.84),Vector4(0,0.02,0.4,0.96),Vector4(0.56,0.02,0.44,0.96),Vector4(0.335,0.61,0.03,0.14),Vector4(0.145,0.57,0.04,0.20),Vector4(0.075,0.34,0.04,0.16),Vector4(0.485,0.375,0.055,0.10)],
  "Home":[Vector4(0.36,0.15,0.6,0.47),Vector4(0.02,0.08,0.32,0.7),Vector4(0.83,0,0.17,0.45)],
@@ -32,6 +36,10 @@ const MOTION = {
 }
 # Treetop-only masks: no flowers, ground cover, bushes, or indoor plants.
 const TREE_TOPS = {
+ "Moment:Home":[Vector4.ZERO,Vector4(0.78,0.0,0.22,0.16)],
+ "Moment:Recall":[Vector4(0.24,0,0.17,0.18),Vector4(0.86,0,0.14,0.17)],
+ "Moment:Beach":[Vector4(0,0,0.28,0.20),Vector4(0.84,0,0.16,0.18)],
+ "Moment:Cottage":[Vector4(0,0,0.14,0.16),Vector4(0.9,0,0.1,0.16)],
  "Island":[Vector4(0.065,0.075,0.13,0.19),Vector4(0.26,0.13,0.075,0.15)],
  "Home":[Vector4.ZERO,Vector4(0.78,0.0,0.22,0.16)],
  "Park":[Vector4(0.0,0.0,0.23,0.24),Vector4(0.82,0.0,0.18,0.20)],
@@ -45,6 +53,8 @@ const TREE_TOPS = {
  "Lighthouse":[Vector4(0.0,0.0,0.30,0.25),Vector4(0.92,0.12,0.08,0.15)]
 }
 const LIGHTS = {
+	"Moment:Home": [Vector4(0.82, 0.52, 0.13, 0.20), Vector4(0.84, 0.77, 0.25, 0.22), Vector4(0.12, 0.42, 0.22, 0.38), Vector4.ZERO],
+	"Moment:Beach": [Vector4(0.10,0.28,0.05,0.12),Vector4(0.30,0.76,0.55,0.45),Vector4.ZERO,Vector4.ZERO],
 	"Lighthouse Room": [Vector4(0.18,0.34,0.12,0.18),Vector4(0.90,0.17,0.06,0.10),Vector4(0.50,0.82,0.60,0.40),Vector4.ZERO],
 	"Beach Arrival": [Vector4(0.10,0.28,0.05,0.12),Vector4(0.30,0.76,0.55,0.45),Vector4.ZERO,Vector4.ZERO],
 	"Beach": [Vector4(0.10,0.55,0.06,0.12),Vector4(0.45,0.85,0.6,0.4),Vector4.ZERO,Vector4.ZERO],

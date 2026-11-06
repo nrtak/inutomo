@@ -47,6 +47,11 @@ var home_interactions = false
 var pending_decor_action = ""
 var arriving_at_decor = false
 var settling_for_rest = false
+var reaction_above_head = false
+var illustrated_pose = ""
+var illustrated_width = 0.0
+var illustrated_height = 0.0
+var dressed_walk = false
 
 func _ready() -> void:
 	shadow = Sprite2D.new()
@@ -78,7 +83,7 @@ func set_breed() -> void:
 
 func set_pose(asleep: bool) -> void:
 	var unified = presentation_style == "Beach"
-	var texture: Texture2D = Art.SLEEP_TEXTURES[Game.breed] if asleep else Art.PUPPIES[Game.breed]
+	var texture: Texture2D = (Art.DRESSED_SLEEP_TEXTURES[Game.breed] if asleep else Art.DRESSED_PUPPIES[Game.breed]) if outfit_equipped() else (Art.SLEEP_TEXTURES[Game.breed] if asleep else Art.PUPPIES[Game.breed])
 	sprite.material = sleep_material if asleep and Game.breed != "Puppy" else null
 	var accessory: String = preview_accessory if not preview_accessory.is_empty() else Game.life.accessory
 	if Goods.ITEMS.has(accessory) and Goods.ITEMS[accessory].has("color") and (not preview_accessory.is_empty() or Game.items.get(accessory, 0) > 0):
@@ -127,6 +132,29 @@ func wake_briefly() -> void:
 
 func _process(delta: float) -> void:
 	if Game.paused_at > 0:
+		return
+	if dressed_walk != outfit_equipped():
+		prepare_walk_frames()
+	if not illustrated_pose.is_empty() and not Game.resting and not PuppyHealth.unwell(Game):
+		sprite.material = sleep_material
+		if outfit_equipped():
+			var accessory: String = preview_accessory if not preview_accessory.is_empty() else Game.life.accessory
+			style_material.set_shader_parameter("bandana", Goods.ITEMS[accessory].color)
+			style_material.set_shader_parameter("recolor", true)
+			style_material.set_shader_parameter("sleeping_cutout", false)
+			sprite.material = style_material
+		sprite.texture = MomentArt.dog(Game.breed,illustrated_pose,outfit_equipped())
+		sprite.region_enabled = false
+		visible_size = sprite.texture.get_size()
+		sprite.offset = Vector2(0,-visible_size.y*0.5)
+		base_scale = (illustrated_width if illustrated_width > 0 else (260.0 if Game.breed == "Puppy" else 300.0))/visible_size.x
+		if illustrated_height > 0:
+			base_scale = minf(base_scale,illustrated_height/visible_size.y)
+		sprite.scale = Vector2.ONE*base_scale
+		sprite.flip_h = false
+		sprite.position = Vector2.ZERO
+		sprite.rotation = 0
+		reaction_icon.visible = false
 		return
 	if not trick_command.is_empty():
 		if current_breed != Game.breed:
@@ -261,6 +289,8 @@ func _process(delta: float) -> void:
 			_:
 				sprite.position.y = 0
 				reaction_icon.position = Vector2(70, -100)
+		if reaction_above_head:
+			reaction_icon.position = Vector2(visible_size.x * base_scale * 0.35, -visible_size.y * base_scale - 22)
 		sprite.scale = Vector2(1 + bounce * 0.025, 1 - bounce * 0.025) * base_scale
 		reaction_icon.modulate.a = minf(1, reaction_time * 2)
 		return
@@ -323,10 +353,15 @@ func _process(delta: float) -> void:
 			set_walk_pose()
 
 func prepare_walk_frames() -> void:
-	walk_texture = Art.WALKS[Game.breed]
+	dressed_walk = outfit_equipped()
+	walk_texture = (Art.DRESSED_WALKS if dressed_walk else Art.WALKS)[Game.breed]
 	walk_frames.clear()
-	for region in Art.WALK_REGIONS[Game.breed]:
-		walk_frames.append(region)
+	for bounds in (Art.DRESSED_WALK_DATA if dressed_walk else Art.WALK_DATA)[Game.breed].regions:
+		walk_frames.append(Rect2(bounds[0],bounds[1],bounds[2],bounds[3]))
+
+func outfit_equipped() -> bool:
+	var accessory: String = preview_accessory if not preview_accessory.is_empty() else Game.life.accessory
+	return Goods.ITEMS.has(accessory) and Goods.ITEMS[accessory].has("color") and (not preview_accessory.is_empty() or Game.items.get(accessory,0)>0)
 
 func stride_length() -> float:
 	return 100.0 if Game.breed == "Puppy" else 160.0
@@ -338,9 +373,10 @@ func set_walk_pose() -> void:
 	sprite.region_enabled = true
 	sprite.region_rect = walk_frames[frame_index]
 	sprite.offset.y = -sprite.region_rect.size.y * 0.5
-	var anchor: float = Art.WALK_ANCHORS[Game.breed][frame_index]
+	var data: Dictionary = (Art.DRESSED_WALK_DATA if dressed_walk else Art.WALK_DATA)[Game.breed]
+	var anchor: float = data.anchors[frame_index]
 	sprite.offset.x = (sprite.region_rect.size.x * 0.5 - anchor) * (-1 if sprite.flip_h else 1)
-	base_scale = (lerpf(180, 280, Game.growth_fraction()) if baby else 320.0) / float(Art.WALK_HEIGHTS[Game.breed])
+	base_scale = (lerpf(180, 280, Game.growth_fraction()) if baby else 320.0) / float(data.height)
 	sprite.scale = Vector2.ONE * base_scale
 
 func react_to_care(kind: String) -> void:
@@ -434,7 +470,7 @@ func begin_toy_visit() -> bool:
 	return true
 
 func show_trick_pose() -> void:
-	var frames = Art.trick_frames(Game.breed,trick_command)
+	var frames = Art.trick_frames(Game.breed,trick_command,outfit_equipped())
 	if frames.is_empty():
 		trick_command = ""
 		return
@@ -447,7 +483,7 @@ func show_trick_pose() -> void:
 		index = 1
 	if sprite.material == null:
 		sprite.material = sleep_material
-	sprite.texture = Art.trick_sheet(Game.breed)
+	sprite.texture = Art.trick_sheet(Game.breed,outfit_equipped())
 	sprite.region_enabled = true
 	sprite.region_rect = frames[index]
 	sprite.offset = Vector2(0,-frames[index].size.y*0.5)
@@ -455,5 +491,5 @@ func show_trick_pose() -> void:
 	sprite.position.y = 0
 	sprite.rotation = 0
 	var height = minf(portrait_width,portrait_height) if presentation_style=="Beach" else (lerpf(180,280,Game.growth_fraction()) if Game.breed=="Puppy" else 320.0)
-	sprite.scale = Vector2.ONE*(height/float(Art.TRICK_DATA[Game.breed].height))
+	sprite.scale = Vector2.ONE*(height/float((Art.DRESSED_TRICK_DATA if outfit_equipped() else Art.TRICK_DATA)[Game.breed].height))
 	reaction_icon.visible = false

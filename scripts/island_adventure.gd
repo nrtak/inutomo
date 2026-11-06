@@ -123,6 +123,7 @@ static func shared_activity(game: Node, name: String, kind: String) -> String:
  return name + (" copies your puppy's happy paw!" if kind == "Mirror tricks" else " helps uncover a hidden toy!") + (" %d coins earned." % earned if earned > 0 else " Your coin purse is full.")
 
 static func record_task(game: Node, task: String) -> void:
+ WelcomeDay.record_task(game, task)
  for person in game.life.adventure.chapters:
   var chapter: Dictionary = game.life.adventure.chapters[person]
   if chapter.step == 1 and CHAPTERS[person].task == task:

@@ -28,7 +28,7 @@ static func restoration_step(game: Node) -> Dictionary:
   return {"text":"Bring the crate to Ren and help repair the cottage path.", "button":"Repair cottage path", "place":"Keeper’s Cottage", "action":"path_repaired"}
  if not story.get("lens_polished", false):
   if "Sea glass" not in game.life.keepsakes:
-   return {"text":"Finish a Beach Walk to find sea glass for Ren's light display. You keep your keepsake.", "button":"Find sea glass", "place":"Beach", "action":""}
+   return {"text":"Follow your dog's nose beside Ren's cottage mosaic. Sea glass can become part of his light display.", "button":"Explore with Ren", "place":"Moment:Cottage", "action":""}
   return {"text":"Show Ren your sea glass and help polish his display lens. Your keepsake stays with you.", "button":"Polish display lens", "place":"Keeper’s Cottage", "action":"lens_polished"}
  if not story.get("beacon_checked", false):
   return {"text":"Join Ren at the cottage while he checks the lighthouse signal.", "button":"Check lighthouse signal", "place":"Keeper’s Cottage", "action":"beacon_checked"}
