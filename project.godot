@@ -11,6 +11,8 @@ config/icon="res://assets/icon.png"
 Game="*res://scripts/game.gd"
 Sound="*res://scripts/sound.gd"
 Daylight="*res://scripts/daylight.gd"
+Reminders="*res://scripts/reminders.gd"
+Widgets="*res://scripts/widgets.gd"
 
 [display]
 window/size/viewport_width=1280

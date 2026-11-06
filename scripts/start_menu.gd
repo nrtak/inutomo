@@ -236,10 +236,15 @@ func show_sound_settings() -> void:
 	var panel = UI.card()
 	panel.custom_minimum_size.x = 760
 	center.add_child(panel)
+	panel.custom_minimum_size.y = minf(640,get_viewport_rect().size.y-48)
+	var scroll = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	panel.add_child(scroll)
 	var content = UI.column(10)
 	content.custom_minimum_size.x = 720
-	panel.add_child(content)
-	content.add_child(UI.label("Sound & comfort", 34, UI.TEAL))
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(content)
+	content.add_child(UI.label("Settings", 34, UI.TEAL))
 	var toggle = UI.button("Sound: On" if Game.sound_enabled else "Sound: Off", func(): pass, Color("ffe0b0"))
 	toggle.pressed.connect(func():
 		Sound.set_enabled(not Game.sound_enabled)
@@ -276,6 +281,7 @@ func show_sound_settings() -> void:
 		)
 		slider.drag_ended.connect(func(_changed: bool): Game.save_game())
 	content.add_child(UI.motion_toggle())
+	content.add_child(UI.reminder_control())
 	content.add_child(UI.button("Done", func():
 		Game.save_game()
 		settings_overlay.queue_free()

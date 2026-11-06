@@ -1,0 +1,9 @@
+[config]
+name="PuppyWidgets"
+binary="PuppyWidgets.a"
+initialization="init_puppy_widgets"
+deinitialization="deinit_puppy_widgets"
+
+[dependencies]
+system=["Foundation.framework", "UIKit.framework", "WidgetKit.framework"]
+linker_flags=["-ObjC"]

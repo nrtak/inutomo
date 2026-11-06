@@ -319,3 +319,33 @@ static func motion_toggle() -> CheckButton:
 	toggle.button_pressed = game.reduce_motion
 	toggle.toggled.connect(game.set_reduce_motion)
 	return toggle
+
+static func reminder_control() -> Control:
+	var reminders = Engine.get_main_loop().root.get_node("Reminders")
+	var game = Engine.get_main_loop().root.get_node("Game")
+	var content = column(4)
+	content.name = "VisitReminder"
+	content.visible = reminders.available()
+	var toggle = CheckButton.new()
+	toggle.name = "VisitReminderToggle"
+	toggle.text = "Visit reminder"
+	toggle.custom_minimum_size.y = 48
+	toggle.add_theme_font_size_override("font_size",24)
+	toggle.add_theme_color_override("font_color",INK)
+	content.add_child(toggle)
+	var detail = label("One friendly reminder after 24 hours away.",20)
+	content.add_child(detail)
+	var refresh = func():
+		if not is_instance_valid(content):
+			return
+		toggle.set_pressed_no_signal(game.visit_reminder_enabled)
+		toggle.disabled = reminders.pending
+		detail.text = "Allow the reminder on your iPhone…" if reminders.pending else (reminders.status if not reminders.status.is_empty() else "One friendly reminder after 24 hours away.")
+	toggle.toggled.connect(reminders.set_enabled)
+	reminders.updated.connect(refresh)
+	content.tree_exiting.connect(func():
+		if is_instance_valid(reminders) and reminders.updated.is_connected(refresh):
+			reminders.updated.disconnect(refresh)
+	)
+	refresh.call()
+	return content

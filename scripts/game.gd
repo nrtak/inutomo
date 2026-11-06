@@ -20,6 +20,7 @@ var name_chosen = false
 var haptics_enabled = true
 var reduce_motion = false
 var sound_enabled = true
+var visit_reminder_enabled = false
 var effects_volume = 0.7
 var ambience_volume = 0.45
 var active_outing: Dictionary = {}
@@ -401,6 +402,7 @@ func save_game() -> bool:
 		"coins": coins, "items": items, "cooldowns": cooldowns, "active_outing": active_outing, "saved_outings": saved_outings, "life": life,
 		"reduce_motion": reduce_motion, "effects_volume": effects_volume, "ambience_volume": ambience_volume,
 		"name_chosen": name_chosen, "sound_enabled": sound_enabled, "haptics_enabled": haptics_enabled, "pending_stage": pending_stage,
+		"visit_reminder_enabled": visit_reminder_enabled,
 		"active_seconds": active_seconds, "points": points, "fetches": fetches, "walks": walks, "intro_seen": intro_seen,
 		"resting": resting, "age_seconds": age_seconds, "collection": collection,
 		"journal": journal, "saved_at": Time.get_unix_time_from_system()}
@@ -423,6 +425,13 @@ func save_game() -> bool:
 		DirAccess.copy_absolute(absolute, absolute + ".bak")
 	var result = DirAccess.rename_absolute(absolute + ".tmp", absolute)
 	save_error = "" if result == OK else "Could not replace the save file."
+	if result == OK:
+		var reminders = get_node_or_null("/root/Reminders")
+		if is_instance_valid(reminders):
+			reminders.sync_preference()
+		var widgets = get_node_or_null("/root/Widgets")
+		if is_instance_valid(widgets):
+			widgets.sync_saved_game(float(data.saved_at))
 	return result == OK
 
 func read_data(path: String) -> Variant:
@@ -453,6 +462,8 @@ func valid_save(data: Variant) -> bool:
 		if not (value is float or value is int) or not is_finite(float(value)) or value < 0:
 			return false
 	if not data.get("reduce_motion", false) is bool or not data.get("name_chosen", false) is bool or not data.get("sound_enabled", true) is bool or not data.get("haptics_enabled", true) is bool:
+		return false
+	if not data.get("visit_reminder_enabled",false) is bool:
 		return false
 	if not PuppySteps.valid(data.get("walking", {})):
 		return false
@@ -562,6 +573,7 @@ func load_game() -> void:
 	ambience_volume = float(data.get("ambience_volume", 0.45))
 	name_chosen = data.get("name_chosen", data.intro_seen)
 	sound_enabled = data.get("sound_enabled", true)
+	visit_reminder_enabled = data.get("visit_reminder_enabled",false)
 	haptics_enabled = data.get("haptics_enabled", true)
 	set_reduce_motion(data.get("reduce_motion", false), false)
 	pending_stage = data.get("pending_stage", "")
@@ -581,6 +593,9 @@ func load_game() -> void:
 	journal = data.journal.slice(0, 32)
 	# Offline needs are gentle and capped at two hours; no death or punishment.
 	advance(clampf(Time.get_unix_time_from_system() - float(data.saved_at), 0, 7200), false)
+	var reminders = get_node_or_null("/root/Reminders")
+	if is_instance_valid(reminders):
+		reminders.sync_preference()
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED:

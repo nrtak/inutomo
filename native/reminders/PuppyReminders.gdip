@@ -1,0 +1,9 @@
+[config]
+name="PuppyReminders"
+binary="PuppyReminders.a"
+initialization="init_puppy_reminders"
+deinitialization="deinit_puppy_reminders"
+
+[dependencies]
+system=["Foundation.framework", "UIKit.framework", "UserNotifications.framework"]
+linker_flags=["-ObjC"]
