@@ -193,6 +193,7 @@ func dog_page() -> void:
 	content.add_child(UI.label(Game.puppy_name + " is " + IslandLife.personality(Game).to_lower() + ".", 28, UI.TEAL))
 	var descriptions = {"Curious": "Always sniffing for a new discovery.", "Cuddly": "Happiest with gentle pats and cozy company.", "Playful": "Always ready for a little game."}
 	content.add_child(UI.label(descriptions[IslandLife.personality(Game)], 24))
+	content.add_child(UI.label(IslandConnections.bond_name(Game),23,UI.TEAL))
 	content.add_child(UI.label("Favorite treats and toy", 24, UI.TEAL))
 	var row = HBoxContainer.new()
 	content.add_child(row)
@@ -204,11 +205,11 @@ func dog_page() -> void:
 
 func wardrobe() -> void:
 	content.add_child(UI.hint_label("Preview a color before you buy.", 23))
-	tile("Original teal", preload("res://assets/ui/club.svg"), func():
+	tile("No accessory", preload("res://assets/ui/club.svg"), func():
 		Game.life.accessory = ""
 		host.habitat.puppy.preview_accessory = ""
 		Game.save_game()
-		respond("Wearing the original teal bandana.")
+		respond("Natural fur. No accessory equipped.")
 	, Color("c8eddd"))
 	for kind in Goods.ITEMS:
 		if Goods.ITEMS[kind].category != "Accessories":
@@ -603,7 +604,10 @@ func _exit_tree() -> void:
 	close_album_overlay()
 
 func daily_card() -> void:
-	content.add_child(UI.hint_label("Three optional ideas. Enjoy them at your own pace.", 23))
+	content.add_child(UI.hint_label("Optional ideas. Enjoy them at your own pace.", 23))
+	if Game.life.connections.mystery<5:
+		var mystery = IslandConnections.mystery_step(Game)
+		tile(mystery.button,load("res://assets/ui/"+mystery.icon+".svg"),host.request_page.bind(mystery.place),Color("f9d8e2"))
 	for idea in IslandActivities.daily_card(Game):
 		tile(("✓ " if idea.done else "") + idea.title, load("res://assets/ui/" + idea.icon + ".svg"), host.daily_shortcut.bind(idea), Color("c8eddd") if idea.done else Color("fff0bd"))
 

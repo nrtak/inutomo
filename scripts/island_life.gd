@@ -7,7 +7,7 @@ const KEEPSAKES = ["Heart leaf", "Pearl shell", "Sea glass"]
 const KEEPSAKE_ICONS = ["leaf", "shell", "sea_glass"]
 const PERSONALITIES = ["Curious", "Cuddly", "Playful"]
 static func fresh() -> Dictionary:
-	return {"moments":IslandMoments.fresh(), "welcome_day":WelcomeDay.fresh(), "adventure":IslandAdventure.fresh(), "beach":IslandActivities.fresh(), "bowl":true, "bowl_spot":0, "toy_spot":1, "delivery":{"recipient":"", "claimed":"", "completed":0}, "playdate": {"day":"", "step":0, "claimed":"", "visits":0}, "story": {}, "accessory": "", "bed": "", "toy": "", "spot": 1, "training": {"Sit": 0, "Stay": 0, "Come": 0, "Paw":0, "Spin":0, "Bow":0, "Roll Over":0}, "friends": {}, "favors": {}, "keepsakes": [], "photos": [], "day": "", "daily": {}, "event_claimed": ""}
+	return {"connections":IslandConnections.fresh(), "moments":IslandMoments.fresh(), "welcome_day":WelcomeDay.fresh(), "adventure":IslandAdventure.fresh(), "beach":IslandActivities.fresh(), "bowl":true, "bowl_spot":0, "toy_spot":1, "delivery":{"recipient":"", "claimed":"", "completed":0}, "playdate": {"day":"", "step":0, "claimed":"", "visits":0}, "story": {}, "accessory": "", "bed": "", "toy": "", "spot": 1, "training": {"Sit": 0, "Stay": 0, "Come": 0, "Paw":0, "Spin":0, "Bow":0, "Roll Over":0}, "friends": {}, "favors": {}, "keepsakes": [], "photos": [], "day": "", "daily": {}, "event_claimed": ""}
 
 static func home_point(game: Node, kind: String) -> Vector2:
 	match kind:
@@ -231,6 +231,8 @@ static func claim_event(game: Node) -> String:
 static func valid(data: Variant) -> bool:
 	if not data is Dictionary:
 		return false
+	if not IslandConnections.valid(data.get("connections",{})):
+		return false
 	if not IslandMoments.valid(data.get("moments", {})):
 		return false
 	if not WelcomeDay.valid(data.get("welcome_day", {})):
@@ -331,6 +333,7 @@ static func normalized(data: Dictionary) -> Dictionary:
 	result.adventure = IslandAdventure.normalized(result.adventure)
 	result.welcome_day = WelcomeDay.normalized(result.welcome_day)
 	result.moments = IslandMoments.normalized(result.moments)
+	result.connections = IslandConnections.normalized(result.connections)
 	result.beach = IslandActivities.normalized(result.beach)
 	result.delivery = {"recipient": result.delivery.get("recipient", ""), "claimed": result.delivery.get("claimed", ""), "completed": int(result.delivery.get("completed", 0))}
 	for key in ["day", "claimed"]:

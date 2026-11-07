@@ -6,6 +6,9 @@ config/version="0.1.0"
 run/main_scene="res://scenes/start_menu.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 config/icon="res://assets/icon.png"
+boot_splash/show_image=false
+boot_splash/image="res://assets/launch_blank.png"
+boot_splash/bg_color=Color(0.93, 0.98, 0.97, 1)
 
 [autoload]
 Game="*res://scripts/game.gd"

@@ -15,21 +15,27 @@ const FOOT_POINTS = {
  "Home":Vector2(0.25,0.32), "Puppy Club":Vector2(0.54,0.31),
  "Park":Vector2(0.54,0.53), "Shop":Vector2(0.31,0.57),
  "Vet Clinic":Vector2(0.77,0.55), "Beach":Vector2(0.71,0.78),
- "Harbor":Vector2(0.45,0.77), "Keeper’s Cottage":Vector2(0.915,0.28),
+ "Harbor":Vector2(0.345,0.805), "Keeper’s Cottage":Vector2(0.915,0.28),
  "West path":Vector2(0.37,0.38), "Club path":Vector2(0.54,0.38),
- "Shop path":Vector2(0.43,0.55), "East path":Vector2(0.65,0.48),
- "South path":Vector2(0.56,0.61), "Beach path":Vector2(0.57,0.70),
- "Harbor path":Vector2(0.49,0.67), "Clinic side":Vector2(0.84,0.54),
+ "Shop path":Vector2(0.43,0.55), "East path":Vector2(0.61,0.50),
+ "South path":Vector2(0.505,0.645), "Beach path":Vector2(0.57,0.71),
+ "Harbor path":Vector2(0.46,0.68), "Clinic side":Vector2(0.84,0.54),
  "Clinic corner":Vector2(0.86,0.47), "Cottage path":Vector2(0.846,0.405),
- "Bridge path":Vector2(0.875,0.34)
+ "Bridge path":Vector2(0.875,0.34),
+ "West plaza":Vector2(0.42,0.44), "Lower plaza":Vector2(0.455,0.51),
+ "Club bend":Vector2(0.585,0.395), "East plaza":Vector2(0.61,0.445),
+ "Clinic approach":Vector2(0.71,0.55), "Pier path":Vector2(0.425,0.72),
+ "Home entry":Vector2(0.28,0.325), "Home steps":Vector2(0.30,0.36), "Home landing":Vector2(0.325,0.39)
 }
 const PATH_LINKS = [
- ["Home","West path"],["West path","Park"],
- ["Puppy Club","Club path"],["Club path","Park"],
+ ["Home","Home entry"],["Home entry","Home steps"],["Home steps","Home landing"],["Home landing","West path"],["West path","West plaza"],
+ ["West plaza","Lower plaza"],["Lower plaza","Park"],
+ ["Puppy Club","Club path"],["Club path","Club bend"],
+ ["Club bend","East plaza"],["East plaza","East path"],
  ["Shop","Shop path"],["Shop path","Park"],
- ["Vet Clinic","East path"],["East path","Park"],
+ ["Vet Clinic","Clinic approach"],["Clinic approach","East path"],["East path","Park"],
  ["Park","South path"],["South path","Beach path"],["Beach path","Beach"],
- ["South path","Harbor path"],["Harbor path","Harbor"],
+ ["South path","Harbor path"],["Harbor path","Pier path"],["Pier path","Harbor"],
  ["Vet Clinic","Clinic side"],["Clinic side","Clinic corner"],
  ["Clinic corner","Cottage path"],["Cottage path","Bridge path"],
  ["Bridge path","Keeper’s Cottage"]
@@ -181,7 +187,7 @@ func travel_to(place: String) -> void:
  var length = 0.0
  for index in range(1,travel_path.size()):
   length += ((travel_path[index]-travel_path[index-1])*map_rect.size).length()
- travel_duration = clampf(length/460.0,1.0,2.2)
+ travel_duration = clampf(length/240.0,1.2,5.5)
  map_dog.wake_briefly()
  for pin in pins.values():
   pin.disabled = true
@@ -235,7 +241,7 @@ func _process(delta: float) -> void:
    break
   remaining -= segment_length
  var movement = next_position-map_dog.position
- map_dog.stride_distance += movement.length()/maxf(0.01,map_dog.scale.x)
+ map_dog.stride_distance += minf(movement.length()/maxf(0.01,map_dog.scale.x),delta*map_dog.stride_length()*1.6)
  map_dog.sprite.flip_h = movement.x < 0 if absf(movement.x) > 0.05 else map_dog.sprite.flip_h
  map_dog.set_walk_pose()
  map_dog.position = next_position

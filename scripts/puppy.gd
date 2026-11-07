@@ -4,9 +4,15 @@ extends Node2D
 var sprite: Sprite2D
 var shadow: Sprite2D
 var walk_area = PackedVector2Array()
+var barriers: Array[Rect2] = []
+var bed_barrier = Rect2()
+var route_points: Array[Vector2] = []
+var route_goal = Vector2(INF,INF)
+var route_barriers: Array[Rect2] = []
+var motion_velocity = Vector2.ZERO
 var target = Vector2(640, 550):
 	set(value):
-		target = WalkArea.nearest(walk_area, value)
+		target = WalkArea.destination(walk_area, barriers, value)
 var bounds = Rect2(390, 510, 460, 40)
 var mood = "Sniffing the sea breeze"
 var clock = 0.0
@@ -243,6 +249,7 @@ func _process(delta: float) -> void:
 	if asleep:
 		target = position
 		move_speed = 0
+		motion_velocity = Vector2.ZERO
 		mood = "Napping in a cozy little bundle"
 		sprite.position.y = 0
 		sprite.rotation = 0
@@ -290,7 +297,7 @@ func _process(delta: float) -> void:
 				sprite.position.y = 0
 				reaction_icon.position = Vector2(70, -100)
 		if reaction_above_head:
-			reaction_icon.position = Vector2(visible_size.x * base_scale * 0.35, -visible_size.y * base_scale - 22)
+			reaction_icon.position = Vector2(0, -visible_size.y * base_scale - 22)
 		sprite.scale = Vector2(1 + bounce * 0.025, 1 - bounce * 0.025) * base_scale
 		reaction_icon.modulate.a = minf(1, reaction_time * 2)
 		return
@@ -317,40 +324,68 @@ func _process(delta: float) -> void:
 			elif IslandLife.personality(Game) == "Playful":
 				decision = randf_range(2.5, 4)
 			mood = {"Curious": "Sniffing for a new discovery", "Cuddly": "Looking for a gentle pat", "Playful": "Looking for a favorite toy"}[IslandLife.personality(Game)]
-	var distance = position.distance_to(target)
-	var moving = distance > 1
-	if moving:
-		var desired_speed = lerpf(45, 100, Game.growth_fraction()) if baby and not controlled else 150.0
-		if not controlled and PuppyHealth.unwell(Game):
-			desired_speed *= 0.55
-			mood = "Taking it gently while recovering"
-		# Ease into each walk and slow down before the last planted step.
-		var braking_speed = sqrt(2.0 * 320.0 * distance)
-		move_speed = move_toward(move_speed, minf(desired_speed, braking_speed), delta * 320)
-		var step_distance = minf(distance, delta * move_speed)
-		var direction = (target - position).normalized()
+	if advance_walk(delta):
+		var direction = motion_velocity.normalized()
 		if carrying_toy:
 			reaction_icon.position = Vector2(-45 if direction.x < 0 else 45, -65)
-		position = WalkArea.nearest(walk_area, position + direction * step_distance)
-		stride_distance += step_distance
-		footfall_distance += step_distance
 		if footfall_distance >= stride_length() * 0.5:
 			footfall_distance = fmod(footfall_distance, stride_length() * 0.5)
 			Sound.play_effect("step", -22)
 		settle_time = 0.22
-		sprite.flip_h = direction.x < 0
+		if absf(direction.x)>0.12:
+			sprite.flip_h = direction.x < 0
 		set_walk_pose()
 		var phase = stride_distance / stride_length() * TAU
 		sprite.position.y = -absf(sin(phase)) * 0.7
 		sprite.rotation = sin(phase) * 0.005
 	else:
 		move_speed = 0
-		stride_distance = 0
+		motion_velocity = Vector2.ZERO
 		sprite.position.y = sin(clock * 2) * 0.5
 		sprite.rotation = 0
 		settle_time = maxf(0, settle_time - delta)
 		if controlled or settle_time > 0:
 			set_walk_pose()
+
+func active_barriers() -> Array[Rect2]:
+	var result: Array[Rect2] = barriers.duplicate()
+	if bed_barrier.has_area() and not Game.resting and not settling_for_rest and not napping:
+		result.append(bed_barrier)
+	return result
+
+func advance_walk(delta: float) -> bool:
+	var obstacles = active_barriers()
+	var goal = WalkArea.destination(walk_area,obstacles,target)
+	if goal!=target: target = goal
+	if route_goal!=target or route_barriers!=obstacles or (route_points.is_empty() and position.distance_to(target)>1):
+		route_points = WalkArea.route(walk_area,obstacles,position,target)
+		route_goal = target
+		route_barriers = obstacles.duplicate()
+	while not route_points.is_empty() and position.distance_to(route_points[0])<=0.35:
+		position = route_points.pop_front()
+	if position.distance_to(target)<=1 or route_points.is_empty(): return false
+	var waypoint = route_points[0]
+	var distance = position.distance_to(waypoint)
+	var direction = (waypoint-position).normalized()
+	var desired_speed = lerpf(45,100,Game.growth_fraction()) if Game.breed=="Puppy" and not controlled else 150.0
+	if not controlled and PuppyHealth.unwell(Game):
+		desired_speed *= 0.55
+		mood = "Taking it gently while recovering"
+	# Velocity eases through starts and reversals; each corner brakes before turning.
+	var braking_speed = sqrt(2.0*300.0*distance)
+	motion_velocity = motion_velocity.move_toward(direction*minf(desired_speed,braking_speed),delta*420.0)
+	var movement = motion_velocity*delta
+	if movement.length()>distance and movement.dot(direction)>0: movement = direction*distance
+	var next = WalkArea.nearest(walk_area,position+movement)
+	if not WalkArea.clear_segment(position,next,obstacles,true):
+		next = position+direction*minf(distance,movement.length())
+		if not WalkArea.clear_segment(position,next,obstacles,true): return false
+	var travelled = position.distance_to(next)
+	position = next
+	move_speed = motion_velocity.length()
+	stride_distance += travelled
+	footfall_distance += travelled
+	return travelled>0.0001
 
 func prepare_walk_frames() -> void:
 	dressed_walk = outfit_equipped()
@@ -364,7 +399,7 @@ func outfit_equipped() -> bool:
 	return Goods.ITEMS.has(accessory) and Goods.ITEMS[accessory].has("color") and (not preview_accessory.is_empty() or Game.items.get(accessory,0)>0)
 
 func stride_length() -> float:
-	return 100.0 if Game.breed == "Puppy" else 160.0
+	return 64.0 if Game.breed == "Puppy" else 104.0
 
 func set_walk_pose() -> void:
 	var baby = Game.breed == "Puppy"

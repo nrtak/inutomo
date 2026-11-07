@@ -290,7 +290,7 @@ func run() -> void:
 		room.puppy._process(1.0 / 60)
 		if room.puppy.pending_decor_action == "":
 			break
-	check(room.puppy.pending_decor_action == "" and room.puppy.reaction_kind == "Feed", "Puppy reaches the bowl before its feeding reaction")
+	check(room.puppy.pending_decor_action == "" and room.puppy.reaction_kind == "Feed", "Puppy reaches the bowl before its feeding reaction: "+str(room.puppy.position)+" -> "+str(room.puppy.target)+" route "+str(room.puppy.route_points)+" pending "+room.puppy.pending_decor_action+" napping "+str(room.puppy.napping))
 	check(WalkArea.contains(room.puppy.walk_area, room.puppy.position), "Bowl approach remains on safe ground")
 	game.resting = true
 	room.interact_decor("Rest")

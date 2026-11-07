@@ -160,7 +160,7 @@ func run() -> void:
 			"Pause": game.paused_at = Time.get_unix_time_from_system()
 			"Photo": home.set_photo_mode(true)
 		home._process(0.016)
-		check(not home.dragging and home.prop.position == Vector2(745,610),"Interrupted dragging releases and resets the toy: " + interruption)
+		check(not home.dragging and home.prop.position == home.home_ball_point(),"Interrupted dragging releases and resets the toy: " + interruption)
 		game.resting = false
 		game.paused_at = 0
 		if interruption == "Photo": home.set_photo_mode(false)

@@ -49,6 +49,11 @@ func _ready() -> void:
 	background.add_child(ambience)
 	if location == "Home":
 		add_home_decor()
+	if location in ["Home","Puppy Club"] and Game.life.connections.mystery==5:
+		var memory = load("res://scripts/island_memory_visual.gd").new()
+		memory.name = "IslandMemoryVisual"
+		memory.location = location
+		world.add_child(memory)
 	if location == "Keeper’s Cottage":
 		restoration = load("res://scripts/restoration_visual.gd").new()
 		world.add_child(restoration)
@@ -58,6 +63,9 @@ func _ready() -> void:
 	world.add_child(puppy)
 	Game.nap_actor = weakref(puppy)
 	puppy.walk_area = WalkArea.AREAS.get(location, WalkArea.AREAS.Home)
+	puppy.barriers = WalkArea.barriers_for(location)
+	if location=="Home" and Game.items.get(Game.life.bed,0)>0:
+		puppy.bed_barrier = Rect2(IslandLife.home_point(Game,"Rest")+Vector2(-132,-62),Vector2(264,124))
 	puppy.position = WalkArea.SPAWNS.get(location, WalkArea.SPAWNS.Home)
 	if location == "Home" and Game.resting and not Game.life.bed.is_empty():
 		puppy.position.x = [550.0, 650.0, 760.0][Game.life.spot]
@@ -248,7 +256,10 @@ func animate_playdate(step: int) -> void:
 	playmate.position = Vector2(770, 580)
 	playdate_tween = create_tween()
 	if step == 1:
-		playdate_tween.tween_property(playmate,"position",Vector2(700,580),0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		var familiar = IslandAdventure.buddy_visits(Game,companion_name())>=2
+		var arrival = Vector2(680 if familiar else 720,580)
+		playdate_tween.tween_method(func(weight: float): show_buddy_walk(Vector2(770,580),arrival,weight),0.0,1.0,0.9 if familiar else 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		playdate_tween.tween_callback(func(): update_playmate(true))
 		playdate_tween.tween_property(playmate,"rotation",-0.06,0.3)
 		playdate_tween.tween_property(playmate,"rotation",0.0,0.3)
 	elif step == 2:
@@ -337,10 +348,10 @@ func decor_contains(action: String, point: Vector2) -> bool:
 	var local_point = prop.to_local(world.to_global(point))
 	return prop.get_rect().grow(6.0 / maxf(0.01, prop.scale.x)).has_point(local_point)
 
-func update_playmate() -> void:
+func update_playmate(force_idle: bool = false) -> void:
 	var name = companion_name()
 	var buddy: Dictionary = IslandAdventure.BUDDIES[name]
-	if shared_clock < 0 and (playdate_tween == null or not playdate_tween.is_running()):
+	if force_idle or (shared_clock < 0 and (playdate_tween == null or not playdate_tween.is_running())):
 		playmate.texture = Art.PUPPIES[buddy.breed]
 		playmate.region_enabled = false
 		playmate.offset = Vector2(0,-playmate.texture.get_height()*0.5)
@@ -384,10 +395,10 @@ func update_shared_game() -> void:
 		playmate.region_rect = Art.trick_frames(breed,"Paw")[index]
 		playmate.scale = Vector2.ONE*(170.0/float(Art.TRICK_DATA[breed].height))
 	else:
-		var travel = minf(1.0,shared_clock/1.2)
+		var travel = smoothstep(0.0,1.0,minf(1.0,shared_clock/1.2))
 		playmate.position = Vector2(770,580).lerp(Vector2(715,580),travel)
 		if travel < 1 and not Game.reduce_motion:
-			var frame = int(shared_clock*8)%8
+			var frame = int(55.0*travel/60.0*8)%8
 			playmate.texture = Art.WALKS[breed]
 			playmate.region_rect = Art.WALK_REGIONS[breed][frame]
 			playmate.scale = Vector2.ONE*(170.0/float(Art.WALK_HEIGHTS[breed]))
@@ -402,6 +413,22 @@ func update_shared_game() -> void:
 		discovery.position = Vector2(675,580)
 		discovery.scale = Vector2.ONE*(50.0/discovery.texture.get_width())
 	playmate.offset = Vector2(0,-playmate.region_rect.size.y*0.5)
+	if shared_kind=="Treasure pals" and shared_clock<1.2 and not Game.reduce_motion:
+		var frame = int(55.0*smoothstep(0.0,1.0,shared_clock/1.2)/60.0*8)%8
+		playmate.offset.x = float(Art.WALK_ANCHORS[breed][frame])-playmate.region_rect.size.x*0.5
+
+func show_buddy_walk(origin: Vector2, destination: Vector2, weight: float) -> void:
+	var breed: String = IslandAdventure.BUDDIES[companion_name()].breed
+	playmate.position = origin.lerp(destination,weight)
+	var stride = (64.0 if breed=="Puppy" else 104.0)*170.0/(180.0 if breed=="Puppy" else 320.0)
+	var frame = int(origin.distance_to(playmate.position)/stride*8)%8
+	playmate.texture = Art.WALKS[breed]
+	playmate.region_enabled = true
+	playmate.region_rect = Art.WALK_REGIONS[breed][frame]
+	playmate.scale = Vector2.ONE*(170.0/float(Art.WALK_HEIGHTS[breed]))
+	playmate.flip_h = destination.x<origin.x
+	var anchor: float = Art.WALK_ANCHORS[breed][frame]
+	playmate.offset = Vector2((anchor-playmate.region_rect.size.x*0.5)*(-1 if not playmate.flip_h else 1),-playmate.region_rect.size.y*0.5)
 
 func animate_welcome_picnic(step: int) -> void:
 	welcome_roll_ready = false

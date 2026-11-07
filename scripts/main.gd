@@ -72,6 +72,7 @@ var reward_notice: Control
 var reward_version = 0
 var home_suggestion: Label
 var home_suggestion_card: PanelContainer
+var dog_invitation: PanelContainer
 
 func _ready() -> void:
 	world_host = Control.new()
@@ -287,6 +288,9 @@ func _ready() -> void:
 	Game.changed.connect(_update_needs)
 	show_page("Home")
 	_update_needs()
+	dog_invitation = load("res://scripts/dog_invitation.gd").new()
+	dog_invitation.host = self
+	add_child(dog_invitation)
 	if not Game.intro_seen:
 		show_intro()
 	if not Game.save_error.is_empty():
@@ -316,7 +320,7 @@ func _process(delta: float) -> void:
 			UI.button_wait(button, remaining, 6.0)
 	if is_instance_valid(home_suggestion_card):
 		var hint = home_hint()
-		home_suggestion_card.visible = page == "Home" and not hint.is_empty() and not is_instance_valid(photo_overlay) and not is_instance_valid(notice_overlay)
+		home_suggestion_card.visible = page == "Home" and not hint.is_empty() and not is_instance_valid(photo_overlay) and not is_instance_valid(notice_overlay) and not (is_instance_valid(dog_invitation) and dog_invitation.visible)
 		home_suggestion.text = hint
 	if not Game.save_error.is_empty():
 		if reported_save_error != Game.save_error or not is_instance_valid(notice_overlay) or not notice_overlay.get_meta("save_error", false):
@@ -459,6 +463,8 @@ func set_scenery(location: String) -> void:
 		Game.pending_home_reaction = ""
 
 func show_page(dest: String) -> void:
+	if dest=="Mystery" and Game.life.connections.mystery not in [1,2,3]:
+		dest = "Puppy Club"
 	if dest == "Lighthouse Room" and not IslandAdventure.tower_open(Game):
 		show_feedback("Help Ren finish the cottage restoration first.")
 		return
@@ -489,6 +495,14 @@ func show_page(dest: String) -> void:
 		current_place = "Lighthouse" if dest == "Lighthouse Room" else dest
 	clear_body()
 	update_navigation()
+	if dest=="Mystery":
+		current_place = IslandConnections.mystery_step(Game).place
+		page_label.text = "The missing welcome star"
+		set_scenery(current_place)
+		var mystery = load("res://scripts/island_mystery_view.gd").new()
+		mystery.host = self
+		world_host.add_child(mystery)
+		return
 	if dest.begins_with("Moment:"):
 		var kind = dest.get_slice(":",1)
 		if kind in IslandMoments.PLACES:
@@ -526,6 +540,9 @@ func show_page(dest: String) -> void:
 		"Vet Supplies": goods_page(true, true)
 
 func go_back() -> void:
+	if page=="Mystery":
+		request_page(current_place)
+		return
 	if page.begins_with("Moment:"):
 		request_page(IslandMoments.PLACES.get(page.get_slice(":",1),"Home"))
 		return

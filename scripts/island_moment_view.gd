@@ -43,6 +43,8 @@ func _ready() -> void:
 	dog.target = dog.position
 	dog.bounds = Rect2(400,500,600,160)
 	dog.home_interactions = false
+	dog.barriers.clear()
+	dog.bed_barrier = Rect2()
 	dog.wake_briefly()
 	dog.awake_remaining = 3600
 	dog.decision = 3600
@@ -77,7 +79,7 @@ func _ready() -> void:
 	prop.texture = Goods.picture("Toy") if kind == "Home" else MomentArt.prop("Shell" if kind == "Beach" else ("Star" if kind == "Lighthouse" else "Glass"))
 	prop.material = UI.art_cutout()
 	prop.scale = Vector2.ONE * ((64.0 if kind == "Home" else 54.0) / prop.texture.get_width())
-	prop.position = Vector2(745,610) if kind == "Home" else (Vector2(735,641) if kind == "Beach" else Vector2(830,630))
+	prop.position = home_ball_point() if kind == "Home" else (Vector2(735,641) if kind == "Beach" else Vector2(830,630))
 	prop.visible = kind in ["Home", "Lighthouse"]
 	if kind == "Lighthouse": prop.position = Vector2(675,650)
 	habitat.world.add_child(prop)
@@ -147,6 +149,8 @@ func refresh() -> void:
 		if phase == "waiting":
 			speech.set_hint({"Home":"A play bow! Drag the ball along the rug, or tap Roll the ball.","Recall":"Call warmly. Watch those paws follow the clear route around the cones.","Beach":"Momo caught a scent! Let's follow our little explorers.","Cottage":"There's something beside the old mosaic. Shall we follow that nose?","Lighthouse":"You helped bring this light back. There's a place here for all of us."}[kind])
 			primary = add_button({"Home":"Roll the ball","Recall":"Call Come","Beach":"Sniff together","Cottage":"Follow that scent","Lighthouse":"Share the light"}[kind],preload("res://assets/ui/heart.svg"),begin)
+			if kind in ["Home","Recall","Beach","Cottage"]:
+				speech.set_hint(IslandConnections.personality_hint(Game,kind))
 		elif phase == "ready":
 			speech.set_hint("Look beside those little paws. Tap the keepsake to look closer.")
 			primary = add_button("Look closer",MomentArt.prop("Shell" if kind == "Beach" else "Glass"),finish)
@@ -184,7 +188,10 @@ func begin() -> void:
 	phase = "outbound"
 	match kind:
 		"Home": waypoints = [WalkArea.nearest(dog.walk_area,prop.position)]
-		"Recall": waypoints = [Vector2(850,595),Vector2(850,515),Vector2(760,515),Vector2(650,525),Vector2(530,515)]
+		"Recall":
+			waypoints = [Vector2(850,595),Vector2(850,515),Vector2(760,515),Vector2(650,525),Vector2(530,515)]
+			# A familiar path with a patient pause on alternate practices.
+			dog.command_delay = 0.6 if Game.life.moments.recall%2==1 else 0.0
 		"Beach": waypoints = [Vector2(610,630)]
 		"Cottage": waypoints = [Vector2(700,620)]
 	dog.target = waypoints.pop_front()
@@ -201,7 +208,7 @@ func finish() -> void:
 	host.habitat.puppy.decision = 3600
 	if kind == "Home":
 		host.habitat.puppy.illustrated_pose = "Bow"
-		prop.position = Vector2(745,610)
+		prop.position = home_ball_point()
 		prop.visible = true
 	refresh()
 	speech.set_hint(result.text if Game.save_error.is_empty() else Game.save_error)
@@ -232,7 +239,7 @@ func handle_input(event: InputEvent) -> bool:
 				if WalkArea.contains(host.habitat.puppy.walk_area,point) and point.distance_to(return_point)>50:
 					prop.position = point
 					begin()
-				else: prop.position = Vector2(745,610)
+				else: prop.position = home_ball_point()
 		return true
 	if event is InputEventMouseMotion and dragging:
 		prop.position = WalkArea.nearest(host.habitat.puppy.walk_area,(event.position-host.habitat.world.position)/host.habitat.world.scale)
@@ -242,7 +249,10 @@ func handle_input(event: InputEvent) -> bool:
 func cancel_drag() -> void:
 	if dragging:
 		dragging = false
-		prop.position = Vector2(745,610)
+		prop.position = home_ball_point()
+
+func home_ball_point() -> Vector2:
+	return [Vector2(745,610),Vector2(830,600),Vector2(475,620)][int(Game.life.moments.home)%3]
 
 func _process(delta: float) -> void:
 	if photo_paused or Game.paused_at > 0:

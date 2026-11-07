@@ -13,6 +13,7 @@ var rounds = 0
 var score = 0
 var complete = false
 var timer: Timer
+var profile: Dictionary
 
 func _ready() -> void:
 	add_theme_constant_override("separation", 12)
@@ -27,6 +28,7 @@ func _ready() -> void:
 	habitat.puppy.position = WalkArea.SPAWNS.Park
 	habitat.puppy.target = habitat.puppy.position
 	var checkpoint = Game.begin_outing("Fetch")
+	profile = IslandConnections.fetch_profile(Game,int(checkpoint.get("variant",0)))
 	rounds = int(checkpoint.checkpoint)
 	score = int(checkpoint.score)
 	var spacer = Control.new()
@@ -41,7 +43,7 @@ func _ready() -> void:
 	panel.add_child(controls)
 	progress = UI.label("Throw 1 of 3", 24, UI.TEAL)
 	controls.add_child(progress)
-	status = UI.hint_label("Tap in the green zone near 70% power.", 24)
+	status = UI.hint_label(throw_hint(), 24)
 	controls.add_child(status)
 	bar = ProgressBar.new()
 	bar.custom_minimum_size.y = 32
@@ -51,8 +53,8 @@ func _ready() -> void:
 	var sweet_zone = ColorRect.new()
 	sweet_zone.color = Color(0.3, 0.8, 0.4, 0.35)
 	sweet_zone.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	sweet_zone.anchor_left = 0.52
-	sweet_zone.anchor_right = 0.88
+	sweet_zone.anchor_left = (profile.center-profile.radius)/100.0
+	sweet_zone.anchor_right = (profile.center+profile.radius)/100.0
 	sweet_zone.anchor_bottom = 1
 	bar.add_child(sweet_zone)
 	progress.text = "Throw %d of 3" % mini(3, rounds + 1)
@@ -65,7 +67,7 @@ func _process(delta: float) -> void:
 	if Game.paused_at > 0:
 		return
 	if not busy and not complete:
-		phase += delta * 2.2
+		phase += delta * profile.speed
 		bar.value = (sin(phase) + 1) * 50
 
 func _throw() -> void:
@@ -73,7 +75,7 @@ func _throw() -> void:
 		return
 	busy = true
 	throw_button.disabled = true
-	var good = absf(bar.value - 70) <= 18
+	var good = absf(bar.value - profile.center) <= profile.radius
 	if good:
 		score += 1
 	rounds += 1
@@ -97,7 +99,7 @@ func _throw() -> void:
 		finish_fetch()
 	else:
 		progress.text = "Throw %d of 3" % (rounds + 1)
-		status.text = "Aim for the green zone near 70% power!"
+		status.text = throw_hint()
 	busy = false
 	throw_button.disabled = false
 
@@ -122,3 +124,6 @@ func _notification(what: int) -> void:
 		timer.paused = true
 	elif what == NOTIFICATION_APPLICATION_RESUMED:
 		timer.paused = get_meta("dialog_paused", false)
+
+func throw_hint() -> String:
+	return profile.title+". Tap in the green zone near %d%% power." % int(profile.center)

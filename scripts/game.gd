@@ -292,6 +292,8 @@ func begin_outing(kind: String) -> Dictionary:
 		if not active_outing.is_empty():
 			saved_outings[active_outing.kind] = active_outing.duplicate()
 		active_outing = saved_outings.get(kind, {"kind": kind, "checkpoint": 0, "score": 0}).duplicate()
+		if kind=="Fetch" and not active_outing.has("variant"):
+			active_outing.variant = fetches%3 if active_outing.checkpoint==0 else 0
 		saved_outings[kind] = active_outing.duplicate()
 		save_game()
 	return active_outing.duplicate()
@@ -538,6 +540,8 @@ func valid_outing(outing: Variant) -> bool:
 			if not (number is float or number is int) or not is_finite(float(number)) or number < 0 or number > 3 or float(number) != floorf(number):
 				return false
 		if outing.score > outing.checkpoint or (outing.kind == "Walk" and outing.score != 0):
+			return false
+		if not IslandAdventure.integer(outing.get("variant",0),2) or (outing.kind=="Walk" and outing.get("variant",0)!=0):
 			return false
 	return true
 

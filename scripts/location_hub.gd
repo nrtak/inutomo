@@ -175,6 +175,10 @@ func _ready() -> void:
   add_choice("Gather with friends", preload("res://assets/ui/heart.svg"), host.request_page.bind("Moment:Lighthouse"), Color("f9d8e2"))
  if Game.life.delivery.recipient != "" and IslandLife.delivery_info(Game).place == location:
   add_choice("Deliver parcel", preload("res://assets/ui/menu_bag.svg"), deliver_parcel, Color("fff0bd"))
+ if Game.life.connections.mystery<5 and IslandConnections.mystery_step(Game).place==location:
+  var mystery = IslandConnections.mystery_step(Game)
+  var button = add_choice(mystery.button,load("res://assets/ui/"+mystery.icon+".svg"),mystery_action,Color("fff0bd"))
+  button.set_meta("mystery",true)
  feedback.visible = location == "Lighthouse" and not feedback.text.is_empty()
  refresh()
  show_greeting()
@@ -213,6 +217,8 @@ func refresh() -> void:
  unavailable.text = blocked + "." if not blocked.is_empty() else ""
  unavailable.visible = location in ["Park", "Beach", "Puppy Club"] and not blocked.is_empty()
  for button in primary_actions.get_children() + choices.get_children():
+  if button.has_meta("mystery"):
+   button.disabled = not IslandConnections.available(Game)
   if button.text in ["Play Fetch", "Resume Fetch", "Go for a walk", "Resume Walk", "Find shells", "Beach cleanup", "Sand fetch", "Puppy playdate", "Cozy playdate", "Scent trail", "Training"]:
    button.disabled = not blocked.is_empty()
    button.tooltip_text = blocked if not blocked.is_empty() else button.text
@@ -335,7 +341,10 @@ func show_greeting() -> void:
  greeting.talk = func(): host.show_resident(person[0],person[1],"Island friend",IslandAdventure.chapter(Game,person[1]))
  if location == "Beach" and visits == 0 and IslandWeather.current()=="Sunny":
   greeting.text = "A peaceful evening by the sea." if Daylight.current_period in ["Evening","Night","Late night"] else "A perfect day for the beach!"
- greeting.text = WelcomeDay.greeting(Game, person[1], greeting.text)
+ greeting.text = IslandConnections.greeting(Game,person[1],greeting.text)
+ if Game.life.welcome_day.started and not Game.life.welcome_day.celebrated:
+  greeting.text = WelcomeDay.greeting(Game,person[1],greeting.text)
+ IslandConnections.arrive(Game,person[1])
  host.arrival_visits[location] = visits + 1
  if not Game.life.friends.has(person[1]):
   IslandLife.talk(Game,person[1])
@@ -350,3 +359,13 @@ func prepare_picnic() -> void:
  var reply = WelcomeDay.pack_treats(Game)
  host.show_resident(Art.JUNE, "June", "Shopkeeper", reply if Game.save_error.is_empty() else Game.save_error)
  host.call_deferred("location_story_refresh", location)
+
+func mystery_action() -> void:
+ var step: int = Game.life.connections.mystery
+ if step in [1,2,3]:
+  host.request_page("Mystery")
+  return
+ var spec = IslandConnections.mystery_step(Game)
+ var result = IslandConnections.advance_mystery(Game,step,location)
+ host.show_resident(Art.NORA,"Nora","Puppy Club organizer",result.text if Game.save_error.is_empty() else Game.save_error)
+ if result.ok: rebuild_story_actions()

@@ -84,6 +84,8 @@ func update_state() -> void:
  var done = state.step>=3 and current_day
  progress.text = "Trail complete!" if done else "Scent trail: %d of 3" % state.step
  clue.text = "A lovely discovery together. Return tomorrow for a fresh trail." if done else IslandAdventure.scent_stop(Game).clue
+ if not done and IslandLife.personality(Game)=="Curious":
+  clue.text = "That curious nose pauses. " + clue.text
  if not current_day:
   clue.text = "Your daily trail is saved. Come back for a fresh trail another day."
  if shown_route != state.route:

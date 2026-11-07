@@ -100,7 +100,14 @@ static func finish_playdate(game: Node) -> String:
  record.visits = mini(1000,int(record.visits)+1)
  game.life.adventure.buddies[name] = record
  record_task(game,"Playdate")
- return name + " remembers you! " + buddy_level(record.visits) + "."
+ return buddy_greeting(game,name) + " " + buddy_level(record.visits) + "."
+
+static func buddy_greeting(game: Node, name: String) -> String:
+ var visits = buddy_visits(game,name)
+ if visits>=7: return name+" runs over for a familiar nose-to-nose hello!"
+ if visits>=4: return name+" brings the ball over to "+game.puppy_name+"."
+ if visits>=2: return name+" recognizes "+game.puppy_name+" with a happy tail!"
+ return name+" gives "+game.puppy_name+" a gentle first sniff."
 
 static func shared_activity(game: Node, name: String, kind: String) -> String:
  var visits = buddy_visits(game,name)
@@ -123,6 +130,7 @@ static func shared_activity(game: Node, name: String, kind: String) -> String:
  return name + (" copies your puppy's happy paw!" if kind == "Mirror tricks" else " helps uncover a hidden toy!") + (" %d coins earned." % earned if earned > 0 else " Your coin purse is full.")
 
 static func record_task(game: Node, task: String) -> void:
+ IslandConnections.record(game, task)
  WelcomeDay.record_task(game, task)
  for person in game.life.adventure.chapters:
   var chapter: Dictionary = game.life.adventure.chapters[person]
