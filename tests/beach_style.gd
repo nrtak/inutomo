@@ -49,7 +49,7 @@ func run():
   var hub = main.body.get_child(0)
   check(hub.primary_actions.get_child_count() == 3 and hub.choices.get_child_count() == 1,"All four beach activities are directly accessible")
   var buttons = hub.primary_actions.get_children()+hub.choices.get_children()
-  for breed in ["Puppy","Shiba Inu","Golden Retriever"]:
+  for breed in GrowthRoutes.BREEDS:
    game.breed = breed
    var dog = main.habitat.puppy
    dog._process(0)

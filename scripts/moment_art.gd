@@ -20,6 +20,8 @@ static func resident(person: String) -> Texture2D:
 	return frame("residents", person)
 
 static func dog(breed: String, pose: String, dressed: bool = false) -> Texture2D:
+	if Art.EXTRA_DOGS.has(breed) or pose in ["Tilt","Stretch","Greet","Tug"]:
+		return Art.expression_texture(breed,pose,dressed)
 	return frame("dogs" if dressed else "bare_dogs", breed + ":" + pose)
 
 static func prop(kind: String) -> Texture2D:

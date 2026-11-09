@@ -20,9 +20,13 @@ func run() -> void:
 	game.active_seconds = 0
 	game.breed = "Puppy"
 	game.resting = false
-	var menu = load("res://scenes/start_menu.tscn").instantiate()
-	root.add_child(menu)
-	current_scene = menu
+	check(ProjectSettings.get_setting("application/run/main_scene")=="res://scenes/launch.tscn","App launches through the saved-game entry screen")
+	change_scene_to_file("res://scenes/launch.tscn")
+	await process_frame
+	await process_frame
+	await process_frame
+	var menu = current_scene
+	check(menu.scene_file_path=="res://scenes/start_menu.tscn","New players still begin with the title and name picker")
 	await process_frame
 	check(menu.start_button.text == "Start Adventure", "First visit offers Start Adventure")
 	var energy: float = game.needs.Energy
@@ -96,6 +100,40 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	check(not is_instance_valid(current_scene.intro_overlay), "Returning players skip the welcome")
+	if is_instance_valid(current_scene.stage_overlay): current_scene.close_growth_moment()
+	game.pending_stage = ""
+	check(game.save_game(),"An ongoing game saves before relaunch")
+	game.puppy_name = "Unsaved name"
+	game.load_game()
+	change_scene_to_file("res://scenes/launch.tscn")
+	await process_frame
+	await process_frame
+	await process_frame
+	check(current_scene.scene_file_path=="res://scenes/main.tscn" and current_scene.page=="Home","Relaunching an ongoing game skips the title and opens Home with the dog")
+	check(game.puppy_name=="Sora" and not is_instance_valid(current_scene.intro_overlay) and game.is_processing(),"Direct launch preserves the saved dog and resumes gameplay: "+game.puppy_name+" intro="+str(is_instance_valid(current_scene.intro_overlay))+" processing="+str(game.is_processing())+" stage="+game.pending_stage)
+	check(current_scene.menu_button.is_visible_in_tree(),"The in-game Menu button stays available after direct launch")
+	current_scene.menu_button.pressed.emit()
+	check(is_instance_valid(current_scene.navigation_overlay),"Menu still opens the navigation and settings panel")
+	current_scene.close_navigation()
+	current_scene.show_page("Menu")
+	await process_frame
+	await process_frame
+	check(current_scene.scene_file_path=="res://scenes/start_menu.tscn","Choosing Title screen deliberately stays on the title without redirecting")
+	game.pending_stage = "Adult"
+	change_scene_to_file("res://scenes/launch.tscn")
+	await process_frame
+	await process_frame
+	await process_frame
+	await process_frame
+	check(is_instance_valid(current_scene.stage_overlay) and not game.is_processing(),"Direct launch preserves a pending growth celebration and its pause")
+	current_scene.close_growth_moment()
+	game.intro_seen = false
+	game.name_chosen = true
+	change_scene_to_file("res://scenes/launch.tscn")
+	await process_frame
+	await process_frame
+	await process_frame
+	check(current_scene.scene_file_path=="res://scenes/main.tscn" and is_instance_valid(current_scene.intro_overlay),"An interrupted first visit resumes Nora's welcome without repeating the start menu")
 	current_scene.queue_free()
 	await process_frame
 	for suffix in ["", ".tmp", ".bak"]:

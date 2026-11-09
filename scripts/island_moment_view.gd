@@ -149,6 +149,8 @@ func refresh() -> void:
 		if phase == "waiting":
 			speech.set_hint({"Home":"A play bow! Drag the ball along the rug, or tap Roll the ball.","Recall":"Call warmly. Watch those paws follow the clear route around the cones.","Beach":"Momo caught a scent! Let's follow our little explorers.","Cottage":"There's something beside the old mosaic. Shall we follow that nose?","Lighthouse":"You helped bring this light back. There's a place here for all of us."}[kind])
 			primary = add_button({"Home":"Roll the ball","Recall":"Call Come","Beach":"Sniff together","Cottage":"Follow that scent","Lighthouse":"Share the light"}[kind],preload("res://assets/ui/heart.svg"),begin)
+			if kind == "Home":
+				add_button("Play tug",Goods.picture("TugRope"),host.request_page.bind("Tug"))
 			if kind in ["Home","Recall","Beach","Cottage"]:
 				speech.set_hint(IslandConnections.personality_hint(Game,kind))
 		elif phase == "ready":

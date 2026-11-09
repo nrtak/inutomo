@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from math import ceil
 from PIL import Image
-from register_cel_art import bounds, texture
+from register_cel_art import bounds, texture, subject_bounds
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -15,7 +15,7 @@ def write_json(path, value):
 def residents():
     result = {}
     for name in ['nora', 'june', 'ben', 'leah', 'owen', 'ren', 'kai']:
-        atlas = f'assets/characters/{name}_anime_greeting_v2.png' if name == 'nora' else f'assets/characters/{name}_idle_sheet.png'
+        atlas = 'assets/characters/nora_smile_anime_greeting_v3.png' if name == 'nora' else f'assets/characters/{name}_idle_sheet.png'
         image = Image.open(ROOT / atlas).convert('RGBA')
         columns = 3 if name == 'nora' else 2
         width, height = image.width // columns, image.height // 2
@@ -91,7 +91,7 @@ def dogs():
             frames = []
             for column in range(3):
                 x,y = column*width,row*height
-                l,t,r,b = bounds(image,(x,y,x+width,y+height),2)
+                l,t,r,b = subject_bounds(image,(x,y,x+width,y+height),2)
                 frames.append([x+l,y+t,r-l,b-t])
             rows[command] = frames
         tricks[breed] = {'atlas':atlas, 'height':rows['Paw'][0][3], 'rows':rows}

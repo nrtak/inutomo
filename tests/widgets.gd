@@ -61,7 +61,7 @@ func run() -> void:
 	game.items.CoralBandana = 0
 	game.save_game()
 	check(fake.calls.back().snapshot.artwork == normal, "Unowned accessories cannot leak into the widget")
-	for breed in ["Shiba Inu", "Golden Retriever"]:
+	for breed in GrowthRoutes.HINTS:
 		game.breed = breed
 		game.save_game()
 		state = fake.calls.back().snapshot

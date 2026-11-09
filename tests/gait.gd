@@ -12,7 +12,7 @@ func run() -> void:
 	game.resting = false
 	game.points = 0
 	game.active_seconds = 0
-	for breed in ["Puppy", "Shiba Inu", "Golden Retriever"]:
+	for breed in GrowthRoutes.BREEDS:
 		game.breed = breed
 		var puppy = load("res://scripts/puppy.gd").new()
 		root.add_child(puppy)

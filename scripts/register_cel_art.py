@@ -5,6 +5,7 @@ from statistics import median
 from math import ceil
 
 from PIL import Image
+from dog_atlas_bounds import subject_bounds
 
 ROOT = Path(__file__).resolve().parents[1]
 

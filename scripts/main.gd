@@ -106,6 +106,8 @@ func _ready() -> void:
 	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	identity_col.add_child(name_label)
 	age_label = UI.label("", 24)
+	age_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	age_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	identity_col.add_child(age_label)
 	days_label = UI.label("", 20, UI.TEAL)
 	identity_col.add_child(days_label)
@@ -261,12 +263,14 @@ func _ready() -> void:
 	action_dock.add_child(actions)
 	var suggestion = UI.card()
 	home_suggestion_card = suggestion
+	suggestion.visible = false
 	suggestion.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	suggestion.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
-	suggestion.offset_left = 230
-	suggestion.offset_right = 620
-	suggestion.offset_top = -100
+	suggestion.offset_left = 0
+	suggestion.offset_right = 210
+	suggestion.offset_top = -140
 	suggestion.offset_bottom = -12
+	suggestion.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	utility_layer.add_child(suggestion)
 	home_suggestion = UI.label("",22)
 	suggestion.add_child(home_suggestion)
@@ -320,8 +324,12 @@ func _process(delta: float) -> void:
 			UI.button_wait(button, remaining, 6.0)
 	if is_instance_valid(home_suggestion_card):
 		var hint = home_hint()
+		var previous_hint = home_suggestion.text
+		var was_visible = home_suggestion_card.visible
 		home_suggestion_card.visible = page == "Home" and not hint.is_empty() and not is_instance_valid(photo_overlay) and not is_instance_valid(notice_overlay) and not (is_instance_valid(dog_invitation) and dog_invitation.visible)
 		home_suggestion.text = hint
+		if home_suggestion_card.visible and (hint!=previous_hint or not was_visible or home_suggestion_card.get_meta("view_size",Vector2.ZERO)!=size):
+			arrange_home_hint.call_deferred()
 	if not Game.save_error.is_empty():
 		if reported_save_error != Game.save_error or not is_instance_valid(notice_overlay) or not notice_overlay.get_meta("save_error", false):
 			reported_save_error = Game.save_error
@@ -342,13 +350,53 @@ func home_hint() -> String:
 		if Game.needs[key] < Game.needs[lowest]:
 			lowest = key
 	if Game.needs[lowest] >= 45:
-		return "" if Game.points > 0 else "Try Feed, Play or Care together."
+		return "" if Game.points > 0 else "Try Feed, Play or Care."
 	return Game.puppy_name + {"Hunger":" could use a meal.","Happiness":" would enjoy a little play.","Energy":" could use a nap.","Cleanliness":" could use a brush."}[lowest]
 
 func _notice(text: String) -> void:
 	message.text = text
 	status_clock = 0
 	show_feedback(text)
+
+func home_message_position(message_size: Vector2) -> Vector2:
+	var safe = UI.safe_insets(20)
+	var preferred = Vector2(safe.left,camera_button.get_global_rect().end.y+12)
+	var blocked: Array[Rect2] = []
+	for control in [identity_card,island_button,daily_button,camera_button,needs_card,menu_button,actions]:
+		if control.is_visible_in_tree(): blocked.append(control.get_global_rect().grow(8))
+	if is_instance_valid(habitat):
+		blocked.append(habitat.puppy.sprite.get_global_transform()*habitat.puppy.sprite.get_rect())
+		for prop in habitat.decor_sprites.values():
+			blocked.append(prop.get_global_transform()*prop.get_rect())
+	var xs = [preferred.x,size.x-safe.right-message_size.x]
+	var ys = [preferred.y,size.y-safe.bottom-message_size.y]
+	for rect in blocked:
+		xs.append(rect.end.x+8)
+		xs.append(rect.position.x-message_size.x-8)
+		ys.append(rect.end.y+8)
+		ys.append(rect.position.y-message_size.y-8)
+	var best = preferred
+	var distance = INF
+	for x in xs:
+		for y in ys:
+			var candidate = Rect2(Vector2(x,y),message_size)
+			if x<safe.left or y<safe.top or candidate.end.x>size.x-safe.right or candidate.end.y>size.y-safe.bottom: continue
+			var free = true
+			for rect in blocked:
+				if candidate.intersects(rect):
+					free = false
+					break
+			var score = absf(x-preferred.x)*2+absf(y-preferred.y)
+			if free and score<distance:
+				best = candidate.position
+				distance = score
+	return best
+
+func arrange_home_hint() -> void:
+	if not is_instance_valid(home_suggestion_card) or not home_suggestion_card.visible: return
+	home_suggestion_card.size = Vector2(210,home_suggestion_card.get_combined_minimum_size().y)
+	home_suggestion_card.global_position = home_message_position(home_suggestion_card.size)
+	home_suggestion_card.set_meta("view_size",size)
 
 func show_feedback(text: String, persistent_save_error: bool = false) -> void:
 	if notice_tween != null and notice_tween.is_valid():
@@ -359,18 +407,39 @@ func show_feedback(text: String, persistent_save_error: bool = false) -> void:
 	notice_overlay = overlay
 	overlay.set_meta("save_error", persistent_save_error)
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overlay.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	overlay.offset_top = 175
-	overlay.offset_bottom = 255
+	var at_home = page == "Home"
+	if at_home:
+		var safe = UI.safe_insets(20)
+		overlay.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+		overlay.offset_left = safe.left
+		overlay.offset_right = safe.left+210
+		overlay.offset_top = -safe.bottom-150
+		overlay.offset_bottom = -safe.bottom
+		overlay.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	else:
+		overlay.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+		overlay.offset_top = 175
+		overlay.offset_bottom = 255
 	add_child(overlay)
 	var panel = UI.card()
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.add_child(panel)
 	var text_label = UI.hint_label(text, 22)
-	text_label.custom_minimum_size.x = clampf(text.length() * 9.0, 220, 520)
+	text_label.custom_minimum_size.x = 170 if at_home else clampf(text.length() * 9.0, 220, 520)
 	text_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	text_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(text_label)
+	if at_home:
+		var overlay_ref = weakref(overlay)
+		var panel_ref = weakref(panel)
+		var arrange = func():
+			var notice = overlay_ref.get_ref()
+			var card = panel_ref.get_ref()
+			if not is_instance_valid(notice) or not is_instance_valid(card): return
+			notice.size = Vector2(210,card.get_combined_minimum_size().y)
+			notice.position = home_message_position(notice.size)
+		panel.minimum_size_changed.connect(arrange)
+		arrange.call_deferred()
 	if persistent_save_error:
 		return
 	notice_tween = create_tween()
@@ -389,6 +458,7 @@ func _update_needs() -> void:
 		meter_labels[key].tooltip_text = "%s: %d" % [key, int(Game.needs[key])]
 	name_label.text = Game.puppy_name
 	age_label.text = Game.growth_stage() if Game.breed == "Puppy" else Game.breed
+	age_label.add_theme_font_size_override("font_size",20 if age_label.text.length()>14 else 24)
 	days_label.text = "Days played: %d" % Game.days_played()
 	health_badge.visible = page == "Home" and PuppyHealth.unwell(Game)
 	var travel = hud.find_child("TravelNavigation", true, false)
@@ -461,8 +531,15 @@ func set_scenery(location: String) -> void:
 	if page == "Home" and not Game.pending_home_reaction.is_empty():
 		habitat.puppy.react_to_care(Game.pending_home_reaction)
 		Game.pending_home_reaction = ""
+		Game.home_greeted = true
+	elif page=="Home" and Game.intro_seen and not Game.home_greeted:
+		Game.home_greeted = true
+		habitat.puppy.welcome_player()
 
 func show_page(dest: String) -> void:
+	if dest=="Tug" and (not Game.can_explore() or Game.cooldowns.get("Play",0)>0):
+		show_feedback("A little rest or breather first. Tug will wait.")
+		return
 	if dest=="Mystery" and Game.life.connections.mystery not in [1,2,3]:
 		dest = "Puppy Club"
 	if dest == "Lighthouse Room" and not IslandAdventure.tower_open(Game):
@@ -517,6 +594,11 @@ func show_page(dest: String) -> void:
 		life_page(dest.get_slice(":", 1) if ":" in dest else "Dog")
 		return
 	match dest:
+		"Tug":
+			set_scenery("Home")
+			var tug = load("res://scripts/tug.gd").new()
+			tug.host = self
+			world_host.add_child(tug)
 		"Scent Trail":
 			set_scenery("Park")
 			var trail = load("res://scripts/scent_trail.gd").new()
@@ -529,8 +611,6 @@ func show_page(dest: String) -> void:
 			open_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			open_space.size_flags_vertical = Control.SIZE_EXPAND_FILL
 			body.add_child(open_space)
-			if Game.points == 0:
-				_notice(home_hint())
 		"Island": island()
 		"Journal": journal_page()
 		"My Dogs": dogs_page()
@@ -540,6 +620,9 @@ func show_page(dest: String) -> void:
 		"Vet Supplies": goods_page(true, true)
 
 func go_back() -> void:
+	if page=="Tug":
+		request_page("Home")
+		return
 	if page=="Mystery":
 		request_page(current_place)
 		return
@@ -656,6 +739,7 @@ func journal_page() -> void:
 	content.add_child(UI.label(milestone.hint,23))
 	var puppy_portrait = TextureRect.new()
 	puppy_portrait.texture = Art.PUPPIES[Game.breed]
+	puppy_portrait.material = UI.art_cutout()
 	puppy_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	puppy_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	puppy_portrait.custom_minimum_size = Vector2(0, 130)
@@ -673,13 +757,14 @@ func journal_page() -> void:
 		content.add_child(button)
 	if Game.first_day.values().count(true) == 3:
 		content.add_child(UI.label("You're settling in! Keep making little memories together.", 22, UI.TEAL))
-	var prediction = "Breed is still a mystery. Try a Walk or Fetch together."
+	var prediction = "Breed is still a mystery. Share games, walks, training and scent discoveries."
 	if Game.breed != "Puppy":
 		prediction = "Grown into: " + Game.breed
-	elif Game.walks + Game.fetches > 0:
+	elif GrowthRoutes.scores(Game).values().any(func(value):return value>0):
 		prediction = "Likely breed: " + Game.prediction() + ". Still growing!"
 	content.add_child(UI.label(prediction, 26, UI.TEAL))
-	content.add_child(UI.label("Walks: %d    Fetch: %d. Walks favor Shiba Inu; Fetch and ties favor Golden Retriever." % [Game.walks, Game.fetches], 22))
+	for breed in GrowthRoutes.scores(Game):
+		content.add_child(UI.label(breed+": "+GrowthRoutes.HINTS[breed]+" · %d shared moments" % GrowthRoutes.scores(Game)[breed],22))
 	content.add_child(UI.label("Growth needs care and time in the game. Time away does not rush growth. Memory times show hours and minutes together.", 21))
 	content.add_child(UI.label("Health: " + PuppyHealth.status(Game), 25, UI.TEAL))
 	if PuppyHealth.unwell(Game):
@@ -702,11 +787,20 @@ func journal_page() -> void:
 func dogs_page() -> void:
 	var col = page_panel()
 	col.add_child(UI.label("My Dogs", 30))
-	col.add_child(UI.button("Personality, Wardrobe and Photos", show_page.bind("Life"), Color("f9d8e2")))
-	var row = HBoxContainer.new()
-	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	col.add_child(row)
-	for dog_breed in ["Puppy", "Shiba Inu", "Golden Retriever"]:
+	var details = UI.button("Personality, Wardrobe and Photos", show_page.bind("Life"), Color("f9d8e2"))
+	details.custom_minimum_size.y = 64
+	col.add_child(details)
+	var scroll = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(scroll)
+	var row = GridContainer.new()
+	row.columns = 3
+	row.add_theme_constant_override("h_separation",12)
+	row.add_theme_constant_override("v_separation",12)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(row)
+	for dog_breed in GrowthRoutes.BREEDS:
 		var unlocked = dog_breed == "Puppy"
 		for dog in Game.collection:
 			if dog.breed == dog_breed:
@@ -716,6 +810,7 @@ func dogs_page() -> void:
 		row.add_child(dog_col)
 		var portrait = TextureRect.new()
 		portrait.texture = Art.PUPPIES[dog_breed]
+		portrait.material = UI.art_cutout()
 		portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		portrait.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -791,6 +886,7 @@ func show_growth_moment() -> void:
 	content.add_child(UI.label("A little bigger, a little braver!", 32, UI.TEAL))
 	var portrait = TextureRect.new()
 	portrait.texture = Art.PUPPIES[Game.breed]
+	portrait.material = UI.art_cutout()
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	portrait.custom_minimum_size.y = 180
@@ -869,15 +965,26 @@ func goods_page(shop: bool, vet_supplies: bool = false) -> void:
 	body.add_child(browser)
 
 func pause_outing_for_dialog() -> void:
-	if not outing_pause.is_empty() or page not in ["Fetch", "Walk"] or body.get_child_count() == 0:
+	if not outing_pause.is_empty():
 		return
-	var activity = body.get_child(0)
-	if activity.complete:
+	var activity: Node
+	var timer: Timer
+	if page in ["Fetch","Walk","Scent Trail"]:
+		if body.get_child_count()==0: return
+		activity = body.get_child(0)
+		if page != "Scent Trail":
+			if activity.complete: return
+			timer = activity.timer
+	elif page.begins_with("Moment:"):
+		activity = world_host.get_node_or_null("IslandMomentView")
+		if not is_instance_valid(activity) or activity.phase=="done": return
+		activity.cancel_drag()
+	else:
 		return
-	outing_pause = {"activity": weakref(activity), "puppy": weakref(habitat.puppy), "game_processing": Game.is_processing(), "activity_processing": activity.is_processing(), "puppy_processing": habitat.puppy.is_processing(), "timer_paused": activity.timer.paused}
+	outing_pause = {"activity": weakref(activity), "puppy": weakref(habitat.puppy), "game_processing": Game.is_processing(), "activity_processing": activity.is_processing(), "puppy_processing": habitat.puppy.is_processing(), "timer":weakref(timer) if is_instance_valid(timer) else null, "timer_paused":timer.paused if is_instance_valid(timer) else false}
 	Game.set_process(false)
 	activity.set_process(false)
-	activity.timer.paused = true
+	if is_instance_valid(timer): timer.paused = true
 	activity.set_meta("dialog_paused", true)
 	habitat.puppy.set_process(false)
 
@@ -886,10 +993,11 @@ func resume_outing_after_dialog() -> void:
 		return
 	var activity = outing_pause.activity.get_ref()
 	var puppy = outing_pause.puppy.get_ref()
+	var timer = outing_pause.timer.get_ref() if outing_pause.timer != null else null
 	if is_instance_valid(activity):
 		activity.remove_meta("dialog_paused")
 		activity.set_process(outing_pause.activity_processing)
-		activity.timer.paused = outing_pause.timer_paused or Game.paused_at > 0
+	if is_instance_valid(timer): timer.paused = outing_pause.timer_paused or Game.paused_at > 0
 	if is_instance_valid(puppy):
 		puppy.set_process(outing_pause.puppy_processing)
 	Game.set_process(outing_pause.game_processing)
@@ -1136,6 +1244,7 @@ func capture_photo() -> void:
 func show_need_tip(key: String) -> void:
 	if is_instance_valid(tip_overlay):
 		return
+	pause_outing_for_dialog()
 	var tips = {"Hunger": "Feed a fresh meal at Home. Treats add a little extra.", "Happiness": "Play, pet your puppy, or enjoy a Walk or Fetch together.", "Energy": "Choose Rest for a cozy nap. Wake when you're ready.", "Cleanliness": "Choose Care at Home, or use shampoo from your Bag."}
 	tip_overlay = Control.new()
 	tip_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1159,6 +1268,7 @@ func show_need_tip(key: String) -> void:
 	content.add_child(UI.button("Got it", func():
 		tip_overlay.queue_free()
 		tip_overlay = null
+		resume_outing_after_dialog()
 	, Color("bdeab0")))
 
 func show_arrival(place: String) -> void:

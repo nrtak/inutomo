@@ -67,6 +67,8 @@ func _ready() -> void:
 	if location=="Home" and Game.items.get(Game.life.bed,0)>0:
 		puppy.bed_barrier = Rect2(IslandLife.home_point(Game,"Rest")+Vector2(-132,-62),Vector2(264,124))
 	puppy.position = WalkArea.SPAWNS.get(location, WalkArea.SPAWNS.Home)
+	if location=="Home" and Game.breed!="Puppy" and not Game.resting:
+		puppy.position = Vector2(640,600)
 	if location == "Home" and Game.resting and not Game.life.bed.is_empty():
 		puppy.position.x = [550.0, 650.0, 760.0][Game.life.spot]
 	puppy.target = puppy.position
@@ -146,6 +148,24 @@ func _resize_world() -> void:
 		world.scale = Vector2.ONE * factor
 		var focus = Vector2(650,410) if location == "Home" and not cinematic else Vector2(640,410 if not is_zero_approx(view_offset.x) else 360)
 		world.position = size * 0.5 - focus * factor + view_offset
+		if location=="Home" and not cinematic and is_instance_valid(puppy) and factor>0:
+			var safe = UI.safe_insets(20)
+			puppy.home_headroom = (safe.top+150-world.position.y)/factor
+			var floor_bottom = maxf(500,(size.y-safe.bottom-world.position.y)/factor-4)
+			var visible_floor = PackedVector2Array([Vector2(0,0),Vector2(1280,0),Vector2(1280,floor_bottom),Vector2(0,floor_bottom)])
+			var clipped = Geometry2D.intersect_polygons(WalkArea.AREAS.Home,visible_floor)
+			if not clipped.is_empty():
+				puppy.walk_area = clipped[0]
+				puppy.position = WalkArea.nearest(puppy.walk_area,puppy.position)
+				puppy.target = WalkArea.nearest(puppy.walk_area,puppy.target)
+				puppy.bounds = Rect2(puppy.walk_area[0],Vector2.ZERO)
+				for point in puppy.walk_area: puppy.bounds = puppy.bounds.expand(point)
+			if puppy.expression_time>0:
+				puppy.show_expression()
+			elif puppy.move_speed>0:
+				puppy.set_walk_pose()
+			else:
+				puppy.set_pose(Game.resting or (Game.breed=="Puppy" and puppy.napping))
 		background.position.y = maxf(0,-world.position.y/factor) if location in ["Lighthouse","Keeper’s Cottage"] else 0.0
 		if is_instance_valid(restoration):
 			restoration.position = background.position

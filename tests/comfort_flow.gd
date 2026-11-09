@@ -32,6 +32,23 @@ func run():
  var main = load("res://scenes/main.tscn").instantiate()
  root.add_child(main)
  current_scene = main
+ main._process(0)
+ check(not is_instance_valid(main.notice_overlay) and main.home_suggestion_card.visible,"First-play guidance uses one compact hint instead of a second floating notice")
+ var home_dog = main.habitat.puppy
+ home_dog.set_process(false)
+ for kind in ["Feed","Play","Care","Pet","Treat","Sniff"]:
+  home_dog.home_interactions = false
+  home_dog.react_to_care(kind)
+  home_dog._process(0.13)
+  check(home_dog.sprite.position == Vector2.ZERO and is_zero_approx(home_dog.sprite.rotation) and home_dog.sprite.scale.is_equal_approx(Vector2.ONE*home_dog.base_scale),"Reduce Motion keeps Home care reactions still: "+kind)
+  var icon_position = home_dog.reaction_icon.position
+  home_dog._process(0.1)
+  check(home_dog.reaction_icon.position.is_equal_approx(icon_position),"Reduce Motion keeps care icons still as well: "+kind)
+ home_dog.sleepy_reaction = false
+ home_dog.reaction_time = 0
+ home_dog.nap_remaining = 50
+ home_dog._process(0.13)
+ check(home_dog.sprite.scale.is_equal_approx(Vector2.ONE*home_dog.base_scale),"Reduce Motion also stops the sleeping sprite pulsing")
  main.show_page("Beach")
  var dog = main.habitat.puppy
  game.set_process(true)
@@ -88,6 +105,15 @@ func run():
   root.add_child(phone)
   var scene = load("res://scenes/main.tscn").instantiate()
   phone.add_child(scene)
+  scene.show_feedback("Yum! A fresh bowl and a happy tummy.")
+  await process_frame
+  await process_frame
+  var feedback_bounds: Rect2 = scene.notice_overlay.get_child(0).get_global_rect()
+  var dog_bounds: Rect2 = scene.habitat.puppy.sprite.get_global_transform()*scene.habitat.puppy.sprite.get_rect()
+  check(not feedback_bounds.intersects(dog_bounds),"Home feedback stays beside the dog instead of covering its face or paws: "+str(dimensions)+" notice "+str(feedback_bounds)+" dog "+str(dog_bounds))
+  for prop in scene.habitat.decor_sprites.values():
+   check(not feedback_bounds.intersects(prop.get_global_transform()*prop.get_rect()),"Home feedback leaves the bowl and other placed objects visible")
+  check(feedback_bounds.position.x>=105 and feedback_bounds.end.x<=dimensions.x-105 and feedback_bounds.end.y<=dimensions.y-25,"Home feedback respects the phone safe area")
   scene.open_navigation()
   await process_frame
   await process_frame

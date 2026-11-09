@@ -7,13 +7,28 @@ const KEEPSAKES = ["Heart leaf", "Pearl shell", "Sea glass"]
 const KEEPSAKE_ICONS = ["leaf", "shell", "sea_glass"]
 const PERSONALITIES = ["Curious", "Cuddly", "Playful"]
 static func fresh() -> Dictionary:
-	return {"connections":IslandConnections.fresh(), "moments":IslandMoments.fresh(), "welcome_day":WelcomeDay.fresh(), "adventure":IslandAdventure.fresh(), "beach":IslandActivities.fresh(), "bowl":true, "bowl_spot":0, "toy_spot":1, "delivery":{"recipient":"", "claimed":"", "completed":0}, "playdate": {"day":"", "step":0, "claimed":"", "visits":0}, "story": {}, "accessory": "", "bed": "", "toy": "", "spot": 1, "training": {"Sit": 0, "Stay": 0, "Come": 0, "Paw":0, "Spin":0, "Bow":0, "Roll Over":0}, "friends": {}, "favors": {}, "keepsakes": [], "photos": [], "day": "", "daily": {}, "event_claimed": ""}
+	return {"growth_paths":GrowthRoutes.fresh(), "tug_games":0, "connections":IslandConnections.fresh(), "moments":IslandMoments.fresh(), "welcome_day":WelcomeDay.fresh(), "adventure":IslandAdventure.fresh(), "beach":IslandActivities.fresh(), "bowl":true, "bowl_spot":0, "toy_spot":1, "delivery":{"recipient":"", "claimed":"", "completed":0}, "playdate": {"day":"", "step":0, "claimed":"", "visits":0}, "story": {}, "accessory": "", "bed": "", "toy": "", "spot": 1, "training": {"Sit": 0, "Stay": 0, "Come": 0, "Paw":0, "Spin":0, "Bow":0, "Roll Over":0}, "friends": {}, "favors": {}, "keepsakes": [], "photos": [], "day": "", "daily": {}, "event_claimed": ""}
 
 static func home_point(game: Node, kind: String) -> Vector2:
 	match kind:
 		"Rest": return Vector2([550.0, 650.0, 760.0][game.life.spot], 505)
 		"Play": return Vector2([510.0, 650.0, 790.0][game.life.toy_spot], 555)
 		_: return Vector2([400.0, 420.0, 870.0][game.life.bowl_spot], 580)
+
+static func bowl_barrier(game: Node) -> Rect2:
+	return Rect2(home_point(game,"Feed")+Vector2(-68,-28),Vector2(136,72))
+
+static func feeding_point(game: Node) -> Vector2:
+	# Leave room for sitting, walking and the wider sleeping pose beside the bowl.
+	var breed: String = game.breed
+	var height = lerpf(180,280,game.growth_fraction()) if breed == "Puppy" else Art.adult_height(breed)
+	var awake_width = Art.PUPPIES[breed].get_width()*height/Art.PUPPIES[breed].get_height()
+	var width = maxf(awake_width,lerpf(200,290,game.growth_fraction()) if breed == "Puppy" else Art.sleeping_width(breed))
+	for region in Art.WALK_REGIONS[breed]:
+		width = maxf(width,region.size.x*height/float(Art.WALK_HEIGHTS[breed]))
+	var clearance = width*0.5+55.0+18.0
+	var bowl = home_point(game,"Feed")
+	return bowl+Vector2(clearance if bowl.x<640 else -clearance,20)
 
 static func today() -> String:
 	return Time.get_date_string_from_system(false)
@@ -64,11 +79,15 @@ static func favor(game: Node, person: String) -> String:
 	var friend: Dictionary = game.life.friends.get(person, {"hearts": 0, "talked": ""})
 	friend.hearts = mini(20, friend.hearts + 2)
 	game.life.friends[person] = friend
-	game.coins = mini(1000000, game.coins + 8)
+	var earned = mini(8,1000000-game.coins)
+	game.coins += earned
 	game.remember("Helped " + person + " with a little favor.")
 	game.changed.emit()
 	game.save_game()
-	return person + " says thank you! You earned 8 coins and friendship."
+	return person + " says thank you! " + coin_reward_text(earned) + " Your friendship grew."
+
+static func coin_reward_text(earned: int) -> String:
+	return "You earned %d %s." % [earned,"coin" if earned==1 else "coins"] if earned>0 else "Your coin purse is full."
 
 static func favor_status(game: Node, person: String) -> Dictionary:
 	refresh_day(game)
@@ -101,12 +120,14 @@ static func train(game: Node, command: String) -> String:
 	if game.cooldowns.get("Training", 0) > 0:
 		return "Let those paws take a breather before another lesson."
 	if game.life.training[command] >= 5:
+		GrowthRoutes.record(game,"Training")
 		game.cooldowns.Training = 20.0
 		game.care_performed.emit(command)
 		IslandAdventure.record_task(game,"Training")
 		game.changed.emit()
 		game.save_game()
 		return "A lovely " + command.to_lower() + "! This command is already learned."
+	GrowthRoutes.record(game,"Training")
 	game.cooldowns.Training = 20.0
 	game.life.training[command] += 1
 	IslandAdventure.record_task(game,"Training")
@@ -133,6 +154,7 @@ static func playdate_step(game: Node) -> String:
 	if visit.step == 0:
 		game.life.adventure.active_playmate = game.life.adventure.playmate
 	visit.step += 1
+	GrowthRoutes.record(game,"Playdate")
 	game.cooldowns.Playdate = 3.0
 	var replies = ["A gentle sniff and a friendly hello!", "You rolled the ball together. Happy little tails!", "A calm rest together. New friends already!"]
 	var reply: String = replies[visit.step - 1]
@@ -188,7 +210,8 @@ static func deliver_parcel(game: Node, place: String) -> String:
 	delivery.claimed = today() if delivery.claimed < today() else delivery.claimed
 	delivery.completed = mini(1000, delivery.completed + 1)
 	IslandAdventure.record_task(game,"Delivery")
-	game.coins = mini(1000000, game.coins + 6)
+	var earned = mini(6,1000000-game.coins)
+	game.coins += earned
 	talk(game, person)
 	var bonus = ""
 	if game.items.get("Treat",0) < Goods.ITEMS.Treat.limit:
@@ -197,7 +220,7 @@ static func deliver_parcel(game: Node, place: String) -> String:
 	game.remember("Delivered a Harbor parcel to " + person + ".")
 	game.changed.emit()
 	game.save_game()
-	return person + " received the parcel. Thank you! You earned 6 coins." + bonus
+	return person + " received the parcel. Thank you! " + coin_reward_text(earned) + bonus
 
 static func discover(game: Node, index: int) -> void:
 	game.get_node("/root/Sound").feedback("discovery")
@@ -222,14 +245,17 @@ static func claim_event(game: Node) -> String:
 		if game.life.daily.get(action, 0) == 0:
 			return "Enjoy each activity on today's event card first."
 	game.life.event_claimed = today()
-	game.coins = mini(1000000, game.coins + 15)
+	var earned = mini(15,1000000-game.coins)
+	game.coins += earned
 	game.remember("Enjoyed the " + event_info().name.to_lower() + ".")
 	game.changed.emit()
 	game.save_game()
-	return "A day to remember! You earned 15 coins."
+	return "A day to remember! " + coin_reward_text(earned)
 
 static func valid(data: Variant) -> bool:
 	if not data is Dictionary:
+		return false
+	if not GrowthRoutes.valid(data.get("growth_paths",{})) or not IslandAdventure.integer(data.get("tug_games",0),100000):
 		return false
 	if not IslandConnections.valid(data.get("connections",{})):
 		return false
@@ -330,6 +356,8 @@ static func normalized(data: Dictionary) -> Dictionary:
 	for key in result:
 		if data.has(key):
 			result[key] = data[key].duplicate(true) if data[key] is Dictionary or data[key] is Array else data[key]
+	result.growth_paths = GrowthRoutes.normalized(result.growth_paths)
+	result.tug_games = int(result.tug_games)
 	result.adventure = IslandAdventure.normalized(result.adventure)
 	result.welcome_day = WelcomeDay.normalized(result.welcome_day)
 	result.moments = IslandMoments.normalized(result.moments)

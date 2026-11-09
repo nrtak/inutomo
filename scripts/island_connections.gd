@@ -21,7 +21,7 @@ static func valid(data: Variant) -> bool:
 	if data.get("invitation","") not in ["","Toy","Cuddle","Explore"]: return false
 	if data.get("offers",0)>0 and data.get("offer_day","").is_empty(): return false
 	if not data.get("invitation","").is_empty() and data.get("offers",0)==0: return false
-	if data.get("memory_breed","") not in ["","Puppy","Shiba Inu","Golden Retriever"]: return false
+	if data.get("memory_breed","")!="" and data.get("memory_breed","") not in GrowthRoutes.BREEDS: return false
 	if not data.get("memory_name","") is String or data.get("memory_name","").length()>16: return false
 	if data.get("mystery",0)==5 and (data.get("memory_breed","").is_empty() or data.get("memory_name","").is_empty()): return false
 	if not data.get("arrivals",{}) is Dictionary: return false

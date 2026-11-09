@@ -58,8 +58,8 @@ func run():
  for breed in Art.PUPPIES:
   check(Art.PUPPIES[breed] == BeachStyle.dog_texture(breed,false) and Art.SLEEP_TEXTURES[breed] == BeachStyle.dog_texture(breed,true),"Every location uses the same dog poses")
   check(Art.PUPPIES[breed].atlas.resource_path.ends_with("_anime.png") and Art.SLEEP_TEXTURES[breed].atlas.resource_path.ends_with("_anime.png"),"Resting and awake dogs keep the restored art style")
-  check(Art.trick_sheet(breed).resource_path.ends_with("_tricks_anime.png"),"New tricks match the restored breed artwork")
-  check(Art.WALKS[breed].resource_path.ends_with("_walk_anime.png"),"Walking preserves the same dog art style")
+  check(Art.trick_sheet(breed).resource_path.ends_with("_tricks_anime.png") or (Art.EXTRA_DOGS.has(breed) and Art.trick_sheet(breed).resource_path=="res://"+Art.EXTRA_DOGS[breed].bare.atlas),"Tricks use the registered artwork for this breed")
+  check(Art.WALKS[breed].resource_path.ends_with("_walk_anime.png") or (Art.EXTRA_DOGS.has(breed) and Art.WALKS[breed].resource_path=="res://"+Art.EXTRA_DOGS[breed].bare.atlas),"Walking preserves the same dog art style")
   var sheet_bounds = Rect2(Vector2.ZERO,Art.WALKS[breed].get_size())
   for region in Art.WALK_REGIONS[breed]:
    check(sheet_bounds.encloses(region),"Every walk phase stays within its source sheet")
@@ -67,7 +67,7 @@ func run():
   var frames = Art.resident_frames(source)
   check(frames.size() >= 2,"Both outfits keep their resident expression cycle")
   for frame in frames:
-   check((frame.atlas.resource_path.ends_with("_idle_sheet.png") or frame.atlas.resource_path.ends_with("_anime_greeting_v2.png")) and Rect2(Vector2.ZERO,frame.atlas.get_size()).encloses(frame.region),"All resident poses use registered, unclipped detailed anime art")
+   check((frame.atlas.resource_path.ends_with("_idle_sheet.png") or frame.atlas.resource_path.ends_with("_anime_greeting_v3.png")) and Rect2(Vector2.ZERO,frame.atlas.get_size()).encloses(frame.region),"All resident poses use registered, unclipped detailed anime art")
   check(UI.resident_icon(source).atlas == frames[0].atlas,"Menu and help portraits match the current character artwork")
   var torso_frames = Art.resident_frames(source,true)
   for frame in torso_frames:

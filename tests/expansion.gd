@@ -188,6 +188,8 @@ func run() -> void:
 	game.items.SunshineBandana = 0
 	var preview_coins = game.coins
 	shop_preview.show_details("SunshineBandana")
+	var accessory_picture = shop_preview.detail_overlay.find_children("*","TextureRect",true,false)[0]
+	check(accessory_picture.texture == Art.DRESSED_PUPPIES[game.breed],"Shop previews display the bandana being offered rather than a bare-neck dog")
 	shop_preview.wear_preview("SunshineBandana")
 	check(game.coins == preview_coins and game.life.accessory == original_accessory and game.items.SunshineBandana == 0, "Unowned accessory previews do not buy or equip")
 	game.coins = 100
@@ -196,6 +198,11 @@ func run() -> void:
 	check(game.items.SunshineBandana == 1 and game.life.accessory == original_accessory, "Buying an accessory leaves the current outfit unchanged")
 	shop_preview.wear_preview("SunshineBandana")
 	check(game.life.accessory == "SunshineBandana", "Wear equips the purchased preview")
+	shop_preview.close_details()
+	await process_frame
+	shop_preview.show_details("PuppyMeal")
+	var meal_picture = shop_preview.detail_overlay.find_children("*","TextureRect",true,false)[0]
+	check(meal_picture.material == UI.art_cutout(),"Item details use the same clean cutout as the shop cards")
 	shop_preview.close_details()
 	game.life.accessory = original_accessory
 	game.items.SunshineBandana = 0

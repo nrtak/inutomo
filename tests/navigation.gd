@@ -5,6 +5,48 @@ func check(value: bool, message: String) -> void:
 	if not value:
 		push_error(message)
 		failures += 1
+
+func check_feeding(game: Node) -> void:
+	for breed in GrowthRoutes.BREEDS:
+		game.breed = breed
+		for growth in [0.0,1.0] if breed == "Puppy" else [1.0]:
+			game.points = int(game.EVOLUTION_POINTS*growth)
+			game.active_seconds = game.EVOLUTION_SECONDS*growth
+			for bowl_spot in 3:
+				game.life.bowl_spot = bowl_spot
+				for bed_spot in [-1,0,1,2]:
+					game.life.bed = "Bed" if bed_spot>=0 else ""
+					game.life.spot = maxi(0,bed_spot)
+					game.items.Bed = 1 if bed_spot>=0 else 0
+					var room = load("res://scenes/home.tscn").instantiate()
+					room.size = Vector2(1558,720)
+					root.add_child(room)
+					var dog = room.puppy
+					dog.set_process(false)
+					dog.react_to_care("Feed")
+					for frame in 1800:
+						dog._process(1.0/60)
+						if dog.pending_decor_action.is_empty(): break
+					var context = breed+" bowl "+str(bowl_spot)+" bed "+str(bed_spot)+" growth "+str(growth)
+					check(dog.pending_decor_action.is_empty() and dog.reaction_kind=="Feed","Feeding reaches the side of every bowl, including around beds: "+context+" at "+str(dog.position)+" target "+str(dog.target)+" route "+str(dog.route_points))
+					var bowl = room.decor_sprites.Feed
+					check(dog.reaction_icon.texture.resource_path.ends_with("heart.svg") and dog.reaction_icon.position.y < -100,"Feeding shows affection above the dog instead of a second bowl under its paws")
+					for asleep in [false,true]:
+						dog.set_pose(asleep)
+						var dog_bounds: Rect2 = dog.sprite.get_global_transform()*dog.sprite.get_rect()
+						var meal_bounds: Rect2 = bowl.get_global_transform()*bowl.get_rect()
+						check(dog_bounds.has_area() and meal_bounds.has_area(),"Feeding checks measure the visible sprites at phone size")
+						check(not dog_bounds.intersects(meal_bounds),"Sitting or sleeping after feeding never covers the bowl: "+context)
+					check(not IslandLife.bowl_barrier(game).has_point(dog.position),"Feeding ends outside the bowl footprint")
+					check(not WalkArea.walkable(dog.walk_area,dog.active_barriers(),bowl.position),"Autonomous walking cannot target the placed bowl")
+					room.queue_free()
+					await process_frame
+	game.life = IslandLife.fresh()
+	game.items.Bed = 0
+	game.points = 0
+	game.active_seconds = 0
+	game.breed = "Puppy"
+
 func run() -> void:
 	var game = root.get_node("Game")
 	game.set_process(false)
@@ -15,6 +57,7 @@ func run() -> void:
 	game.points = 0
 	game.active_seconds = 0
 	game.needs.Energy = 95
+	await check_feeding(game)
 	var floor = PackedVector2Array([Vector2(350,490),Vector2(950,490),Vector2(950,650),Vector2(350,650)])
 	var barriers: Array[Rect2] = [Rect2(580,490,120,90)]
 	var start = Vector2(480,530)
@@ -41,7 +84,7 @@ func run() -> void:
 	check(waking.position.distance_to(finish)<=1,"A dog starting on furniture can step off instead of becoming trapped")
 	waking.queue_free()
 	await process_frame
-	for breed in ["Puppy","Shiba Inu","Golden Retriever"]:
+	for breed in GrowthRoutes.BREEDS:
 		game.breed = breed
 		for fps in [30,60,120]:
 			var dog = load("res://scripts/puppy.gd").new()

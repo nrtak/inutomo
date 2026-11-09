@@ -193,6 +193,8 @@ func perform(kind: String) -> void:
   host.call_deferred("show_page", "Home")
 
 func purchase_feedback(kind: String) -> void:
+ if Game.reduce_motion:
+  return
  var item = TextureRect.new()
  item.texture = Goods.picture(kind)
  item.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -245,7 +247,9 @@ func show_details(kind: String) -> void:
  row.add_theme_constant_override("separation", 24)
  content.add_child(row)
  var picture = TextureRect.new()
- picture.texture = Art.PUPPIES[Game.breed] if Goods.ITEMS[kind].category == "Accessories" else Goods.picture(kind)
+ picture.texture = Art.DRESSED_PUPPIES[Game.breed] if Goods.ITEMS[kind].category == "Accessories" else Goods.picture(kind)
+ if picture.texture is AtlasTexture:
+  picture.material = UI.art_cutout()
  if Goods.ITEMS[kind].category == "Accessories":
   var preview_material = ShaderMaterial.new()
   preview_material.shader = preload("res://scripts/dog_style.gdshader")

@@ -17,7 +17,7 @@ struct DogSnapshot: Decodable {
         decayRates.count == 4 && decayRates.allSatisfy { $0.isFinite && (0...1).contains($0) } &&
         restRate.isFinite && (0...1).contains(restRate) &&
         growth.isFinite && (0...1).contains(growth) &&
-        ["Puppy", "Shiba Inu", "Golden Retriever"].contains(breed) &&
+        ["Puppy", "Shiba Inu", "Golden Retriever", "Dachshund", "Miniature Collie", "Beagle", "Corgi", "Toy Poodle"].contains(breed) &&
         !stage.isEmpty && stage.count <= 40 && artwork.utf8.count <= 2 * 1024 * 1024
     }
 

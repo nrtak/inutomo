@@ -191,6 +191,7 @@ static func sniff(game: Node, choice: int) -> Dictionary:
   return {"ok":false,"text":"Not this scent. Follow the clue and try another spot."}
  var found: String = scent_stop(game).name
  scent.step += 1
+ GrowthRoutes.record(game,"Scent")
  game.cooldowns.Scent = 2.0
  game.care_performed.emit("Sniff")
  var reply = found + " found!"

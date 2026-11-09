@@ -12,6 +12,12 @@ func decode(_ value: [String: Any]) -> DogSnapshot? {
     DogSnapshot.decode(try! JSONSerialization.data(withJSONObject: value))
 }
 let snapshot = decode(raw)!
+for breed in ["Dachshund", "Miniature Collie", "Beagle", "Corgi", "Toy Poodle"] {
+    var grown = raw
+    grown["breed"] = breed
+    grown["stage"] = "Adult"
+    check(decode(grown) != nil, "New grown-up breeds remain valid widget snapshots: \(breed)")
+}
 let start = Date(timeIntervalSince1970: snapshot.updatedAt)
 check(snapshot.values(at: start) == snapshot.needs, "Fresh care values must match the save")
 check(snapshot.values(at: start.addingTimeInterval(-3600)) == snapshot.needs, "Clock rollback must not create care changes")

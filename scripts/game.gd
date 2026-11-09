@@ -26,6 +26,7 @@ var ambience_volume = 0.45
 var active_outing: Dictionary = {}
 var saved_outings: Dictionary = {}
 var nap_actor: WeakRef
+var home_greeted = false
 var pending_home_reaction = ""
 var pending_stage = ""
 var coins = 50
@@ -130,6 +131,7 @@ func action(kind: String) -> void:
 		elif kind == "Care" and items.Brush > 0:
 			bonus = 4.0
 		needs[target] = minf(100, needs[target] + 22.0 + bonus)
+		if kind == "Care": GrowthRoutes.record(self,"Grooming")
 		if kind == "Play":
 			needs.Energy = maxf(0, needs.Energy - 6.0)
 			PuppyHealth.exertion(self)
@@ -254,6 +256,8 @@ func use_item(kind: String) -> String:
 		needs.Happiness = minf(100, needs.Happiness + 4)
 	if kind == "Shampoo":
 		resting = false
+		GrowthRoutes.record(self,"Grooming")
+		IslandLife.record(self,"Care")
 	else:
 		pending_home_reaction = "Treat"
 	cooldowns.Goods = 12.0
@@ -338,6 +342,8 @@ func clinic_groom() -> String:
 		return "Grooming costs 12 coins. Care at Home is always free."
 	coins -= 12
 	needs.Cleanliness = minf(100, needs.Cleanliness + 25)
+	GrowthRoutes.record(self,"Grooming")
+	IslandLife.record(self,"Care")
 	remember("A gentle grooming at Leah's clinic.")
 	care_performed.emit("Care")
 	changed.emit()
@@ -345,7 +351,7 @@ func clinic_groom() -> String:
 	return "Fresh and fluffy! Cleanliness restored."
 
 func prediction() -> String:
-	return "Shiba Inu" if walks > fetches else "Golden Retriever"
+	return GrowthRoutes.prediction(self)
 
 func stage_index() -> int:
 	if breed != "Puppy":
@@ -457,7 +463,7 @@ func valid_save(data: Variant) -> bool:
 		var value = data.needs.get(key)
 		if not (value is float or value is int) or not is_finite(float(value)):
 			return false
-	if data.get("breed") not in ["Puppy", "Shiba Inu", "Golden Retriever"]:
+	if data.get("breed") not in GrowthRoutes.BREEDS:
 		return false
 	for key in ["points", "fetches", "walks", "age_seconds", "saved_at"]:
 		var value = data.get(key)

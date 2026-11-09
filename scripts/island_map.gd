@@ -112,13 +112,10 @@ func _ready() -> void:
 func place_pins() -> void:
  if canvas.size.x <= 0 or canvas.size.y <= 0:
   return
- var texture_size = Vector2(Art.ISLAND.get_size())
  var safe = UI.safe_insets()
- var area = Rect2(Vector2(safe.left,safe.top),Vector2(maxf(1,canvas.size.x-safe.left-safe.right),maxf(1,canvas.size.y-safe.top-safe.bottom)))
- # Fit the whole island; its sky sits behind the compact map header.
- var factor = minf(area.size.x / texture_size.x, area.size.y / texture_size.y)
- var draw_size = texture_size * factor
- map_rect = Rect2(area.position+(area.size-draw_size)*0.5,draw_size)
+ # The overview fills the screen, including the space behind the safe-area controls.
+ # Keep the entire island visible so the lighthouse and harbor never get cropped.
+ map_rect = Rect2(Vector2.ZERO,canvas.size)
  map_image.position = map_rect.position
  map_image.size = map_rect.size
  for place in pins:

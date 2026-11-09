@@ -14,12 +14,12 @@ static func escaped(value: String) -> String:
 static func markup(value: String) -> String:
 	if commands == null:
 		commands = RegEx.new()
-		commands.compile("\\b(?:Go for a Walk|Throw the ball|Scent Trail|scent trail|Island life|Title screen|green zone|Feed|Play|Care|Rest|Wake|Throw|Fetch|Walk|Explore|Capture|Photo|Wardrobe|Training|Sit|Stay|Come|Paw|Spin|Bow|Roll Over|Sniff|Buy|Use|Wear|Preview|Go|Close|Home|Island|Bag|Shop|Journal|Menu)\\b")
+		commands.compile("\\b(?:Go for a Walk|Throw the ball|Scent Trail|scent trail|Island life|Title screen|green band|green zone|Pull|Hold|Let go|Feed|Play|Care|Rest|Wake|Throw|Fetch|Walk|Explore|Capture|Photo|Wardrobe|Training|Sit|Stay|Come|Paw|Spin|Bow|Roll Over|Sniff|Buy|Use|Wear|Preview|Go|Close|Home|Island|Bag|Shop|Journal|Menu)\\b")
 	var result = ""
 	var cursor = 0
 	for match in commands.search_all(value):
 		result += escaped(value.substr(cursor, match.get_start() - cursor))
-		var color = "#247a4d" if match.get_string() == "green zone" else "#176c91"
+		var color = "#247a4d" if match.get_string() in ["green band","green zone"] else "#176c91"
 		result += "[color=" + color + "][b]" + escaped(match.get_string()) + "[/b][/color]"
 		cursor = match.get_end()
 	return result + escaped(value.substr(cursor))

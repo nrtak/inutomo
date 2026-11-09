@@ -192,8 +192,7 @@ func run() -> void:
   await process_frame
   await process_frame
   var map = main.world_host.get_child(0)
-  var safe_frame = Rect2(Vector2(105,20),Vector2(mobile_view.size.x-210,675))
-  check(safe_frame.encloses(map.map_rect.grow(-0.1)),"The complete map artwork fits the phone without cropping the tower")
+  check(map.map_rect == Rect2(Vector2.ZERO,Vector2(mobile_view.size)),"The entire island fills the phone screen without letterboxing or cropping")
   var tower = Rect2(map.map_rect.position+Vector2(0.86,0.045)*map.map_rect.size,Vector2(0.10,0.19)*map.map_rect.size)
   for control in [main.back_button,main.page_label,main.menu_button]:
    check(not control.get_global_rect().intersects(tower),"The map header leaves the lighthouse visible")
