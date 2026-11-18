@@ -7,6 +7,43 @@ func check(value: bool,message: String):
 		failures+=1
 func settle():
 	for frame in 12: await process_frame
+
+func check_map_stops(map, game):
+	var original_place = map.selected
+	var original_breed = game.breed
+	var original_resting = game.resting
+	var original_points = game.points
+	var original_seconds = game.active_seconds
+	game.points = game.EVOLUTION_POINTS
+	game.active_seconds = game.EVOLUTION_SECONDS
+	for place in map.pins:
+		map.selected = place
+		map.pan_x = NAN
+		for breed in Art.PUPPIES:
+			game.breed = breed
+			for accessory in ["", "CoralBandana"]:
+				map.map_dog.preview_accessory = accessory
+				for resting in [false, true]:
+					game.resting = resting
+					map.place_pins()
+					var sprite: Sprite2D = map.map_dog.sprite
+					var dog_bounds = (sprite.global_transform * sprite.get_rect()).grow(4)
+					for sign_name in map.signs:
+						var sign: Control = map.signs[sign_name]
+						var bounds = sign.get_global_rect()
+						for child in sign.get_children():
+							if child.has_meta("sign_post"):
+								bounds = bounds.merge(child.get_global_rect())
+						check(not dog_bounds.intersects(bounds), "%s at %s clears the %s sign" % [breed, place, sign_name])
+	map.map_dog.preview_accessory = ""
+	game.breed = original_breed
+	game.resting = original_resting
+	game.points = original_points
+	game.active_seconds = original_seconds
+	map.selected = original_place
+	map.pan_x = NAN
+	map.place_pins()
+
 func run():
 	var game=root.get_node("Game")
 	game.set_process(false)
@@ -69,6 +106,7 @@ func run():
 		main.show_page("Island")
 		await settle()
 		var map=main.world_host.get_child(0)
+		check_map_stops(map,game)
 		for place in map.pins:
 			var pin=map.pins[place]
 			check(pin.size.y>=44,"Building signs retain a comfortable touch target")

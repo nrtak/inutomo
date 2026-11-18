@@ -24,16 +24,16 @@ const LANDMARKS = {
  "Park":Rect2(.465,.36,.095,.13),"Beach":Rect2(.59,.63,.29,.18),"Harbor":Rect2(.33,.73,.15,.17)
 }
 const SIGN_POINTS = {
- "Home":Vector2(.225,.247),"Puppy Club":Vector2(.54,.255),"Shop":Vector2(.315,.49),
- "Vet Clinic":Vector2(.78,.493),"Lighthouse":Vector2(.86,.19),"Keeper’s Cottage":Vector2(.86,.31),
- "Park":Vector2(.595,.53),"Beach":Vector2(.70,.70),"Harbor":Vector2(.34,.76)
+ "Home":Vector2(.213,.247),"Puppy Club":Vector2(.568,.255),"Shop":Vector2(.312,.49),
+ "Vet Clinic":Vector2(.79,.493),"Lighthouse":Vector2(.86,.19),"Keeper’s Cottage":Vector2(.86,.31),
+ "Park":Vector2(.60,.53),"Beach":Vector2(.635,.666),"Harbor":Vector2(.395,.75)
 }
 
 const FOOT_POINTS = {
- "Home":Vector2(0.25,0.32), "Puppy Club":Vector2(0.54,0.31),
- "Park":Vector2(0.54,0.53), "Shop":Vector2(0.31,0.57),
- "Vet Clinic":Vector2(0.77,0.55), "Beach":Vector2(0.71,0.78),
- "Harbor":Vector2(0.345,0.805), "Keeper’s Cottage":Vector2(0.915,0.28),
+ "Home":Vector2(0.29,0.329), "Puppy Club":Vector2(0.491,0.324),
+ "Park":Vector2(0.525,0.53), "Shop":Vector2(0.391,0.563),
+ "Vet Clinic":Vector2(0.708,0.55), "Beach":Vector2(0.712,0.80),
+ "Harbor":Vector2(0.317,0.823), "Keeper’s Cottage":Vector2(0.937,0.295),
  "West path":Vector2(0.37,0.38), "Club path":Vector2(0.54,0.38),
  "Shop path":Vector2(0.43,0.55), "East path":Vector2(0.61,0.50),
  "South path":Vector2(0.505,0.645), "Beach path":Vector2(0.57,0.71),
@@ -42,8 +42,8 @@ const FOOT_POINTS = {
  "Bridge path":Vector2(0.875,0.34),
  "West plaza":Vector2(0.42,0.44), "Lower plaza":Vector2(0.455,0.51),
  "Club bend":Vector2(0.585,0.395), "East plaza":Vector2(0.61,0.445),
- "Clinic approach":Vector2(0.71,0.55), "Pier path":Vector2(0.425,0.72),
- "Home entry":Vector2(0.28,0.325), "Home steps":Vector2(0.30,0.36), "Home landing":Vector2(0.325,0.39)
+ "Clinic approach":Vector2(0.69,0.55), "Pier path":Vector2(0.425,0.72),
+ "Home entry":Vector2(0.295,0.34), "Home steps":Vector2(0.30,0.36), "Home landing":Vector2(0.325,0.39)
 }
 const PATH_LINKS = [
  ["Home","Home entry"],["Home entry","Home steps"],["Home steps","Home landing"],["Home landing","West path"],["West path","West plaza"],
@@ -125,7 +125,7 @@ func _ready() -> void:
   wood.border_color=Color("755a40")
   plaque.add_theme_stylebox_override("panel",wood)
   pin.add_child(plaque)
-  if place in ["Park","Beach","Harbor","Lighthouse","Keeper’s Cottage"]:
+  if place in ["Park","Harbor","Lighthouse","Keeper’s Cottage"]:
    var post=ColorRect.new()
    post.color=Color("8f7353")
    post.mouse_filter=Control.MOUSE_FILTER_IGNORE
@@ -146,6 +146,7 @@ func _ready() -> void:
  selected = host.current_place if host.current_place in PLACES else "Home"
  map_dog = PuppyActor.new()
  map_dog.controlled = true
+ map_dog.include_actor_scale_in_width_limit = true
  map_dog.z_index = 1
  canvas.add_child(map_dog)
  map_dog.sleep_material.set_shader_parameter("small_sprite",true)
@@ -227,6 +228,7 @@ func place_pins() -> void:
   pin.tooltip_text=place
  if is_instance_valid(map_dog):
   map_dog.scale = Vector2.ONE*clampf(map_rect.size.x/1280.0*0.34,0.28,0.46)
+  map_dog.screen_width_limit = map_rect.size.x * 0.06
   if not travelling:
    map_dog.position = map_rect.position + FOOT_POINTS.get(foot_location(selected), FOOT_POINTS.Home)*map_rect.size
    map_dog.set_pose(Game.resting)

@@ -5,8 +5,12 @@ void vertex() {
 	item_tint = COLOR;
 }
 void fragment() {
-	vec4 pixel = texture(TEXTURE, UV);
-	// Keep opaque fur and a short antialiased edge; ignore the soft outer haze.
-	pixel.a = small_sprite ? smoothstep(0.04,0.32,pixel.a) : smoothstep(0.50, 0.76, pixel.a);
+	vec4 pixel;
+	if (small_sprite) {
+		#include "res://scripts/map_dog_ink.gdshaderinc"
+	} else {
+		pixel = texture(TEXTURE, UV);
+		pixel.a = smoothstep(0.50, 0.76, pixel.a);
+	}
 	COLOR = pixel * item_tint;
 }

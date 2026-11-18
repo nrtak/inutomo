@@ -24,7 +24,7 @@ env:
 
 jobs:
   validate-and-build:
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v6
@@ -102,6 +102,15 @@ jobs:
             -destination 'generic/platform=iOS' \
             -derivedDataPath build/ios-derived \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' build
+          app=build/ios-derived/Build/Products/Release-iphoneos/PuppyIsland.app
+          for bundle in "$app" "$app/PlugIns/InushimaWidgets.appex"; do
+            sdk=$(plutil -extract DTPlatformVersion raw "$bundle/Info.plist")
+            echo "$(basename "$bundle") built with iOS SDK $sdk" | tee -a "$GITHUB_STEP_SUMMARY"
+            if (( ${sdk%%.*} < 27 )); then
+              echo "::error::iOS SDK 27 or later is required"
+              exit 1
+            fi
+          done
           ditto -c -k --sequesterRsrc --keepParent \
             build/ios-derived/Build/Products/Release-iphoneos/PuppyIsland.app \
             build/ios/PuppyIsland-unsigned.app.zip
@@ -123,7 +132,7 @@ jobs:
   testflight:
     if: github.event_name == 'workflow_dispatch' && inputs.upload_testflight && github.ref == 'refs/heads/main'
     needs: validate-and-build
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 30
     environment: testflight
     concurrency:
@@ -175,9 +184,23 @@ jobs:
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath build/export
           python3 - <<'PY'
           from pathlib import Path
+          import plistlib
+          import re
+          import zipfile
           packages = list(Path('build/export').glob('*.ipa'))
           if len(packages) != 1:
               raise RuntimeError('Expected exactly one exported iPhone package')
+          with zipfile.ZipFile(packages[0]) as ipa:
+              bundles = [p for p in ipa.namelist() if re.fullmatch(
+                  r'Payload/[^/]+\.app/(?:PlugIns/[^/]+\.appex/)?Info\.plist', p)]
+              if not any('/PlugIns/' in p for p in bundles) or not any('/PlugIns/' not in p for p in bundles):
+                  raise RuntimeError('Expected the app and widget in the signed package')
+              for path in bundles:
+                  sdk = plistlib.loads(ipa.read(path)).get('DTSDKName', '')
+                  version = re.fullmatch(r'iphoneos(\d+)(?:\.\d+)*', sdk)
+                  if not version or int(version[1]) < 27:
+                      raise RuntimeError(f'{path} requires iOS SDK 27 or later, found {sdk!r}')
+                  print(f'{path} built with {sdk}')
           target = Path('build/export/PuppyIsland.ipa')
           if packages[0] != target:
               packages[0].rename(target)
