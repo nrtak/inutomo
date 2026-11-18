@@ -6,6 +6,24 @@ func check(value: bool, message: String) -> void:
 	if not value:
 		push_error(message)
 		failures += 1
+func visible_button(screen: Node, caption: String) -> Button:
+	for button in screen.find_children("*", "Button", true, false):
+		if button.is_visible_in_tree() and button.text == caption:
+			return button
+	return null
+
+func parcel_button(main: Node, person: String) -> Button:
+	var place: String = IslandLife.DELIVERY_PLACES[person]
+	main.show_page(place)
+	await process_frame
+	var hub = main.body.get_child(0)
+	var plans := visible_button(hub, hub.plans_title(place))
+	if plans == null:
+		return null
+	plans.pressed.emit()
+	await process_frame
+	return visible_button(main.body, "Deliver Nora’s parcel" if person == "Nora" else "Deliver parcel")
+
 func run() -> void:
 	var game = root.get_node("Game")
 	game.set_process(false)
@@ -224,12 +242,16 @@ func run() -> void:
 	game.life.delivery = {}
 	game.load_game()
 	check(game.life.delivery.recipient == recipient, "Pending parcels survive reload")
-	main.show_page(destination)
-	await process_frame
-	var parcel_hub = main.body.get_child(0)
-	check(parcel_hub.choices.get_child_count() > 0, "Recipient building opens with parcel actions")
+	for person in IslandLife.DELIVERY_PLACES:
+		game.life.delivery.recipient = person
+		var delivery_button = await parcel_button(main, person)
+		check(delivery_button != null, "Parcel handoff is reachable for " + person)
+	game.life.delivery.recipient = recipient
+	var handoff = await parcel_button(main, recipient)
 	game.items.Treat = Goods.ITEMS.Treat.limit
-	IslandLife.deliver_parcel(game, destination)
+	if handoff != null:
+		handoff.pressed.emit()
+	await process_frame
 	check(game.coins == delivery_coins + 6 and game.life.delivery.completed == 1 and game.items.Treat == Goods.ITEMS.Treat.limit, "Delivery pays once without overflowing a full Bag")
 	IslandLife.deliver_parcel(game, destination)
 	IslandLife.collect_delivery(game)
