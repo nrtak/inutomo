@@ -31,6 +31,9 @@ func check_feeding(game: Node) -> void:
 					check(dog.pending_decor_action.is_empty() and dog.reaction_kind=="Feed","Feeding reaches the side of every bowl, including around beds: "+context+" at "+str(dog.position)+" target "+str(dog.target)+" route "+str(dog.route_points))
 					var bowl = room.decor_sprites.Feed
 					check(dog.reaction_icon.texture.resource_path.ends_with("heart.svg") and dog.reaction_icon.position.y < -100,"Feeding shows affection above the dog instead of a second bowl under its paws")
+					for frame in 1200:
+						dog._process(1.0/60)
+						if dog.reaction_time<=0 and dog.position.distance_to(dog.target)<=1: break
 					for asleep in [false,true]:
 						dog.set_pose(asleep)
 						var dog_bounds: Rect2 = dog.sprite.get_global_transform()*dog.sprite.get_rect()

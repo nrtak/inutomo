@@ -11,6 +11,50 @@ func in_view(item: Control,view: Vector2i,description: String):
 	check(rect.position.x>=19 and rect.position.y>=19 and rect.end.x<=view.x-19 and rect.end.y<=view.y-19,description+" "+str(rect))
 func settle():
 	for frame in 6: await process_frame
+
+func touch(view, index: int, point: Vector2, pressed: bool, canceled: bool=false):
+	var event=InputEventScreenTouch.new()
+	event.index=index
+	event.position=point
+	event.pressed=pressed
+	event.canceled=canceled
+	view.push_input(event,true)
+
+func drag_touch(view, index: int, point: Vector2):
+	var event=InputEventScreenDrag.new()
+	event.index=index
+	event.position=point
+	view.push_input(event,true)
+
+func check_pinch(view, map, place: String):
+	var sign: Vector2=map.pins[place].get_global_rect().get_center()
+	var spacing=Vector2(70,0)
+	var original=map.map_rect
+	var anchor=(sign+spacing*.5-original.position)/original.size
+	touch(view,2,sign,true)
+	touch(view,5,sign+spacing,true)
+	drag_touch(view,5,sign+spacing*2)
+	check(is_equal_approx(map.zoom_level,2.0),"Two fingers starting on a sign can zoom the island")
+	check((map.map_rect.position+anchor*map.map_rect.size).distance_to(sign+spacing)<1,"The island point between the fingers follows their midpoint")
+	drag_touch(view,5,sign+spacing*5)
+	check(is_equal_approx(map.zoom_level,map.MAX_ZOOM),"Pinch zoom stops at the detail limit")
+	drag_touch(view,5,sign+spacing*.5)
+	check(is_equal_approx(map.zoom_level,1),"Pinching inward returns to full-screen scale")
+	drag_touch(view,5,sign+spacing*2)
+	touch(view,5,sign+spacing*2,false)
+	var origin: Vector2=map.map_rect.position
+	drag_touch(view,2,sign+Vector2(-20,-25))
+	check(map.map_rect.position.distance_to(origin)>5,"The remaining finger can pan after a pinch")
+	touch(view,2,sign+Vector2(-20,-25),false)
+	check(not map.travelling,"Releasing a pinch over a sign never selects that destination")
+	var updated_sign: Vector2=map.pins[place].get_global_rect().get_center()
+	touch(view,1,updated_sign,true)
+	touch(view,1,updated_sign,false,true)
+	check(not map.travelling,"An interrupted tap cannot start travel")
+	touch(view,1,updated_sign,true)
+	touch(view,1,updated_sign,false)
+	check(map.travelling and map.target_place==place,"One fresh tap selects the building at its zoomed position")
+
 func run():
 	var game = root.get_node("Game")
 	game.storage_path = "user://orientation_checks.json"
@@ -63,6 +107,27 @@ func run():
 				var bounds=dog.sprite.get_global_transform()*dog.sprite.get_rect()
 				check(bounds.size.x>100 and bounds.size.y>100,"Location dog remains visible in portrait")
 				check(Rect2(Vector2.ZERO,Vector2(dimensions)).encloses(bounds),"Location dog fits the portrait stage")
+				var greeting=main.world_host.get_node_or_null("LocationGreeting")
+				if greeting:
+					var speaker=greeting.get_child(0)
+					var bubble=greeting.get_child(1)
+					var gap=bubble.position.x-speaker.get_rect().end.x
+					check(speaker.is_visible_in_tree() and gap>=0 and gap<=22,"The arriving resident stands beside the speech bubble")
+					check(bubble.get_global_rect().end.x<main.body.get_child(0).beach_scroll.global_position.x,"The greeting clears the activity buttons")
+				if page=="Shop":
+					main.body.get_child(0).talk_to_june()
+					await settle()
+					var talk=main.resident_overlay
+					var portrait=talk.get_node("ConversationCharacter").get_child(0)
+					var bubble=talk.get_node("ConversationText")
+					var gap=portrait.global_position.y-bubble.get_global_rect().end.y
+					check(gap>=0 and gap<24,"June's dialogue stays just above her head on a tall screen")
+					var content=bubble.get_child(1).get_global_rect()
+					check(content.position.x-bubble.global_position.x>=28 and content.position.y-bubble.global_position.y>=18,"The text has space inside the rounded dialogue border")
+					in_view(bubble,dimensions,"Shop dialogue fits inside the safe area")
+					var close_button=bubble.find_children("*","Button",true,false)[0]
+					close_button.pressed.emit()
+					await settle()
 	main.show_page("Park")
 	view.size=Vector2i(720,1558)
 	game.life.bowl=true
@@ -98,13 +163,11 @@ func run():
 	var fetch=main.body.get_child(0)
 	fetch.rounds=1
 	fetch.score=1
-	fetch.busy=true
-	fetch.timer.start(25)
+	fetch._throw()
 	for dimensions in [Vector2i(1280,720),Vector2i(720,1558),Vector2i(1280,720)]:
 		view.size=dimensions
 		await settle()
-		check(main.body.get_child(0)==fetch and fetch.rounds==1 and fetch.score==1 and fetch.busy,"Rotation keeps the active Fetch round")
-		check(fetch.timer.time_left>20,"Rotation does not restart or complete the activity timer")
+		check(main.body.get_child(0)==fetch and fetch.rounds==2 and fetch.busy and fetch.leg=="out","Rotation keeps the active Fetch throw")
 		in_view(fetch.throw_button,dimensions,"Fetch controls stay reachable after rotation")
 		if dimensions.y>dimensions.x:
 			check(not main.back_button.get_global_rect().intersects(main.identity_card.get_global_rect()),"Portrait outing identity clears Back")
@@ -127,6 +190,17 @@ func run():
 	check(map.map_dog.position.x>=0 and map.map_dog.position.x<=720,"Portrait map camera follows the travelling dog")
 	map._process(map.travel_duration)
 	check(main.page=="Beach","Portrait travel still arrives after one location tap")
+	for dimensions in [Vector2i(1280,720),Vector2i(720,1558)]:
+		view.size=dimensions
+		main.current_place="Park"
+		main.show_page("Island")
+		await settle()
+		map=main.world_host.get_child(0)
+		check_pinch(view,map,"Puppy Club")
+		map._process(map.travel_duration*.45)
+		check(Rect2(Vector2.ZERO,Vector2(dimensions)).has_point(map.map_dog.position),"Zoomed travel keeps the walking dog on the map")
+		map._process(map.travel_duration)
+		check(main.page=="Puppy Club","Zoomed travel arrives at the tapped building")
 	main.queue_free()
 	view.queue_free()
 	await process_frame

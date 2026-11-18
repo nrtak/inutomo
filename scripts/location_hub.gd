@@ -495,6 +495,22 @@ func show_greeting() -> void:
  if location == "Puppy Club":
   Game.meet_nora()
  host.world_host.add_child(greeting)
+ if location=="Shop" and Game.life.surprises.found_basket and not plans_mode:
+  var basket=TextureButton.new()
+  basket.name="ReturnedBasket"
+  basket.texture_normal=preload("res://assets/manga/goods/picnic_cel.svg")
+  basket.ignore_texture_size=true
+  basket.stretch_mode=TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+  basket.tooltip_text="June's picnic basket"
+  greeting.add_child(basket)
+  var arrange_basket=func():
+   var portrait=greeting.size.y>greeting.size.x
+   var width=clampf(greeting.size.x*.075,64,108)
+   basket.size=Vector2.ONE*width
+   basket.position=greeting.size*(Vector2(.62,.81) if portrait else Vector2(.60,.86))-basket.size*.5
+  greeting.resized.connect(arrange_basket)
+  arrange_basket.call()
+  basket.pressed.connect(func(): host.show_resident(Art.JUNE,"June","Shopkeeper","I keep my picnic basket right here now. Give "+Game.puppy_name+" a scratch for me. What a clever nose!"))
  talk_button=UI.icon_button("Talk to "+person[1],UI.resident_icon(person[0]),greeting.talk,Color("e7dff2"))
  talk_button.name="ResidentConversation"
  talk_button.tooltip_text="Chat with "+person[1]+" about the island"

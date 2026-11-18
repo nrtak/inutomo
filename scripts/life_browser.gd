@@ -654,8 +654,8 @@ func daily_card() -> void:
 	else:
 		reward_content.add_child(UI.label("3 days: 10 coins · 7 days: 20 coins · 14 days: a bandana" if Game.life.check_in.best<14 else "All three gifts earned. Best streak: %d days." % Game.life.check_in.best,20))
 	if not feedback.is_empty(): reward_content.add_child(UI.hint_label(feedback,21))
-	if Game.life.surprises.kind!="":
-		var request=Game.life.surprises
+	var request=Game.life.surprises
+	if request.kind!="" and not IslandSurprises.visit_expired(request):
 		var title="Visit with "+request.buddy if request.kind=="Visit" else "Help "+IslandSurprises.REQUESTS[request.kind].person
 		var place="Plans:"+IslandSurprises.REQUESTS[request.kind].place if request.kind in IslandSurprises.REQUESTS and request.step==2 else "Surprise"
 		tile(title,preload("res://assets/manga/ui/heart.svg"),host.request_page.bind(place),Color("f9d8e2"))

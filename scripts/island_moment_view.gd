@@ -18,6 +18,8 @@ var photo_habitat_processing = true
 var last_block = ""
 var residents: Array[Sprite2D] = []
 var return_point = Vector2(610,610)
+var nudge_clock=0.0
+var nudge_finished=false
 
 func _ready() -> void:
 	name = "IslandMomentView"
@@ -74,6 +76,8 @@ func _ready() -> void:
 	prop.material = UI.art_cutout()
 	prop.scale = Vector2.ONE * ((64.0 if kind == "Home" else 54.0) / prop.texture.get_width())
 	prop.position = home_ball_point() if kind == "Home" else (Vector2(735,641) if kind == "Beach" else Vector2(830,630))
+	if kind=="Home" and IslandLife.personality(Game)=="Playful":
+		prop.position=return_point+Vector2(64,5)
 	prop.visible = kind in ["Home", "Lighthouse"]
 	if kind == "Lighthouse": prop.position = Vector2(675,650)
 	habitat.world.add_child(prop)
@@ -230,6 +234,7 @@ func handle_input(event: InputEvent) -> bool:
 		if kind == "Home" and phase == "waiting" and IslandMoments.block_reason(Game,kind).is_empty():
 			if event.pressed and prop.get_rect().grow(16/prop.scale.x).has_point(prop.to_local(host.habitat.world.to_global(point))):
 				dragging = true
+				nudge_finished=true
 			elif not event.pressed and dragging:
 				dragging = false
 				if WalkArea.contains(host.habitat.puppy.walk_area,point) and point.distance_to(return_point)>50:
@@ -258,6 +263,15 @@ func _process(delta: float) -> void:
 		cancel_drag()
 	elapsed += delta
 	var dog = host.habitat.puppy
+	if kind=="Home" and phase=="waiting" and not dragging and not nudge_finished and IslandLife.personality(Game)=="Playful" and IslandMoments.block_reason(Game,kind).is_empty():
+		nudge_clock+=delta
+		if nudge_clock>=2:
+			var progress=clampf((nudge_clock-2.3)/.55,0,1)
+			dog.illustrated_pose="Sniff" if progress<.7 else "Bow"
+			var roll=smoothstep(0,1,progress) if not Game.reduce_motion else floorf(progress)
+			prop.position=return_point+Vector2(64,5)+Vector2(46,14)*roll
+			prop.rotation=roll*.85 if not Game.reduce_motion else 0.0
+			nudge_finished=progress>=1
 	if not Game.can_explore() and phase in ["outbound","returning","ready"]:
 		phase = "waiting"
 		waypoints.clear()

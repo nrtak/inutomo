@@ -129,6 +129,7 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	check(is_instance_valid(current_scene.stage_overlay) and not game.is_processing(),"Direct launch preserves a pending growth celebration and its pause")
+	current_scene.stage_overlay.next_button.pressed.emit()
 	current_scene.close_growth_moment()
 	game.intro_seen = false
 	game.name_chosen = true

@@ -137,6 +137,7 @@ func add_home_decor() -> void:
 		world.add_child(keepsake)
 
 func _resize_world() -> void:
+	if size.x<=0 or size.y<=0: return
 	if world:
 		if size.y>size.x and location_presentation:
 			world.scale=Vector2.ONE

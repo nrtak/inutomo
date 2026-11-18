@@ -11,10 +11,18 @@ var travel_clock = 0.0
 var travel_duration = 1.5
 var travel_path = PackedVector2Array()
 var target_place = ""
-var pan_x = NAN
-var pan_start = Vector2.ZERO
-var pan_held = false
-var pan_distance=0.0
+const MAX_ZOOM = 3.0
+const TAP_SLOP = 10.0
+const MOUSE_POINTER = -1
+var zoom_level = 1.0
+var view_origin = Vector2.ZERO
+var previous_view_size = Vector2.ZERO
+var pointers: Dictionary = {}
+var press_position = Vector2.ZERO
+var can_tap = false
+var pinch_span = 0.0
+var pinch_zoom = 1.0
+var pinch_anchor = Vector2.ZERO
 var pan_hint: Label
 var signs: Dictionary = {}
 const LANDMARKS = {
@@ -113,6 +121,8 @@ func _ready() -> void:
  for place in places:
   var caption = "Cottage" if place == "Keeper’s Cottage" else place
   var pin = UI.button(caption, travel_to.bind(place), UI.PLACE_COLORS[place])
+  # Use the same gesture surface over signs and scenery. Buttons still support focus and activation.
+  pin.mouse_filter = Control.MOUSE_FILTER_IGNORE
   pin.custom_minimum_size=Vector2(64,44)
   for state in ["normal","hover","pressed","disabled","focus"]:
    pin.add_theme_stylebox_override(state,StyleBoxEmpty.new())
@@ -152,7 +162,11 @@ func _ready() -> void:
  map_dog.sleep_material.set_shader_parameter("small_sprite",true)
  map_dog.style_material.set_shader_parameter("small_sprite",true)
  map_dog.set_process(false)
- pan_hint = UI.label("Drag the map to explore",20,UI.INK)
+ Game.stage_reached.connect(func(_stage):
+  map_dog.set_breed()
+  place_pins()
+ )
+ pan_hint = UI.label("Drag to explore · Pinch to zoom",20,UI.INK)
  pan_hint.custom_minimum_size=Vector2(320,30)
  pan_hint.autowrap_mode=TextServer.AUTOWRAP_OFF
  pan_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -160,27 +174,77 @@ func _ready() -> void:
  call_deferred("place_pins")
 
 func pan_input(event: InputEvent) -> void:
- if travelling: return
- if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT:
+ if travelling or event.device == InputEvent.DEVICE_ID_EMULATION or not map_rect.has_area():
+  return
+ if event is InputEventScreenTouch:
   if event.pressed:
-   pan_held=true
-   pan_start=event.position
-   pan_distance=0
+   begin_pointer(event.index,event.position)
   else:
-   var tapped=pan_held and pan_distance<10
-   pan_held=false
-   if tapped:
-    for place in LANDMARKS:
-     if landmark_rect(place).has_point(event.position):
-      travel_to(place)
-      break
- elif event is InputEventMouseMotion and pan_held:
-  var motion=event.relative if event.relative!=Vector2.ZERO else event.position-pan_start
-  pan_distance+=motion.length()
-  pan_start=event.position
-  if canvas.size.y>canvas.size.x:
-   pan_x+=motion.x
-   place_pins()
+   end_pointer(event.index,event.position,event.canceled)
+ elif event is InputEventScreenDrag:
+  move_pointer(event.index,event.position)
+ elif event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT:
+  if event.pressed:
+   begin_pointer(MOUSE_POINTER,event.position)
+  else:
+   end_pointer(MOUSE_POINTER,event.position,event.canceled)
+ elif event is InputEventMouseMotion:
+  move_pointer(MOUSE_POINTER,event.position)
+
+func begin_pointer(id: int, point: Vector2) -> void:
+ pointers[id]=point
+ can_tap=pointers.size()==1
+ if can_tap:
+  press_position=point
+ elif pointers.size()==2:
+  start_pinch()
+
+func start_pinch() -> void:
+ var points=pointers.values()
+ pinch_span=points[0].distance_to(points[1])
+ pinch_zoom=zoom_level
+ pinch_anchor=((points[0]+points[1])*.5-map_rect.position)/map_rect.size
+
+func move_pointer(id: int, point: Vector2) -> void:
+ if not pointers.has(id): return
+ var previous: Vector2=pointers[id]
+ pointers[id]=point
+ if pointers.size()>=2:
+  var points=pointers.values()
+  var span: float=points[0].distance_to(points[1])
+  if pinch_span<1.0:
+   start_pinch()
+   return
+  var new_zoom=clampf(pinch_zoom*span/pinch_span,1.0,MAX_ZOOM)
+  view_origin=(points[0]+points[1])*.5-pinch_anchor*map_rect.size*(new_zoom/zoom_level)
+  zoom_level=new_zoom
+ else:
+  if can_tap:
+   if point.distance_to(press_position)<TAP_SLOP: return
+   can_tap=false
+   previous=press_position
+  view_origin+=point-previous
+ place_pins()
+
+func end_pointer(id: int, point: Vector2, canceled: bool) -> void:
+ if not pointers.erase(id): return
+ var tapped=can_tap and not canceled and point.distance_to(press_position)<TAP_SLOP
+ can_tap=false
+ if pointers.size()>=2: start_pinch()
+ if not tapped: return
+ for place in pins:
+  if pins[place].get_rect().has_point(point):
+   travel_to(place)
+   return
+ for place in LANDMARKS:
+  if landmark_rect(place).has_point(point):
+   travel_to(place)
+   return
+
+func _notification(what: int) -> void:
+ if what==NOTIFICATION_APPLICATION_FOCUS_OUT or what==NOTIFICATION_APPLICATION_PAUSED:
+  pointers.clear()
+  can_tap=false
 
 func landmark_rect(place: String) -> Rect2:
  var region: Rect2=LANDMARKS[place]
@@ -194,16 +258,22 @@ func place_pins() -> void:
  # Keep the upper coastline in view; the extra crop comes mostly from the sea below the harbor.
  var artwork_size = map_image.texture.get_size()
  var zoom = maxf(canvas.size.x/artwork_size.x,canvas.size.y/artwork_size.y)
- var drawn_size = (artwork_size*zoom).max(canvas.size)
+ var drawn_size = (artwork_size*zoom).max(canvas.size)*zoom_level
  var overflow = drawn_size-canvas.size
- map_rect = Rect2(Vector2(-overflow.x*0.5,-overflow.y*0.2),drawn_size)
  var portrait = canvas.size.y>canvas.size.x
- if portrait:
-  if is_nan(pan_x): pan_x=canvas.size.x*0.5-FOOT_POINTS[foot_location(selected)].x*drawn_size.x
-  pan_x=clampf(pan_x,-overflow.x,0)
-  map_rect.position.x=pan_x
- else:
-  pan_x=NAN
+ if previous_view_size!=canvas.size:
+  pointers.clear()
+  can_tap=false
+  if zoom_level>1 and map_rect.has_area():
+   var center=(previous_view_size*.5-map_rect.position)/map_rect.size
+   view_origin=canvas.size*.5-center*drawn_size
+  else:
+   view_origin=Vector2(-overflow.x*.5,-overflow.y*.2)
+   if portrait:
+    view_origin.x=canvas.size.x*.5-FOOT_POINTS[foot_location(selected)].x*drawn_size.x
+  previous_view_size=canvas.size
+ view_origin=view_origin.clamp(-overflow,Vector2.ZERO)
+ map_rect=Rect2(view_origin,drawn_size)
  pan_hint.visible=portrait
  pan_hint.position=Vector2(safe.left,safe.top+84)
  map_image.position = map_rect.position
@@ -227,7 +297,7 @@ func place_pins() -> void:
     child.size=Vector2(6,16)
   pin.tooltip_text=place
  if is_instance_valid(map_dog):
-  map_dog.scale = Vector2.ONE*clampf(map_rect.size.x/1280.0*0.34,0.28,0.46)
+  map_dog.scale = Vector2.ONE*clampf(map_rect.size.x/zoom_level/1280.0*0.34,0.28,0.46)*zoom_level
   map_dog.screen_width_limit = map_rect.size.x * 0.06
   if not travelling:
    map_dog.position = map_rect.position + FOOT_POINTS.get(foot_location(selected), FOOT_POINTS.Home)*map_rect.size
@@ -310,12 +380,12 @@ func _process(delta: float) -> void:
  map_dog.sprite.flip_h = movement.x < 0 if absf(movement.x) > 0.05 else map_dog.sprite.flip_h
  map_dog.set_walk_pose()
  map_dog.position = next_position
- if canvas.size.y>canvas.size.x:
-  var camera_shift=canvas.size.x*0.5-map_dog.position.x
-  var old_x=map_rect.position.x
-  pan_x=map_rect.position.x+camera_shift
+ if canvas.size.y>canvas.size.x or zoom_level>1.0:
+  var old_origin=map_rect.position
+  view_origin.x+=canvas.size.x*.5-map_dog.position.x
+  if zoom_level>1.0: view_origin.y+=canvas.size.y*.5-map_dog.position.y
   place_pins()
-  map_dog.position.x+=map_rect.position.x-old_x
+  map_dog.position+=map_rect.position-old_origin
  if progress >= 1.0:
   travelling = false
   selected = target_place

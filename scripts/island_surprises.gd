@@ -9,7 +9,7 @@ const REQUESTS = {
 const OWNERS={"Momo":"Nora","Pippin":"Ben","Milo":"June"}
 
 static func fresh() -> Dictionary:
-	return {"day":"","kind":"","buddy":"","accepted":false,"route":"","step":0,"fetch_start":0,"completed":0,"visits":0,"found_toy":false,"history":{}}
+	return {"day":"","kind":"","buddy":"","accepted":false,"route":"","step":0,"fetch_start":0,"completed":0,"visits":0,"found_toy":false,"found_basket":false,"door_intro":false,"history":{}}
 
 static func valid(data: Variant) -> bool:
 	if not data is Dictionary: return false
@@ -17,6 +17,8 @@ static func valid(data: Variant) -> bool:
 	if data.get("kind","") not in ["","Visit","Toy","Basket","Parcel"]: return false
 	if data.get("buddy","") not in ["","Momo","Pippin","Milo"]: return false
 	if not data.get("accepted",false) is bool or not data.get("found_toy",false) is bool: return false
+	if not data.get("found_basket",false) is bool: return false
+	if not data.get("door_intro",false) is bool: return false
 	if data.get("route","") not in ["","Park","Beach","Hello","Fetch"]: return false
 	for pair in [["step",2],["fetch_start",100000],["completed",100000],["visits",100000]]:
 		if not IslandAdventure.integer(data.get(pair[0],0),pair[1]): return false
@@ -40,13 +42,24 @@ static func normalized(data: Dictionary) -> Dictionary:
 static func eligible(game: Node) -> bool:
 	return IslandConnections.available(game) and game.points>=4 and game.needs.Hunger>=35 and game.needs.Energy>=25 and not (game.life.welcome_day.guest and not game.life.welcome_day.celebrated)
 
+static func visit_expired(state: Dictionary) -> bool:
+	return state.kind=="Visit" and not state.accepted and state.day<IslandLife.today()
+
 static func offer(game: Node) -> bool:
 	var state: Dictionary=game.life.surprises
-	if not eligible(game) or state.kind!="" or state.day>=IslandLife.today(): return false
-	state.day=IslandLife.today()
+	if not eligible(game): return false
+	var today=IslandLife.today()
+	if visit_expired(state):
+		clear_active(state)
+	if state.kind!="" or state.day>=today: return false
+	state.day=today
 	var random=RandomNumberGenerator.new()
 	random.seed=absi((game.puppy_name+state.day+"Island visits").hash())
-	if random.randf()<0.35:
+	if game.play_days.size()>=2 and state.visits==0 and not state.door_intro:
+		state.door_intro=true
+		state.kind="Visit"
+		state.buddy="Momo"
+	elif random.randf()<0.35:
 		state.kind=["Visit","Visit","Toy","Basket","Parcel"][random.randi_range(0,4)]
 		if state.kind=="Visit": state.buddy=OWNERS.keys()[random.randi_range(0,2)]
 	game.changed.emit()
@@ -55,7 +68,7 @@ static func offer(game: Node) -> bool:
 
 static func info(game: Node) -> Dictionary:
 	var state: Dictionary=game.life.surprises
-	if state.kind.is_empty(): return {}
+	if state.kind.is_empty() or visit_expired(state): return {}
 	if state.kind=="Visit":
 		var familiar=int(game.life.adventure.buddies.get(state.buddy,{}).get("visits",0))>=2
 		var previous: String=state.history.get(state.buddy,"")
@@ -76,7 +89,7 @@ static func clear_active(state: Dictionary) -> void:
 
 static func respond(game: Node, join: bool) -> Dictionary:
 	var state: Dictionary=game.life.surprises
-	if state.kind.is_empty(): return {"ok":false,"text":"The island is having a quiet moment."}
+	if state.kind.is_empty() or visit_expired(state): return {"ok":false,"text":"The island is having a quiet moment."}
 	if join and not eligible(game): return {"ok":false,"text":"A little rest first. This visit can wait."}
 	if join:
 		state.accepted=true
@@ -124,6 +137,7 @@ static func finish_request(game: Node, place_name: String) -> Dictionary:
 	game.coins+=earned
 	game.needs.Happiness=minf(100,game.needs.Happiness+4)
 	if state.kind=="Toy": state.found_toy=true
+	if state.kind=="Basket": state.found_basket=true
 	state.completed=mini(100000,state.completed+1)
 	game.remember("Helped "+spec.person+" find "+spec.object+" with our dog's nose.")
 	IslandMemories.unlock(game,"neighbor_helper")
@@ -143,9 +157,7 @@ static func choose_visit(game: Node, kind: String) -> bool:
 
 static func record_playmate(game: Node, buddy: String, kind: String) -> void:
 	if buddy not in OWNERS or kind not in ["Hello","Fetch"]: return
-	var entry: Dictionary=game.life.adventure.buddies.get(buddy,{"visits":0,"bonus_day":""})
-	entry.visits=mini(1000,int(entry.visits)+1)
-	game.life.adventure.buddies[buddy]=entry
+	IslandAdventure.record_buddy_visit(game,buddy)
 	game.life.surprises.history[buddy]=kind
 
 static func finish_visit(game: Node, kind: String) -> Dictionary:

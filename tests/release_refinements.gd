@@ -18,7 +18,7 @@ func check_map_stops(map, game):
 	game.active_seconds = game.EVOLUTION_SECONDS
 	for place in map.pins:
 		map.selected = place
-		map.pan_x = NAN
+		map.previous_view_size = Vector2.ZERO
 		for breed in Art.PUPPIES:
 			game.breed = breed
 			for accessory in ["", "CoralBandana"]:
@@ -41,7 +41,7 @@ func check_map_stops(map, game):
 	game.points = original_points
 	game.active_seconds = original_seconds
 	map.selected = original_place
-	map.pan_x = NAN
+	map.previous_view_size = Vector2.ZERO
 	map.place_pins()
 
 func run():

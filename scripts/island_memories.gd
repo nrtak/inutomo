@@ -24,6 +24,39 @@ static func unlock(game: Node, key: String) -> bool:
 	game.remember("Memory: "+ENTRIES[key].title+".")
 	return true
 
+const PAGE_TITLES={"growth":"Those tiny paws","buddy":"Our first best friend","beacon":"A light for everyone"}
+
+static func valid_pages(pages: Variant) -> bool:
+	if not pages is Dictionary or pages.size()>PAGE_TITLES.size(): return false
+	for key in pages:
+		var page=pages[key]
+		if not PAGE_TITLES.has(key) or not page is Dictionary: return false
+		if not page.get("name") is String or page.name.is_empty() or page.name.length()>16: return false
+		if page.get("breed") not in GrowthRoutes.BREEDS or not IslandAdventure.date(page.get("day")): return false
+		if key=="buddy" and not IslandAdventure.BUDDIES.has(page.get("buddy","")): return false
+		var accessory=page.get("accessory","")
+		if not accessory is String or (accessory!="" and not Goods.ITEMS.get(accessory,{}).has("color")): return false
+	return true
+
+static func keep_page(game: Node, key: String, buddy: String="", historical: bool=false) -> void:
+	if game.life.picture_pages.has(key): return
+	var accessory: String=game.life.accessory
+	if historical or game.items.get(accessory,0)<=0 or not Goods.ITEMS.get(accessory,{}).has("color"): accessory=""
+	game.life.picture_pages[key]={"name":game.puppy_name if not game.puppy_name.is_empty() else "My dog","breed":game.breed,"buddy":buddy,"accessory":accessory,"day":"" if historical else IslandLife.today()}
+
+static func check_friend_page(game: Node, buddy: String) -> void:
+	if IslandAdventure.buddy_level(IslandAdventure.buddy_visits(game,buddy))=="Best friends":
+		keep_page(game,"buddy",buddy)
+
+static func recover_pages(game: Node) -> void:
+	# Older saves know the milestones, but did not record their calendar dates.
+	if game.breed!="Puppy": keep_page(game,"growth","",true)
+	if game.life.story.get("beacon_checked",false): keep_page(game,"beacon","",true)
+	for buddy in game.life.adventure.buddies:
+		if IslandAdventure.buddy_level(IslandAdventure.buddy_visits(game,buddy))=="Best friends":
+			keep_page(game,"buddy",buddy,true)
+			break
+
 static func suggestion(game: Node) -> Dictionary:
 	if PuppyHealth.unwell(game): return {"text":"A gentle checkup with Leah","place":"Vet Clinic","icon":"clinic"}
 	if game.resting or game.needs.Energy<30: return {"text":"A cozy rest at Home","place":"Home","focus":"Rest","icon":"rest"}

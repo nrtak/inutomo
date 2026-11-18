@@ -45,6 +45,10 @@ func run() -> void:
 	game.points = game.EVOLUTION_POINTS - 1
 	game.active_seconds = game.EVOLUTION_SECONDS
 	game.finish_activity("Walk")
+	game.intro_seen=true
+	game.last_growth_visit="2032-01-01"
+	game.begin_growth_visit("2032-01-02")
+	game.reveal_growth()
 	check(game.breed == "Shiba Inu" and game.collection.size() == 1, "Evolution enters collection once")
 	game.finish_activity("Walk")
 	check(game.collection.size() == 1, "No duplicate evolution")
@@ -66,6 +70,9 @@ func run() -> void:
 	game.walks = 0
 	game.fetches = 3
 	game.finish_activity("Fetch", 1)
+	game.pending_stage=""
+	game.begin_growth_visit("2032-01-03")
+	game.reveal_growth()
 	check(game.breed == "Golden Retriever", "Golden evolution")
 	game.advance(100000)
 	for value in game.needs.values():
@@ -102,7 +109,9 @@ func run() -> void:
 	var fetch = main.body.get_child(0)
 	for i in 3:
 		fetch._throw()
-		await create_timer(5.7).timeout
+		for tick in 100:
+			if not fetch.busy: break
+			await create_timer(0.1).timeout
 	check(fetch.complete and fetch.rounds == 3, "Fetch completes three rounds")
 	main.start_activity("Walk")
 	await process_frame

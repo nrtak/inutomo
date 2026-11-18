@@ -113,6 +113,7 @@ static func advance(game: Node, action: String) -> String:
    message = messages[action]
    memory = {"repair_supplies":"Collected Ren's repair crate.", "path_repaired":"Helped Ren repair the cottage path.", "lens_polished":"Helped polish Ren's sea-glass display lens.", "beacon_checked":"Finished Ren's restoration chapter and checked the beacon."}[action]
    if action == "beacon_checked":
+    IslandMemories.keep_page(game,"beacon")
     game.coins = mini(1000000, game.coins + 15)
   _:
    return "Choose a Harbor or cottage activity."

@@ -243,7 +243,10 @@ func run():
 		game.points = game.EVOLUTION_POINTS
 		game.active_seconds = game.EVOLUTION_SECONDS
 		game.last_stage = "Growing puppy"
-		game.update_growth()
+		game.pending_stage=""
+		game.last_growth_visit="2032-04-01"
+		game.begin_growth_visit("2032-04-02")
+		game.reveal_growth()
 		check(game.breed==target and game.collection.back().breed==target,"Each added breed evolves and enters My Dogs: "+target)
 	print("Breed, expression and tug checks: ","PASS" if failures==0 else "FAIL")
 	quit(0 if failures==0 else 1)

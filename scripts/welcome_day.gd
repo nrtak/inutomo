@@ -96,9 +96,7 @@ static func picnic_action(game: Node) -> Dictionary:
 			game.items.PlushToy = 1
 			if game.life.toy.is_empty():
 				game.life.toy = "PlushToy"
-			var buddy: Dictionary = game.life.adventure.buddies.get("Momo", {"visits":0, "bonus_day":""})
-			buddy.visits = mini(1000, int(buddy.visits) + 1)
-			game.life.adventure.buddies.Momo = buddy
+			IslandAdventure.record_buddy_visit(game,"Momo")
 			game.remember("Our first Island Welcome Day with Nora and Momo. A cuddle plush to take home, and a friend who can visit.")
 			lines[2] += " A cuddle plush is yours, and Momo can now visit Home."
 		else:

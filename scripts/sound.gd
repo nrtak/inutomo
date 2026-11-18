@@ -1,6 +1,7 @@
 extends Node
 
 const EFFECTS = {
+ "visitor": preload("res://assets/audio/visitor.wav"),
  "purchase": preload("res://assets/audio/purchase.wav"),
  "discovery": preload("res://assets/audio/discovery.wav"),
  "happy": preload("res://assets/audio/happy.wav"),

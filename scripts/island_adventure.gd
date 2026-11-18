@@ -94,13 +94,17 @@ static func buddy_visits(game: Node, name: String) -> int:
 static func buddy_level(visits: int) -> String:
  return "Best friends" if visits >= 7 else ("Close friends" if visits >= 4 else ("Playmates" if visits >= 2 else "New friends"))
 
-static func finish_playdate(game: Node) -> String:
- var name = companion(game)
+static func record_buddy_visit(game: Node, name: String) -> void:
  var record: Dictionary = game.life.adventure.buddies.get(name,{"visits":0,"bonus_day":""})
  record.visits = mini(1000,int(record.visits)+1)
  game.life.adventure.buddies[name] = record
+ IslandMemories.check_friend_page(game,name)
+
+static func finish_playdate(game: Node) -> String:
+ var name = companion(game)
+ record_buddy_visit(game,name)
  record_task(game,"Playdate")
- return buddy_greeting(game,name) + " " + buddy_level(record.visits) + "."
+ return buddy_greeting(game,name) + " " + buddy_level(buddy_visits(game,name)) + "."
 
 static func buddy_greeting(game: Node, name: String) -> String:
  var visits = buddy_visits(game,name)

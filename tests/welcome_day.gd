@@ -74,6 +74,7 @@ func run() -> void:
 	game.resting = true
 	check(not WelcomeDay.picnic_action(game).ok and game.life.welcome_day.picnic_step == 0, "The picnic waits for a sleeping dog")
 	game.resting = false
+	game.life.adventure.buddies.Momo.visits=6
 	for step in 3:
 		game.cooldowns.clear()
 		var reply = WelcomeDay.picnic_action(game)
@@ -82,7 +83,8 @@ func run() -> void:
 		check(game.save_game(), "Every picnic checkpoint is saveable")
 	check(game.life.welcome_day.celebrated and game.items.PlushToy == 1 and game.life.toy == "PlushToy", "First picnic gives a usable toy and equips it only in an empty toy slot")
 	var visits = IslandAdventure.buddy_visits(game, "Momo")
-	check(visits == 2, "The first shared picnic strengthens Momo's friendship once")
+	check(visits == 7, "The first shared picnic strengthens Momo's friendship once")
+	check(game.life.picture_pages.get("buddy",{}).get("day")==IslandLife.today(),"Becoming best friends at the picnic creates the dated memory immediately")
 	var earned_coins = game.coins
 	game.cooldowns.clear()
 	WelcomeDay.picnic_action(game)

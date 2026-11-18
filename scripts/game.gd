@@ -48,6 +48,7 @@ var age_seconds = 0.0
 var play_days: Array = []
 var active_seconds = 0.0
 var last_stage = "Tiny puppy"
+var last_growth_visit = ""
 var collection: Array = []
 var journal: Array = []
 var cooldowns: Dictionary = {}
@@ -59,6 +60,7 @@ var paused_at = 0.0
 func _ready() -> void:
 	DisplayServer.window_set_title("Inushima: Puppy Island")
 	load_game()
+	begin_growth_visit()
 	record_play_day()
 
 func _process(delta: float) -> void:
@@ -75,7 +77,6 @@ func advance(seconds: float, active: bool = true) -> void:
 	age_seconds += seconds
 	if active:
 		active_seconds += seconds
-		update_growth()
 	for i in NEEDS.size():
 		var key: String = NEEDS[i]
 		needs[key] = clampf(float(needs[key]) - seconds * DECAY[i] * (1.0 if active else OFFLINE_DECAY_FACTOR), 0, 100)
@@ -140,7 +141,8 @@ func action(kind: String) -> void:
 		grow("A little " + kind.to_lower() + " made today brighter.")
 		first_day.Care = true
 		IslandLife.record(self, kind)
-		say({"Feed": "Yum! A fresh bowl and a happy tummy.", "Play": "Happy paws, happy heart!", "Care": "All clean and fluffy!"}[kind])
+		if kind != "Feed":
+			say("Happy paws, happy heart!" if kind=="Play" else "All clean and fluffy!")
 	care_performed.emit(kind)
 	changed.emit()
 	save_game()
@@ -357,7 +359,10 @@ func prediction() -> String:
 func stage_index() -> int:
 	if breed != "Puppy":
 		return 3
-	for index in [2, 1]:
+	return clampi(STAGE_NAMES.find(last_stage),0,2)
+
+func earned_stage_index() -> int:
+	for index in [3, 2, 1]:
 		if points >= STAGE_POINTS[index] and active_seconds >= STAGE_SECONDS[index]:
 			return index
 	return 0
@@ -376,6 +381,8 @@ func next_growth_hint() -> String:
 	var next = stage_index() + 1
 	var care_left = maxi(0, STAGE_POINTS[next] - points)
 	var minutes_left = ceili(maxf(0, STAGE_SECONDS[next] - active_seconds) / 60.0)
+	if care_left==0 and minutes_left==0:
+		return "Nora will visit when you return on a new day."
 	return "Next: %s. %d more care moments and %d more minutes together." % [STAGE_NAMES[next], care_left, minutes_left]
 
 func remember(entry: String) -> void:
@@ -386,23 +393,30 @@ func remember(entry: String) -> void:
 func grow(entry: String) -> void:
 	points += 1
 	remember(entry)
-	update_growth()
 
-func update_growth() -> void:
-	if breed == "Puppy" and points >= EVOLUTION_POINTS and active_seconds >= EVOLUTION_SECONDS:
+func begin_growth_visit(date: String = "") -> void:
+	if date.is_empty(): date=Time.get_date_string_from_system(false)
+	if not LocalDate.valid(date) or date<=last_growth_visit: return
+	last_growth_visit=date
+	if intro_seen and breed=="Puppy" and pending_stage.is_empty() and earned_stage_index()>stage_index():
+		pending_stage=STAGE_NAMES[earned_stage_index()]
+	if intro_seen or name_chosen:
+		save_game()
+
+func reveal_growth() -> void:
+	if pending_stage.is_empty() or pending_stage==growth_stage(): return
+	if STAGE_NAMES.find(pending_stage)<=stage_index(): return
+	if pending_stage=="Adult":
 		breed = prediction()
 		collection.append({"name": puppy_name, "breed": breed})
+		IslandMemories.keep_page(self,"growth")
 		remember("Mochi grew into a " + breed + "!")
-		say("A new chapter! Mochi is now a " + breed + ".")
-	var stage = growth_stage()
-	if stage != last_stage:
-		var promoted = STAGE_NAMES.find(stage) > STAGE_NAMES.find(last_stage)
-		last_stage = stage
-		if promoted:
-			pending_stage = stage
-			stage_reached.emit(stage)
-			if breed == "Puppy":
-				remember("A new chapter: " + stage + ".")
+	else:
+		remember("Nora celebrated Mochi becoming a " + pending_stage.to_lower() + ".")
+	last_stage=pending_stage
+	save_game()
+	stage_reached.emit(last_stage)
+	changed.emit()
 
 func save_game() -> bool:
 	record_play_day()
@@ -411,7 +425,7 @@ func save_game() -> bool:
 		"coins": coins, "items": items, "cooldowns": cooldowns, "active_outing": active_outing, "saved_outings": saved_outings, "life": life,
 		"reduce_motion": reduce_motion, "effects_volume": effects_volume, "ambience_volume": ambience_volume,
 		"name_chosen": name_chosen, "sound_enabled": sound_enabled, "haptics_enabled": haptics_enabled, "pending_stage": pending_stage,
-		"visit_reminder_enabled": visit_reminder_enabled,
+		"visit_reminder_enabled": visit_reminder_enabled, "growth_stage":growth_stage(), "last_growth_visit":last_growth_visit,
 		"active_seconds": active_seconds, "points": points, "fetches": fetches, "walks": walks, "intro_seen": intro_seen,
 		"resting": resting, "age_seconds": age_seconds, "collection": collection,
 		"journal": journal, "saved_at": Time.get_unix_time_from_system()}
@@ -492,6 +506,8 @@ func valid_save(data: Variant) -> bool:
 			return false
 	if data.get("pending_stage", "") not in ["", "Young puppy", "Growing puppy", "Adult"]:
 		return false
+	if data.has("growth_stage") and data.growth_stage not in STAGE_NAMES: return false
+	if data.has("last_growth_visit") and data.last_growth_visit!="" and not valid_play_date(data.last_growth_visit): return false
 	var saved_coins = data.get("coins", 50)
 	if not (saved_coins is int or saved_coins is float) or not is_finite(float(saved_coins)) or saved_coins < 0 or saved_coins > 1000000 or float(saved_coins) != floorf(saved_coins):
 		return false
@@ -565,6 +581,7 @@ func load_game() -> void:
 		needs[key] = clampf(float(data.needs[key]), 0, 100)
 	walking = PuppySteps.normalized(data.get("walking", {}))
 	play_days = data.get("play_days", []).duplicate()
+	last_growth_visit=data.get("last_growth_visit",play_days.back() if not play_days.is_empty() else "")
 	puppy_name = data.name.left(16)
 	life = IslandLife.normalized(data.get("life", {}))
 	record_play_day()
@@ -600,9 +617,18 @@ func load_game() -> void:
 	resting = data.resting
 	age_seconds = float(data.age_seconds)
 	active_seconds = float(data.get("active_seconds", 0.0))
-	last_stage = growth_stage()
+	# Older saves already displayed the stage earned under the immediate-growth rules.
+	last_stage = data.get("growth_stage","Adult" if breed!="Puppy" else STAGE_NAMES[mini(2,earned_stage_index())])
+	if not pending_stage.is_empty() and STAGE_NAMES.find(pending_stage)<stage_index():
+		pending_stage=""
 	collection = data.collection.slice(0, 32)
 	journal = data.journal.slice(0, 32)
+	IslandMemories.recover_pages(self)
+	if not life.surprises.found_basket:
+		for entry in journal:
+			if "Helped June find the picnic basket with our dog's nose." in str(entry):
+				life.surprises.found_basket=true
+				break
 	# Offline needs are gentle and capped at two hours; no death or punishment.
 	var away = maxf(0,Time.get_unix_time_from_system()-float(data.saved_at))
 	record_return(away)
@@ -620,6 +646,7 @@ func _notification(what: int) -> void:
 		record_return(away)
 		advance(clampf(away,0,7200),false)
 		paused_at = 0.0
+		begin_growth_visit()
 	elif what == NOTIFICATION_WM_CLOSE_REQUEST:
 		save_game()
 
@@ -684,4 +711,5 @@ func growth_milestone() -> Dictionary:
 		hint = "%d more care moments. Feed, Play, and Care all help." % care_left
 	if minutes_left > 0:
 		hint += ("\n" if not hint.is_empty() else "") + "%d more minutes together in the game. There is no rush." % minutes_left
+	if hint.is_empty(): hint="Nora will visit when you return on a new day."
 	return {"name":STAGE_NAMES[next],"progress":minf(care_progress,time_progress)*100,"hint":hint}

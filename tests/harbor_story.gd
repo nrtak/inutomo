@@ -98,6 +98,7 @@ func run():
  game.life = IslandLife.fresh()
  game.load_game()
  check(game.life.story.get("beacon_checked",false), "Restoration completion survives reload")
+ check(game.life.picture_pages.beacon.breed==game.breed and game.life.picture_pages.beacon.day==IslandLife.today(),"Ren's beacon earns a dated illustrated memory")
  check(not IslandStory.valid({"beacon_checked":true}) and not IslandStory.valid({"path_repaired":true}), "Invalid restoration prerequisites are rejected")
 
  main.show_page("Keeper’s Cottage")

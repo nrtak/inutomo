@@ -7,7 +7,7 @@ const KEEPSAKES = ["Heart leaf", "Pearl shell", "Sea glass"]
 const KEEPSAKE_ICONS = ["leaf", "shell", "sea_glass"]
 const PERSONALITIES = ["Curious", "Cuddly", "Playful"]
 static func fresh() -> Dictionary:
-	return {"check_in":DailyCheckIn.fresh(), "surprises":IslandSurprises.fresh(), "festivals":IslandFestivals.fresh(), "memories":{}, "growth_paths":GrowthRoutes.fresh(), "tug_games":0, "connections":IslandConnections.fresh(), "moments":IslandMoments.fresh(), "welcome_day":WelcomeDay.fresh(), "adventure":IslandAdventure.fresh(), "beach":IslandActivities.fresh(), "bowl":true, "bowl_spot":0, "toy_spot":1, "delivery":{"recipient":"", "claimed":"", "completed":0}, "playdate": {"day":"", "step":0, "claimed":"", "visits":0}, "story": {}, "accessory": "", "bed": "", "toy": "", "spot": 1, "training": {"Sit": 0, "Stay": 0, "Come": 0, "Paw":0, "Spin":0, "Bow":0, "Roll Over":0}, "friends": {}, "favors": {}, "keepsakes": [], "photos": [], "day": "", "daily": {}, "event_claimed": ""}
+	return {"check_in":DailyCheckIn.fresh(), "surprises":IslandSurprises.fresh(), "festivals":IslandFestivals.fresh(), "memories":{}, "picture_pages":{}, "growth_paths":GrowthRoutes.fresh(), "tug_games":0, "connections":IslandConnections.fresh(), "moments":IslandMoments.fresh(), "welcome_day":WelcomeDay.fresh(), "adventure":IslandAdventure.fresh(), "beach":IslandActivities.fresh(), "bowl":true, "bowl_spot":0, "toy_spot":1, "delivery":{"recipient":"", "claimed":"", "completed":0}, "playdate": {"day":"", "step":0, "claimed":"", "visits":0}, "story": {}, "accessory": "", "bed": "", "toy": "", "spot": 1, "training": {"Sit": 0, "Stay": 0, "Come": 0, "Paw":0, "Spin":0, "Bow":0, "Roll Over":0}, "friends": {}, "favors": {}, "keepsakes": [], "photos": [], "day": "", "daily": {}, "event_claimed": ""}
 
 static func home_point(game: Node, kind: String) -> Vector2:
 	match kind:
@@ -261,6 +261,7 @@ static func valid(data: Variant) -> bool:
 		return false
 	if not IslandFestivals.valid(data.get("festivals",{})) or not IslandMemories.valid(data.get("memories",{})): return false
 	if not IslandSurprises.valid(data.get("surprises",{})): return false
+	if not IslandMemories.valid_pages(data.get("picture_pages",{})): return false
 	if not DailyCheckIn.valid(data.get("check_in",{})): return false
 	if not GrowthRoutes.valid(data.get("growth_paths",{})) or not IslandAdventure.integer(data.get("tug_games",0),100000):
 		return false

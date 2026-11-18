@@ -7,6 +7,7 @@ var shown = ""
 var home_clock = 0.0
 var last_invitation = ""
 var surprise_shown = false
+var door_guest: TextureButton
 
 func _ready() -> void:
 	name = "DogInvitation"
@@ -31,20 +32,37 @@ func _ready() -> void:
 	visible = false
 
 func unobstructed_home() -> bool:
-	return host.page=="Home" and Game.paused_at<=0 and Game.is_processing() and not is_instance_valid(host.intro_overlay) and not is_instance_valid(host.stage_overlay) and not is_instance_valid(host.navigation_overlay) and not is_instance_valid(host.resident_overlay) and not is_instance_valid(host.tip_overlay) and not is_instance_valid(host.photo_overlay) and not is_instance_valid(host.notice_overlay)
+	return host.page=="Home" and Game.paused_at<=0 and Game.is_processing() and not host.has_open_overlay() and not is_instance_valid(host.notice_overlay)
 
 func _process(delta: float) -> void:
 	var home = unobstructed_home()
 	var awake = home and is_instance_valid(host.habitat) and not host.habitat.puppy.napping and IslandConnections.available(Game)
 	if awake:
 		home_clock += delta
+		if home_clock>=6 and Game.life.surprises.day<IslandLife.today() and IslandSurprises.eligible(Game) and host.habitat.puppy.ready_for_growth_moment():
+			IslandSurprises.offer(Game)
 		if home_clock>=75:
 			home_clock = 0
 			if not IslandSurprises.offer(Game) and IslandSurprises.info(Game).is_empty(): IslandConnections.offer(Game)
 	var surprise=IslandSurprises.info(Game)
 	surprise_shown=not surprise.is_empty()
 	var info=surprise if surprise_shown else IslandConnections.invitation_info(Game)
+	var at_door=awake and Game.life.surprises.kind=="Visit" and Game.life.surprises.day==IslandLife.today() and not Game.life.surprises.accepted and IslandSurprises.eligible(Game) and host.habitat.puppy.ready_for_growth_moment()
+	if at_door and (not is_instance_valid(door_guest) or door_guest.get_parent()!=host.habitat or door_guest.get_meta("buddy")!=Game.life.surprises.buddy):
+		if is_instance_valid(door_guest): door_guest.queue_free()
+		show_door_guest()
+	if is_instance_valid(door_guest):
+		door_guest.visible=at_door
+		if host.page=="Home" and is_instance_valid(host.habitat.playmate):
+			var show_playmate=not at_door or host.habitat.visiting_buddy!=Game.life.surprises.buddy
+			if host.habitat.playmate.visible!=show_playmate:
+				for part in [host.habitat.playmate,host.habitat.playmate_shadow,host.habitat.playmate_name]:
+					part.visible=show_playmate
+	if at_door:
+		visible=false
+		return
 	visible = home and not info.is_empty() and IslandConnections.available(Game) and is_instance_valid(host.habitat) and not host.habitat.puppy.napping
+	if surprise_shown and Game.life.surprises.kind=="Visit" and not Game.life.surprises.accepted: visible=false
 	if not visible: return
 	var current: String = "Surprise:"+Game.life.surprises.kind+Game.life.surprises.buddy if surprise_shown else Game.life.connections.invitation
 	if current!=last_invitation:
@@ -59,6 +77,56 @@ func _process(delta: float) -> void:
 	join_button.text = info.join
 	join_button.disabled = not IslandSurprises.eligible(Game) if surprise_shown else IslandConnections.invitation_wait(Game)>0
 	arrange()
+
+func show_door_guest() -> void:
+	var habitat: Habitat=host.habitat
+	var buddy: String=Game.life.surprises.buddy
+	door_guest=TextureButton.new()
+	door_guest.name="DoorVisitor"
+	door_guest.set_meta("buddy",buddy)
+	door_guest.ignore_texture_size=true
+	door_guest.stretch_mode=TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	door_guest.texture_normal=Art.PUPPIES[IslandAdventure.BUDDIES[buddy].breed]
+	door_guest.material=UI.art_cutout()
+	door_guest.tooltip_text="Play with "+buddy
+	door_guest.accessibility_name=door_guest.tooltip_text
+	habitat.add_child(door_guest)
+	var ball=TextureRect.new()
+	ball.texture=Goods.picture("Toy")
+	ball.expand_mode=TextureRect.EXPAND_IGNORE_SIZE
+	ball.stretch_mode=TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ball.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	ball.material=UI.art_cutout()
+	door_guest.add_child(ball)
+	var caption=UI.label(door_guest.tooltip_text,18,Color.WHITE)
+	caption.add_theme_constant_override("outline_size",5)
+	caption.add_theme_color_override("font_outline_color",UI.INK)
+	caption.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	caption.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	caption.offset_bottom=26
+	door_guest.add_child(caption)
+	var guest=door_guest
+	var place_guest=func():
+		var height=clampf(habitat.size.y*.21,108,178)
+		guest.size=Vector2.ONE*height
+		guest.position=Vector2(habitat.size.x*.68-height*.5,habitat.size.y*.56-height)
+		ball.size=guest.size*.28
+		ball.position=guest.size*Vector2(.71,.74)
+	habitat.resized.connect(place_guest)
+	guest.tree_exiting.connect(func(): habitat.resized.disconnect(place_guest),CONNECT_ONE_SHOT)
+	place_guest.call()
+	var dog=habitat.puppy
+	var door_point=habitat.world.to_local(guest.global_position+guest.size*Vector2(.35,.95))
+	dog.target=WalkArea.destination(dog.walk_area,dog.active_barriers(),door_point)
+	dog.attention_left=door_point.x<dog.position.x
+	dog.attention_time=2
+	dog.decision=7
+	Sound.play_effect("visitor",-23)
+	guest.pressed.connect(func():
+		if not unobstructed_home() or not IslandSurprises.eligible(Game) or Game.life.surprises.buddy!=buddy or Game.life.surprises.accepted: return
+		if IslandSurprises.respond(Game,true).ok and IslandSurprises.choose_visit(Game,"Fetch"):
+			host.start_activity("Fetch")
+	)
 
 func respond(join: bool) -> void:
 	var result = IslandSurprises.respond(Game,join) if surprise_shown else IslandConnections.respond(Game,join)

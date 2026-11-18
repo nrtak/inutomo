@@ -165,7 +165,7 @@ func _process(delta: float) -> void:
 		refresh(result.text)
 
 func arrange() -> void:
-	if not is_instance_valid(panel): return
+	if not is_inside_tree() or not is_instance_valid(panel): return
 	var safe=UI.safe_insets(20)
 	var portrait=size.y>size.x
 	var width=minf(680,size.x-safe.left-safe.right) if portrait else minf(430,(size.x-safe.left-safe.right-28)*.5)

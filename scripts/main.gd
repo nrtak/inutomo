@@ -388,7 +388,7 @@ func arrange_screen() -> void:
 func _process(delta: float) -> void:
 	if page=="Home" and Game.intro_seen and not Game.home_greeted and Game.paused_at<=0 and Game.is_processing() and not has_open_overlay():
 		greet_at_home()
-	if not Game.pending_stage.is_empty() and page == "Home" and not is_instance_valid(intro_overlay) and not is_instance_valid(stage_overlay) and not is_instance_valid(resident_overlay) and not is_instance_valid(tip_overlay) and not is_instance_valid(navigation_overlay) and not is_instance_valid(photo_overlay):
+	if not Game.pending_stage.is_empty() and Game.intro_seen and Game.paused_at<=0 and not has_open_overlay() and (page!="Home" or habitat.puppy.ready_for_growth_moment()):
 		show_growth_moment()
 	status_clock += delta
 	var gift_ready=not DailyCheckIn.pending(Game).is_empty()
@@ -868,7 +868,7 @@ func start_activity(kind: String) -> void:
 	if not Game.can_explore():
 		_notice(Game.personalize("Mochi needs to recover first. Visit Vet Clinic for a free checkup." if PuppyHealth.unwell(Game) else "Rest at Home first. Mochi needs to be awake with 15 energy."))
 		return
-	activity_origin = page if page in LOCATION_PAGES else ("Home" if page=="Surprise" and Game.life.surprises.kind=="Visit" else ("Park" if kind == "Fetch" else "Beach"))
+	activity_origin = page if page in LOCATION_PAGES else ("Home" if page in ["Home","Surprise"] and Game.life.surprises.kind=="Visit" else ("Park" if kind == "Fetch" else "Beach"))
 	clear_body()
 	page = kind
 	current_place = "Park" if kind == "Fetch" else "Beach"
@@ -931,6 +931,21 @@ func journal_page() -> void:
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(content)
 	content.add_child(UI.label(Game.growth_stage(), 28, UI.TEAL))
+	for key in IslandMemories.PAGE_TITLES:
+		if not Game.life.picture_pages.has(key): continue
+		var page_memory: Dictionary=Game.life.picture_pages[key]
+		var title: String=IslandMemories.PAGE_TITLES[key]
+		if key=="buddy" and page_memory.day.is_empty(): title="Best friends with "+page_memory.buddy
+		var heading=page_memory.name+" · "+title
+		if not page_memory.day.is_empty(): heading+=" · "+page_memory.day
+		var strip=preload("res://scripts/memory_strip.gd").new()
+		var fold=UI.button(heading,func(): strip.visible=not strip.visible,Color("fff0cf"))
+		fold.custom_minimum_size.y=60
+		fold.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+		content.add_child(fold)
+		content.add_child(strip)
+		strip.illustrate(key,page_memory)
+		strip.hide()
 	var milestone = Game.growth_milestone()
 	content.add_child(UI.label("Next milestone: "+milestone.name if Game.breed == "Puppy" else "Your grown-up companion",26,UI.TEAL))
 	var milestone_bar = ProgressBar.new()
@@ -1072,43 +1087,25 @@ func advance_intro() -> void:
 	show_page("Home")
 
 func show_growth_moment() -> void:
-	stage_overlay = Control.new()
-	stage_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(stage_overlay)
+	stage_overlay=preload("res://scripts/growth_celebration.gd").new()
+	var previous_mode=process_mode
+	var was_processing=Game.is_processing()
+	stage_overlay.tree_exiting.connect(func():
+		process_mode=previous_mode
+		Game.set_process(was_processing)
+	,CONNECT_ONE_SHOT)
+	stage_overlay.finished.connect(close_growth_moment)
 	Game.set_process(false)
-	var shade = ColorRect.new()
-	shade.color = Color(0.12, 0.22, 0.23, 0.55)
-	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	stage_overlay.add_child(shade)
-	var center = CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	stage_overlay.add_child(center)
-	var panel = UI.card()
-	panel.custom_minimum_size = Vector2(730, 0)
-	center.add_child(panel)
-	var content = UI.column(14)
-	content.custom_minimum_size.x = 690
-	panel.add_child(content)
-	content.add_child(UI.label("A little bigger, a little braver!", 32, UI.TEAL))
-	var portrait = TextureRect.new()
-	portrait.texture = Art.PUPPIES[Game.breed]
-	portrait.material = UI.art_cutout()
-	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	portrait.custom_minimum_size.y = 180
-	content.add_child(portrait)
-	var detail = Game.breed if Game.pending_stage == "Adult" else Game.pending_stage
-	content.add_child(UI.label(Game.puppy_name + " has grown into a " + detail + "." if Game.pending_stage == "Adult" else Game.puppy_name + " reached the " + detail.to_lower() + " stage.", 28))
-	content.add_child(UI.label("A new chapter is saved in your Journal. Thank you for all the little moments together.", 24))
-	content.add_child(UI.button("Keep growing together", close_growth_moment, Color("bdeab0")))
-	Sound.play_effect("growth", -17)
+	add_child(stage_overlay)
+	process_mode=Node.PROCESS_MODE_DISABLED
 
 func close_growth_moment() -> void:
+	if not is_instance_valid(stage_overlay) or Game.pending_stage!=Game.growth_stage(): return
 	Game.pending_stage = ""
 	Game.save_game()
+	remove_child(stage_overlay)
 	stage_overlay.queue_free()
 	stage_overlay = null
-	Game.set_process(true)
 
 func location_page(location: String) -> void:
 	set_scenery(location)
@@ -1184,7 +1181,7 @@ func pause_outing_for_dialog() -> void:
 		activity = body.get_child(0)
 		if page != "Scent Trail":
 			if activity.complete: return
-			timer = activity.timer
+			if page=="Walk": timer = activity.timer
 	elif page.begins_with("Festival:"):
 		activity=world_host.get_node_or_null("IslandFestivalView")
 		if not is_instance_valid(activity): return

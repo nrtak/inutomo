@@ -69,6 +69,7 @@ func run() -> void:
 		await process_frame
 	game.breed = "Puppy"
 	WelcomeDay.begin(game)
+	game.life.adventure.buddies.Momo={"visits":6,"bonus_day":""}
 	for kind in ["Home","Recall","Beach"]:
 		game.cooldowns.clear()
 		main.show_page("Moment:"+kind)
@@ -92,10 +93,11 @@ func run() -> void:
 		check(main.page == IslandMoments.PLACES[kind],"Back returns to the correct place")
 	check(game.life.moments.home == 1 and game.life.moments.recall == 1 and game.life.training.Come == 1,"Toy play and recall use real care and training progression")
 	check(game.life.welcome_day.lesson and game.life.welcome_day.beach and game.life.welcome_day.momo,"Recall and beach friendship contribute to the open Welcome Day invitation")
-	check("Pearl shell" in game.life.keepsakes and IslandAdventure.buddy_visits(game,"Momo") == 1,"Discovery adds a keepsake and remembers the shared friendship")
+	check("Pearl shell" in game.life.keepsakes and IslandAdventure.buddy_visits(game,"Momo") == 7,"Discovery adds a keepsake and remembers the shared friendship")
+	check(game.life.picture_pages.get("buddy",{}).get("day")==IslandLife.today(),"Becoming best friends on the beach dates the memory to the discovery")
 	game.cooldowns.clear()
 	IslandMoments.complete(game,"Beach")
-	check(game.life.keepsakes.count("Pearl shell") == 1 and IslandAdventure.buddy_visits(game,"Momo") == 1,"Repeating a find cannot duplicate inventory or friendship rewards")
+	check(game.life.keepsakes.count("Pearl shell") == 1 and IslandAdventure.buddy_visits(game,"Momo") == 7,"Repeating a find cannot duplicate inventory or friendship rewards")
 	for action in ["welcome","kit","meet","deliver","lantern","repair_supplies","path_repaired"]:
 		IslandStory.advance(game,action)
 	game.cooldowns.clear()
@@ -135,9 +137,19 @@ func run() -> void:
 	game.cooldowns.clear()
 	game.items.Toy = 1
 	game.life.toy = "Toy"
+	var original_name=game.puppy_name
+	for i in 100:
+		game.puppy_name="Pup"+str(i)
+		if IslandLife.personality(game)=="Playful": break
 	main.show_page("Moment:Home")
 	await process_frame
 	var home = main.world_host.get_node("IslandMomentView")
+	var starting_ball=home.prop.position
+	home._process(2.4)
+	check(main.habitat.puppy.illustrated_pose=="Sniff","The playful dog lowers its nose to the ball")
+	home._process(.65)
+	check(home.prop.position.distance_to(starting_ball)>25 and home.phase=="waiting","The playful nudge offers the ball without starting the game")
+	game.puppy_name=original_name
 	main.habitat._process(0.016)
 	check(not main.habitat.home_toy.visible,"Stored decor stays hidden throughout the hands-on play scene")
 	var weather: Node

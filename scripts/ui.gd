@@ -98,6 +98,15 @@ static func card() -> PanelContainer:
 	p.add_theme_stylebox_override("panel", style(Color("fff6e5")))
 	return p
 
+static func speech_style(color: Color, radius: int) -> StyleBoxFlat:
+	var paper=style(color,radius)
+	paper.set_border_width_all(3)
+	paper.content_margin_left=32
+	paper.content_margin_right=32
+	paper.content_margin_top=22
+	paper.content_margin_bottom=22
+	return paper
+
 static func column(gap: int = 12) -> VBoxContainer:
 	var v = VBoxContainer.new()
 	v.add_theme_constant_override("separation", gap)
@@ -126,9 +135,7 @@ static func conversation_body(parent: Control, texture: Texture2D, character_nam
 	stage.add_child(portrait)
 	var panel = card()
 	panel.name = "ConversationText"
-	var bubble_style = style(Color("fffdf6"), 38)
-	bubble_style.border_color = INK
-	bubble_style.set_border_width_all(3)
+	var bubble_style = speech_style(Color("fffdf6"), 38)
 	panel.add_theme_stylebox_override("panel", bubble_style)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	var tail = Polygon2D.new()
@@ -151,18 +158,23 @@ static func conversation_body(parent: Control, texture: Texture2D, character_nam
 		stage.offset_top=safe.top
 		var image_size = Vector2(cutout.get_size())
 		if stage.size.y>stage.size.x:
-			var factor=minf(stage.size.x*0.92/image_size.x,stage.size.y*0.52/image_size.y)
+			var width=minf(stage.size.x,600)
+			panel.offset_right=-safe.right-(stage.size.x-width)*.5
+			panel.offset_left=panel.offset_right-width
+			var height=panel.get_combined_minimum_size().y
+			var factor=minf(stage.size.x*.92/image_size.x,maxf(1,stage.size.y-height-36)/image_size.y)
 			portrait.size=image_size*factor
 			portrait.position=Vector2((stage.size.x-portrait.size.x)*0.5,stage.size.y-portrait.size.y+2)
-			panel.offset_left=-safe.right-stage.size.x
-			panel.offset_right=-safe.right
-			panel.offset_bottom=safe.top+20+panel.get_combined_minimum_size().y
-			tail.position=Vector2(40,panel.size.y)
+			panel.offset_bottom=stage.position.y+portrait.position.y-12
+			panel.offset_top=panel.offset_bottom-height
+			tail.position=Vector2(width*.52,panel.size.y)
 			return
 		var factor = minf(stage.size.x * 0.50 / image_size.x, maxf(1,stage.size.y - 84) / image_size.y)
 		portrait.size = image_size * factor
 		portrait.position = Vector2((stage.size.x * 0.50 - portrait.size.x) * 0.5, stage.size.y - portrait.size.y + 2)
 		var bubble_width = minf(500, stage.size.x * 0.47)
+		panel.offset_top = safe.top + 20
+		panel.offset_right = -safe.right - 56
 		panel.offset_left = -safe.right - bubble_width - 56
 		panel.offset_bottom = safe.top + 20 + panel.get_combined_minimum_size().y
 		tail.position = Vector2(40, panel.size.y)

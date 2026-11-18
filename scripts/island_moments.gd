@@ -62,9 +62,7 @@ static func complete(game: Node, kind: String) -> Dictionary:
 			if not state.shell:
 				state.shell = true
 				GrowthRoutes.record(game,"Beach")
-				var buddy: Dictionary = game.life.adventure.buddies.get("Momo",{"visits":0,"bonus_day":""})
-				buddy.visits = mini(1000,int(buddy.visits)+1)
-				game.life.adventure.buddies.Momo = buddy
+				IslandAdventure.record_buddy_visit(game,"Momo")
 				IslandLife.discover(game, 1)
 				game.remember("Followed a scent with Momo and Kai to a pearl shell.")
 			IslandLife.record(game, "Discovery")

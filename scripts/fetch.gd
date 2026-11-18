@@ -12,14 +12,15 @@ var busy = false
 var rounds = 0
 var score = 0
 var complete = false
-var timer: Timer
 var profile: Dictionary
 var run_points: Array[Vector2] = []
 var leg = ""
 var leg_clock = 0.0
 var landing = Vector2.ZERO
 var launch = Vector2.ZERO
-var catch_shown = false
+var pickup_spot = Vector2.ZERO
+var release_from = Vector2.ZERO
+var drop_spot = Vector2.ZERO
 var good_throw = false
 var outing_variant = 0
 var sweet_zone: ColorRect
@@ -31,9 +32,6 @@ var companion_goal=Vector2(INF,INF)
 
 func _ready() -> void:
 	add_theme_constant_override("separation", 12)
-	timer = Timer.new()
-	timer.one_shot = true
-	add_child(timer)
 	if habitat == null:
 		habitat = preload("res://scenes/home.tscn").instantiate()
 		habitat.location = "Park"
@@ -93,7 +91,7 @@ func _ready() -> void:
 		call_deferred("finish_fetch")
 
 func _process(delta: float) -> void:
-	if Game.paused_at > 0:
+	if Game.paused_at > 0 or get_meta("dialog_paused",false):
 		return
 	if not busy and not complete:
 		phase += delta * profile.speed
@@ -101,26 +99,49 @@ func _process(delta: float) -> void:
 		sweet_zone.anchor_left=clampf((target_center()-profile.radius)/100.0,0,1)
 		sweet_zone.anchor_right=clampf((target_center()+profile.radius)/100.0,0,1)
 	update_companion(delta)
-	if busy:
-		leg_clock += delta
-		if not run_points.is_empty() and habitat.puppy.position.distance_to(habitat.puppy.target)<9:
-			habitat.puppy.target = run_points.pop_front()
-		if leg=="out":
+	if not busy: return
+	var dog = habitat.puppy
+	leg_clock += delta
+	if not run_points.is_empty() and dog.position.distance_to(dog.target)<9:
+		dog.target = run_points.pop_front()
+	var arrived = run_points.is_empty() and dog.position.distance_to(dog.target)<=1
+	match leg:
+		"out":
 			var flight = clampf(leg_clock/0.65,0,1)
 			habitat.ball.position = landing if Game.reduce_motion else launch.lerp(landing,flight)+Vector2(0,-sin(flight*PI)*65)
-			habitat.ball.rotation = 0 if Game.reduce_motion else leg_clock*5
-			if not catch_shown and run_points.is_empty() and habitat.puppy.position.distance_to(landing)<4:
-				catch_shown=true
+			habitat.ball.rotation = 0 if Game.reduce_motion else flight*TAU
+			if arrived and flight>=1:
+				dog.sprite.flip_h = landing.x<dog.position.x
+				dog.fetch_mouth_down = true
+				leg = "pickup"
+				leg_clock = 0
 				if good_throw:
-					habitat.puppy.celebrate_success()
+					dog.celebration_time = 0.9
+					Sound.play_effect("happy",-27)
 					if IslandMemories.unlock(Game,"first_catch"): Game.save_game()
 					status.text="Lovely catch! Coming back to you."
 				else: Sound.play_effect("play",-27)
-		elif leg=="return":
-			var dog = habitat.puppy
-			var height = dog.awake_height()
-			habitat.ball.position = dog.position+Vector2((-1 if dog.sprite.flip_h else 1)*height*0.20,-height*0.52)
-			habitat.ball.rotation = 0
+		"pickup":
+			var grip = float(leg_clock>=0.24) if Game.reduce_motion else smoothstep(0.12,0.36,leg_clock)
+			habitat.ball.position = landing.lerp(dog.fetch_muzzle(),grip)
+			if leg_clock>=0.4: start_run(WalkArea.SPAWNS.Park,true)
+		"return":
+			habitat.ball.position = dog.fetch_muzzle()
+			if arrived:
+				release_from = habitat.ball.position
+				dog.fetch_mouth_down = true
+				leg = "drop"
+				leg_clock = 0
+				drop_spot = dog.position+Vector2(-1 if dog.sprite.flip_h else 1,0)*dog.awake_height()*0.30
+		"drop":
+			var muzzle = dog.fetch_muzzle()
+			if Game.reduce_motion:
+				habitat.ball.position = muzzle if leg_clock<0.24 else drop_spot
+			elif leg_clock<0.18:
+				habitat.ball.position = release_from.lerp(muzzle,smoothstep(0,0.18,leg_clock))
+			else:
+				habitat.ball.position = muzzle.lerp(drop_spot,smoothstep(0.18,0.38,leg_clock))
+			if leg_clock>=0.48: finish_throw()
 
 func running_path(start: Vector2, finish: Vector2, returning: bool = false) -> Array[Vector2]:
 	# Rotate broad arcs through open ground, rather than repeating one flat line.
@@ -177,6 +198,8 @@ func update_companion(delta: float) -> void:
 func start_run(finish: Vector2, returning: bool = false) -> void:
 	run_points = running_path(habitat.puppy.position,finish,returning)
 	habitat.puppy.fetch_running = true
+	habitat.puppy.fetch_mouth_down = false
+	habitat.puppy.returning_ball = returning
 	habitat.puppy.target = run_points.pop_front()
 	leg = "return" if returning else "out"
 	leg_clock = 0.0
@@ -189,32 +212,27 @@ func _throw() -> void:
 	throw_button.disabled = true
 	var good = absf(bar.value - target_center()) <= profile.radius
 	good_throw=good
-	catch_shown=false
 	if good:
 		score += 1
 	rounds += 1
 	progress.text = "Bringing back throw %d of 3" % rounds
 	status.text = Game.personalize("Great throw! Go, Mochi!" if good else "A little wobbly, but Mochi is on it!")
+	launch = habitat.ball.position if habitat.ball.visible else habitat.puppy.position+Vector2(0,-85)
+	habitat.ball.scale = Vector2.ONE*clampf(habitat.puppy.awake_height()*0.16,26.0,42.0)/habitat.ball.texture.get_width()
 	habitat.ball.visible = true
 	var pattern = posmod(int(Game.active_outing.get("variant",0))+rounds,3)
 	landing = WalkArea.destination(habitat.puppy.walk_area,habitat.puppy.active_barriers(),Vector2(620+bar.value*1.4,[520.0,610.0,550.0][pattern]))
-	launch = habitat.puppy.position+Vector2(0,-85)
+	pickup_spot = WalkArea.destination(habitat.puppy.walk_area,habitat.puppy.active_barriers(),landing-Vector2(habitat.puppy.awake_height()*0.35,0))
 	habitat.ball.position = landing if Game.reduce_motion else launch
-	start_run(landing)
-	timer.start(3.0)
-	await timer.timeout
-	if not is_inside_tree():
-		return
-	start_run(WalkArea.SPAWNS.Park,true)
-	timer.start(2.5)
-	await timer.timeout
-	if not is_inside_tree():
-		return
+	start_run(pickup_spot)
+
+func finish_throw() -> void:
 	Game.checkpoint_outing(rounds, score)
 	leg = ""
 	run_points.clear()
-	habitat.ball.visible = false
 	habitat.puppy.fetch_running = false
+	habitat.puppy.fetch_mouth_down = false
+	habitat.puppy.returning_ball = false
 	habitat.puppy.target = WalkArea.SPAWNS.Park
 	if rounds >= 3:
 		finish_fetch()
@@ -246,14 +264,6 @@ func finish_fetch() -> void:
 	throw_button.get_meta("picture").texture = UI.place_icon(return_place)
 	throw_button.pressed.disconnect(_throw)
 	throw_button.pressed.connect(func(): finished.emit())
-
-func _notification(what: int) -> void:
-	if not is_instance_valid(timer):
-		return
-	if what == NOTIFICATION_APPLICATION_PAUSED:
-		timer.paused = true
-	elif what == NOTIFICATION_APPLICATION_RESUMED:
-		timer.paused = get_meta("dialog_paused", false)
 
 func throw_hint() -> String:
 	return (companion_name+" plays alongside you. " if not companion_name.is_empty() else "")+profile.title+". Tap in the green zone near %d%% power." % int(profile.center)

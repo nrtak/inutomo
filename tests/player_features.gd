@@ -89,13 +89,36 @@ func run() -> void:
 	main._process(0)
 	check(not is_instance_valid(main.notice_overlay), "Save warning clears after saving recovers")
 	main.show_page("Home")
-	game.update_growth()
+	game.last_growth_visit="2032-05-01"
+	game.begin_growth_visit("2032-05-02")
 	await process_frame
 	await process_frame
 	check(is_instance_valid(main.stage_overlay), "New stages open a growth celebration")
 	check(not game.is_processing(), "Growth moment pauses needs")
-	main.close_growth_moment()
+	var event=main.stage_overlay
+	check(event.words.text.contains(game.puppy_name) and event.has_node("ConversationCharacter"),"Nora introduces the player's dog before the reveal")
+	event.next_button.pressed.emit()
+	check(event.sparkles.visible and event.words.text.contains("young puppy"),"The reveal shows the earned stage and celebration artwork")
+	event.next_button.pressed.emit()
 	check(game.pending_stage.is_empty(), "Acknowledged celebrations do not repeat")
+	main.show_page("Shop")
+	game.points=game.EVOLUTION_POINTS
+	game.active_seconds=game.EVOLUTION_SECONDS
+	game.life.growth_paths["Toy Poodle"]=100
+	game.last_growth_visit="2000-01-01"
+	game._notification(Node.NOTIFICATION_APPLICATION_PAUSED)
+	game._notification(Node.NOTIFICATION_APPLICATION_RESUMED)
+	main._process(0)
+	event=main.stage_overlay
+	check(is_instance_valid(event) and game.breed=="Puppy","A new day's resume in the shop opens Nora's invitation with the original puppy")
+	event.next_button.pressed.emit()
+	check(game.breed=="Toy Poodle" and event.portrait.texture==Art.PUPPIES["Toy Poodle"] and event.words.text.contains("Toy Poodle"),"The chosen reveal introduces the breed by name and artwork")
+	check(game.life.picture_pages.growth.name==game.puppy_name and game.life.picture_pages.growth.day==IslandLife.today() and event.sparkles.is_visible_in_tree(),"Nora's illustrated page records the dog and celebration date")
+	event.next_button.pressed.emit()
+	game._notification(Node.NOTIFICATION_APPLICATION_PAUSED)
+	game._notification(Node.NOTIFICATION_APPLICATION_RESUMED)
+	main._process(0)
+	check(main.page=="Shop" and not is_instance_valid(main.stage_overlay),"The shop resumes and same-day visits do not replay the reveal")
 	game.set_process(false)
 	main.show_intro()
 	main.advance_intro()

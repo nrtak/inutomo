@@ -109,22 +109,22 @@ func run() -> void:
  fetch._throw()
  await create_timer(0.05).timeout
  main.request_page("Island")
- fetch._notification(NOTIFICATION_APPLICATION_RESUMED)
- check(fetch.timer.paused, "Returning to the app does not resume an outing behind its dialog")
- var paused_time = fetch.timer.time_left
+ game.notification(NOTIFICATION_APPLICATION_RESUMED)
+ check(not fetch.is_processing(), "Returning to the app does not resume an outing behind its dialog")
+ var paused_time = fetch.leg_clock
  var paused_position = main.habitat.puppy.position
  await create_timer(0.15).timeout
- check(fetch.timer.paused and is_equal_approx(fetch.timer.time_left, paused_time), "Leave confirmation pauses the current outing timer")
+ check(is_equal_approx(fetch.leg_clock, paused_time), "Leave confirmation pauses the current throw")
  check(main.habitat.puppy.position == paused_position, "Puppy pauses with the outing while deciding whether to leave")
  check(is_instance_valid(main.leave_overlay), "Leaving an outing asks before interrupting it")
  main.close_leave_prompt()
- check(not fetch.timer.paused, "Keeping the outing resumes its timer")
+ check(fetch.is_processing(), "Keeping the outing resumes the throw")
  main.open_navigation()
- paused_time = fetch.timer.time_left
+ paused_time = fetch.leg_clock
  await create_timer(0.15).timeout
- check(fetch.timer.paused and is_equal_approx(fetch.timer.time_left, paused_time), "Menu also pauses an in-progress outing")
+ check(not fetch.is_processing() and is_equal_approx(fetch.leg_clock, paused_time), "Menu also pauses an in-progress outing")
  main.close_navigation()
- check(not fetch.timer.paused, "Closing Menu resumes the outing")
+ check(fetch.is_processing(), "Closing Menu resumes the outing")
  main.show_page("Home")
  game.checkpoint_outing(3, 2)
  main.start_activity("Fetch")
