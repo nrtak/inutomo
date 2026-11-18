@@ -26,7 +26,7 @@ func _ready() -> void:
  add_child(panel)
  var content = UI.column(10)
  panel.add_child(content)
- var header = HBoxContainer.new()
+ var header = BoxContainer.new()
  header.add_theme_constant_override("separation", 12)
  content.add_child(header)
  wallet = UI.label("", 26, UI.TEAL)
@@ -35,7 +35,7 @@ func _ready() -> void:
  var purse = HBoxContainer.new()
  header.add_child(purse)
  var coin = TextureRect.new()
- coin.texture = preload("res://assets/ui/coin.svg")
+ coin.texture = preload("res://assets/manga/ui/coin.svg")
  coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
  coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
  coin.custom_minimum_size = Vector2(34, 34)
@@ -51,7 +51,10 @@ func _ready() -> void:
  visit.size_flags_horizontal = Control.SIZE_SHRINK_END
  visit.custom_minimum_size = Vector2(180, 84)
  header.add_child(visit)
- var tabs = HBoxContainer.new()
+ visit.visible=not shopping or vet_supplies
+ var tabs = GridContainer.new()
+ tabs.columns = 6
+ tabs.set_meta("portrait_columns",3)
  tabs.add_theme_constant_override("separation", 8)
  content.add_child(tabs)
  var categories = ["Care"] if vet_supplies else (["Featured"] + Goods.CATEGORIES if shopping else ["All"] + Goods.CATEGORIES)
@@ -147,6 +150,7 @@ func rebuild() -> void:
 
 func refresh() -> void:
  wallet.text = "Leah’s Supplies" if vet_supplies else ("June's Shop" if shopping else Game.puppy_name + "'s Bag")
+ if shopping and not vet_supplies: wallet.text={"Food":"Food & treats","Toys":"Toys & play","Accessories":"Accessories","Comfort":"Home comforts","Care":"Care goods"}.get(category,"June’s daily picks")
  if category == "Featured":
   wallet.text = "June’s daily picks"
  wallet.get_meta("balance").text = "%d coins" % Game.coins
@@ -161,11 +165,13 @@ func update_item_controls(kind: String, button: Button, count_label: Label) -> v
  var item: Dictionary = Goods.ITEMS[kind]
  var count = int(Game.items.get(kind, 0))
  count_label.text = "%d of %d in Bag" % [count, item.limit] if item.limit > 1 else ("Owned" if count > 0 else "Reusable")
+ count_label.visible=count>0 or not shopping
  if shopping:
   UI.button_caption(button, ("Bag full" if item.limit > 1 else "Owned") if count >= item.limit else "Buy")
   button.disabled = count >= item.limit or Game.coins < item.price
   if Game.coins < item.price and count < item.limit:
    count_label.text = "Need %d coins" % (item.price - Game.coins)
+   count_label.visible=true
  else:
   var placeable = item.category in ["Toys", "Comfort", "Accessories"]
   UI.button_caption(button, ("Wear" if item.category == "Accessories" else "Place") if placeable else ("Equipped" if item.limit == 1 else "Use"))
@@ -204,7 +210,7 @@ func purchase_feedback(kind: String) -> void:
  host.add_child(item)
  item.global_position = rows[kind].button.global_position - Vector2(0, 90)
  var bag = TextureRect.new()
- bag.texture = preload("res://assets/ui/menu_bag.svg")
+ bag.texture = preload("res://assets/manga/ui/menu_bag.svg")
  bag.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
  bag.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
  bag.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -243,7 +249,7 @@ func show_details(kind: String) -> void:
  content.custom_minimum_size.x = 760
  panel.add_child(content)
  content.add_child(UI.label(Goods.ITEMS[kind].name, 32, UI.TEAL))
- var row = HBoxContainer.new()
+ var row = BoxContainer.new()
  row.add_theme_constant_override("separation", 24)
  content.add_child(row)
  var picture = TextureRect.new()

@@ -21,8 +21,8 @@ var controlled = false
 var base_scale = 1.0
 var location_portrait = false
 var presentation_style = ""
-var portrait_width = 320.0
-var portrait_height = 325.0
+var portrait_width: float = 320.0
+var portrait_height: float = 325.0
 var portrait_scale_height = 0.0
 var reaction_time = 0.0
 var reaction_kind = ""
@@ -30,7 +30,7 @@ var nap_remaining = 65.0
 var awake_remaining = 0.0
 var napping = true
 var current_breed = ""
-var visible_size = Vector2.ONE
+var visible_size: Vector2 = Vector2.ONE
 var pose_bounds: Dictionary = {}
 var walk_texture: Texture2D
 var walk_frames: Array[Rect2] = []
@@ -63,10 +63,27 @@ var expression_time = 0.0
 var expression_kind = ""
 var expression_clock = 0.0
 var expression_index = 0
+var screen_width_limit = INF
+var include_actor_scale_in_width_limit = false
+var feeding_spot = Vector2(INF,INF)
+var feeding_barrier = Rect2()
+var welcome_duration = 0.0
+var welcome_hops = 0
+var fetch_running = false
+var run_view = "side"
+var activity_speed = 0.0
+var attention_time = 0.0
+var attention_left = false
+var celebration_time = 0.0
+var displayed_size = Vector2.ZERO
+var action_item: Sprite2D
+var action_item_time=0.0
+var action_item_duration=0.0
+var action_item_kind=""
 
 func _ready() -> void:
 	shadow = Sprite2D.new()
-	shadow.texture = preload("res://assets/puppies/shadow.svg")
+	shadow.texture = preload("res://assets/manga/puppies/shadow.svg")
 	shadow.position.y = -5
 	shadow.scale = Vector2(1.5, 1)
 	add_child(shadow)
@@ -80,6 +97,10 @@ func _ready() -> void:
 	reaction_icon.position = Vector2(125, -180)
 	reaction_icon.visible = false
 	add_child(reaction_icon)
+	action_item=Sprite2D.new()
+	action_item.material=UI.art_cutout()
+	action_item.visible=false
+	add_child(action_item)
 	Game.care_performed.connect(react_to_care)
 	set_breed()
 	position = Vector2(640, 550)
@@ -96,7 +117,7 @@ func set_breed() -> void:
 func set_pose(asleep: bool) -> void:
 	var unified = presentation_style == "Beach"
 	var texture: Texture2D = (Art.DRESSED_SLEEP_TEXTURES[Game.breed] if asleep else Art.DRESSED_PUPPIES[Game.breed]) if outfit_equipped() else (Art.SLEEP_TEXTURES[Game.breed] if asleep else Art.PUPPIES[Game.breed])
-	sprite.material = sleep_material if (asleep and Game.breed != "Puppy") or Art.EXTRA_DOGS.has(Game.breed) else null
+	sprite.material = sleep_material
 	var accessory: String = preview_accessory if not preview_accessory.is_empty() else Game.life.accessory
 	if Goods.ITEMS.has(accessory) and Goods.ITEMS[accessory].has("color") and (not preview_accessory.is_empty() or Game.items.get(accessory, 0) > 0):
 		style_material.set_shader_parameter("bandana", Goods.ITEMS[accessory].color)
@@ -124,6 +145,13 @@ func set_pose(asleep: bool) -> void:
 		sprite.scale = Vector2.ONE*base_scale
 		shadow.scale = Vector2(visible_size.x*base_scale/140.0,0.8)
 		shadow.modulate = Color("b39b81")
+	fit_screen_width()
+
+func fit_screen_width() -> void:
+	if is_inf(screen_width_limit) or not is_instance_valid(sprite) or sprite.texture==null: return
+	var width=screen_width_limit/maxf(.01,scale.x) if include_actor_scale_in_width_limit else screen_width_limit
+	base_scale=minf(base_scale,width/maxf(1,sprite.get_rect().size.x))
+	sprite.scale=Vector2.ONE*base_scale
 
 func request_move(point: Vector2) -> void:
 	if controlled or Game.resting:
@@ -152,19 +180,49 @@ func begin_expression(kind: String, duration: float = 2.0) -> bool:
 	expression_kind = kind
 	expression_time = duration
 	expression_clock = 0
+	welcome_duration = 0.0
 	return true
 
-func welcome_player() -> void:
+func welcome_player(away_seconds: float = 0.0) -> void:
 	if Game.resting or PuppyHealth.unwell(Game): return
-	if Game.breed=="Puppy" and napping:
+	if Game.breed=="Puppy" and napping and away_seconds<1800:
 		react_to_care("Pet")
 	else:
-		begin_expression("Greet",2.5)
+		wake_briefly()
+		target = position
+		motion_velocity = Vector2.ZERO
+		reaction_time = 0
+		pending_decor_action = ""
+		trick_command = ""
+		welcome_hops = 3 if away_seconds>=7200 else (2 if away_seconds>=1800 else 1)
+		var duration = 1.2+welcome_hops*0.6
+		begin_expression("Greet",duration)
+		welcome_duration = duration
+		decision = duration+2
+		mood = "So happy you're back!" if away_seconds>=1800 else "Happy to see you"
 
 func show_expression() -> void:
+	show_reaction_pose(expression_kind)
+	if welcome_duration>0 and not Game.reduce_motion:
+		var elapsed = welcome_duration-expression_time
+		var hopping = elapsed>=0.2 and elapsed<0.2+welcome_hops*0.6
+		if hopping:
+			var phase = fmod(elapsed-0.2,0.6)/0.6
+			var lift = sin(phase*PI)
+			var clearance = maxf(0,position.y-home_headroom-visible_size.y*base_scale) if home_interactions else 40.0
+			var jump = lift*(22.0+welcome_hops*5.0)
+			var height = maxf(1,visible_size.y*base_scale)
+			# Bend through the hop when the closer camera leaves little headroom.
+			var stretch = minf(1.0+lift*0.025,(height+clearance-jump)/height)
+			sprite.position.y = -jump
+			sprite.rotation = sin(phase*TAU)*0.025
+			sprite.scale *= Vector2(1.0-lift*0.025,stretch)
+
+func show_reaction_pose(pose: String) -> void:
 	var dressed = outfit_equipped()
-	sprite.texture = Art.expression_texture(Game.breed,expression_kind,dressed)
+	sprite.texture = MomentArt.dog(Game.breed,pose,dressed)
 	sprite.region_enabled = false
+	visible_size = sprite.texture.get_size()
 	sprite.offset = Vector2(0,-sprite.texture.get_height()*0.5)
 	sprite.material = style_material if dressed else sleep_material
 	if dressed:
@@ -172,12 +230,36 @@ func show_expression() -> void:
 		style_material.set_shader_parameter("recolor",true)
 		style_material.set_shader_parameter("bandana",Goods.ITEMS[accessory].color)
 	var height = minf(portrait_width,portrait_height) if presentation_style=="Beach" else awake_height()
-	base_scale = height/Art.expression_texture(Game.breed,"Tilt",dressed).get_height()
+	# Story sniff poses come from higher-resolution sheets than the idle reactions.
+	base_scale = height*0.68/visible_size.y if pose=="Sniff" else height/Art.expression_texture(Game.breed,"Tilt",dressed).get_height()
 	sprite.scale = Vector2.ONE*base_scale
+	fit_screen_width()
 	sprite.position = Vector2.ZERO
 	sprite.rotation = 0
 	sprite.flip_h = false
 	reaction_icon.visible = false
+
+func show_meal_reaction() -> void:
+	var elapsed = reaction_duration-reaction_time
+	show_reaction_pose("Greet" if elapsed<0.65 or reaction_time<0.45 else "Sniff")
+	var eating = elapsed>=0.65 and reaction_time>=0.45
+	if home_interactions and eating:
+		var bowl = IslandLife.home_point(Game,"Feed") if not feeding_barrier.has_area() else feeding_barrier.get_center()
+		sprite.flip_h = bowl.x<position.x
+		var radius = feeding_barrier.size.x*0.5 if feeding_barrier.has_area() else 68.0
+		var gap = maxf(0,absf(bowl.x-position.x)-visible_size.x*base_scale*0.5-radius-6)
+		var lean = minf(clampf((elapsed-0.65)/0.25,0,1),clampf((reaction_time-0.45)/0.25,0,1))
+		sprite.position.x = 0 if Game.reduce_motion else signf(bowl.x-position.x)*minf(90,gap)*lean
+	if not Game.reduce_motion and not PuppyHealth.unwell(Game):
+		if elapsed<0.65:
+			var clearance = maxf(0,position.y-home_headroom-visible_size.y*base_scale) if home_interactions else 12.0
+			sprite.position.y = -absf(sin(elapsed/0.65*TAU))*minf(12,clearance)
+		else:
+			sprite.position.y = sin(elapsed*13)*1.6 if eating else 0.0
+			sprite.rotation = sin(elapsed*13)*0.012 if eating else 0.0
+	reaction_icon.visible = true
+	reaction_icon.position = Vector2(0,-visible_size.y*base_scale-22)
+	reaction_icon.modulate.a = minf(1,reaction_time*2)
 
 func idle_expression(delta: float) -> void:
 	if Game.reduce_motion or Game.resting or PuppyHealth.unwell(Game) or reaction_time>0 or position.distance_to(target)>1: return
@@ -188,8 +270,80 @@ func idle_expression(delta: float) -> void:
 		expression_index += 1
 
 func _process(delta: float) -> void:
+	if Game.paused_at>0: return
+	_animate(delta)
+	update_action_item(delta)
+	var target_size=sprite.get_rect().size*sprite.scale
+	if displayed_size==Vector2.ZERO or Game.reduce_motion or controlled or not illustrated_pose.is_empty():
+		displayed_size=target_size
+	else:
+		displayed_size=displayed_size.lerp(target_size,1.0-exp(-delta*24.0))
+		var width_limit=screen_width_limit if not is_inf(screen_width_limit) else displayed_size.x
+		displayed_size.x=minf(displayed_size.x,width_limit)
+		sprite.scale*=Vector2(displayed_size.x/maxf(1,target_size.x),displayed_size.y/maxf(1,target_size.y))
+	attention_time=maxf(0,attention_time-delta)
+	if attention_time>0 and not Game.resting and not napping and move_speed<1 and (reaction_time<=0 or reaction_kind!="Feed") and trick_command.is_empty():
+		sprite.flip_h=attention_left
+		if not Game.reduce_motion: sprite.rotation+=sin(minf(1,attention_time)*PI)*(-0.025 if attention_left else 0.025)
+	celebration_time=maxf(0,celebration_time-delta)
+	queue_redraw()
+
+func show_action_item(texture: Texture2D, kind: String = "Find", seconds: float = 3.0) -> void:
+	if texture==null: return
+	action_item.texture=texture
+	action_item_kind=kind
+	action_item_duration=seconds
+	action_item_time=seconds
+	if kind=="Find":
+		target=position
+		motion_velocity=Vector2.ZERO
+		begin_expression("Sniff",0.9)
+	update_action_item(0)
+
+func update_action_item(delta: float) -> void:
+	if not is_instance_valid(action_item): return
+	var previous=action_item_time
+	action_item_time=maxf(0,action_item_time-delta)
+	if Game.resting and action_item_kind!="Treat": action_item_time=0
+	var elapsed=action_item_duration-action_item_time
+	action_item.visible=action_item_time>0 and (action_item_kind!="Find" or elapsed>=.55)
+	if not action_item.visible: return
+	if action_item_kind in ["Care","Treat","Play"]: reaction_icon.visible=false
+	var height=visible_size.y*base_scale
+	var width=visible_size.x*base_scale
+	var object_size=minf(76,maxf(32,height*.29))
+	action_item.scale=Vector2.ONE*(object_size/maxf(1,action_item.texture.get_size().length()))
+	action_item.modulate.a=minf(1,action_item_time*3)
+	action_item.rotation=0
+	match action_item_kind:
+		"Care":
+			action_item.position=Vector2(width*.27,-height*.56+(0 if Game.reduce_motion else fposmod(elapsed,0.65)*24))
+			action_item.rotation=-.35
+		"Treat":
+			action_item.position=Vector2(width*.22,-height*.55)
+			action_item.scale*=lerpf(.3,1.0,action_item_time/action_item_duration)
+		"Play":
+			action_item.position=Vector2(width*.36,-object_size*.4-(0 if Game.reduce_motion else absf(sin(elapsed*4))*height*.12))
+		_:
+			action_item.position=Vector2(width*.40,-object_size*.35)
+			if previous>action_item_duration-1 and action_item_time<=action_item_duration-1: celebrate_success()
+
+func notice_point(point: Vector2) -> void:
+	if Game.resting or napping or PuppyHealth.unwell(Game): return
+	attention_left=point.x<position.x
+	attention_time=1.4
+	if not location_portrait and reaction_time<=0 and position.distance_to(target)<1: begin_expression("Tilt",1.4)
+
+func celebrate_success() -> void:
+	if Game.resting or PuppyHealth.unwell(Game): return
+	celebration_time=0.9
+	begin_expression("Greet",0.9)
+	Sound.play_effect("happy",-27)
+
+func _animate(delta: float) -> void:
 	if Game.paused_at > 0:
 		return
+	sprite.position.x = 0
 	if current_breed!=Game.breed:
 		expression_time = 0
 		set_breed()
@@ -241,7 +395,11 @@ func _process(delta: float) -> void:
 		set_pose(Game.resting)
 		if portrait_scale_height > 0:
 			scale = Vector2.ONE*minf(1.85,portrait_scale_height/(visible_size.y*base_scale))
+			fit_screen_width()
 		reaction_time = maxf(0,reaction_time-delta)
+		if reaction_time>0 and reaction_kind=="Feed" and not Game.resting:
+			show_meal_reaction()
+			return
 		reaction_icon.visible = reaction_time > 0
 		sprite.position.y = 0 if Game.reduce_motion else sin(clock*2)*0.7
 		if reaction_icon.visible:
@@ -338,9 +496,8 @@ func _process(delta: float) -> void:
 		var bounce = 0.0 if Game.reduce_motion else absf(sin(reaction_time * 7))
 		match reaction_kind:
 			"Feed":
-				sprite.position.y = bounce * 3
-				sprite.rotation = sin(reaction_time * 5) * 0.035
-				reaction_icon.position = Vector2(0,-visible_size.y*base_scale-22)
+				show_meal_reaction()
+				return
 			"Play":
 				sprite.position.y = -bounce * (18 if IslandLife.personality(Game) == "Playful" else 14)
 				sprite.rotation = sin(reaction_time * 8) * 0.05
@@ -372,14 +529,14 @@ func _process(delta: float) -> void:
 	sprite.rotation = 0
 	if decision <= 0 and not controlled:
 		decision = 20.0 if baby else randf_range(3, 6)
-		if home_interactions and IslandLife.personality(Game) == "Playful" and randf() < 0.3 and begin_toy_visit():
+		if home_interactions and Game.needs.Hunger>=45 and Game.needs.Energy>=30 and randf() < (0.3 if IslandLife.personality(Game)=="Playful" else 0.12) and begin_toy_visit():
 			pass
 		elif baby:
 			target = position + Vector2(randf_range(-30, 30) * (1 + Game.growth_fraction() * 2), randf_range(-5, 5))
 			target = target.clamp(bounds.position, bounds.end)
 			mood = "A tiny stretch before another nap"
 		elif Game.needs.Energy < 20:
-			target = position
+			target = WalkArea.destination(walk_area,active_barriers(),IslandLife.home_point(Game,"Rest")) if home_interactions else position
 			mood = "A little sleepy"
 		elif Game.needs.Hunger < 30:
 			target = Vector2(430, 540)
@@ -412,14 +569,14 @@ func _process(delta: float) -> void:
 		sprite.position.y = 0 if Game.reduce_motion else sin(clock * 2) * 0.5
 		sprite.rotation = 0
 		settle_time = maxf(0, settle_time - delta)
-		if controlled or settle_time > 0:
+		if (controlled or settle_time > 0) and not fetch_running:
 			set_walk_pose()
 		if not controlled: idle_expression(delta)
 
 func active_barriers() -> Array[Rect2]:
 	var result: Array[Rect2] = barriers.duplicate()
 	if home_interactions and Game.life.bowl:
-		result.append(IslandLife.bowl_barrier(Game))
+		result.append(feeding_barrier if feeding_barrier.has_area() else IslandLife.bowl_barrier(Game))
 	if bed_barrier.has_area() and not Game.resting and not settling_for_rest and not napping:
 		result.append(bed_barrier)
 	return result
@@ -439,6 +596,8 @@ func advance_walk(delta: float) -> bool:
 	var distance = position.distance_to(waypoint)
 	var direction = (waypoint-position).normalized()
 	var desired_speed = lerpf(45,100,Game.growth_fraction()) if Game.breed=="Puppy" and not controlled else 150.0
+	if fetch_running: desired_speed = 210.0
+	if controlled and activity_speed>0: desired_speed=activity_speed
 	if not controlled and PuppyHealth.unwell(Game):
 		desired_speed *= 0.55
 		mood = "Taking it gently while recovering"
@@ -473,6 +632,12 @@ func stride_length() -> float:
 	return 64.0 if Game.breed == "Puppy" else (84.0 if Game.breed=="Dachshund" else 104.0)
 
 func set_walk_pose() -> void:
+	if fetch_running:
+		var direction = motion_velocity.normalized()
+		run_view = "toward" if direction.y>0.18 else ("away" if direction.y < -0.18 else "side")
+		if run_view!="side":
+			set_run_pose(run_view)
+			return
 	var baby = Game.breed == "Puppy"
 	var frame_index = int(fmod(stride_distance / stride_length(), 1.0) * walk_frames.size())
 	sprite.texture = walk_texture
@@ -483,19 +648,42 @@ func set_walk_pose() -> void:
 	var anchor: float = data.anchors[frame_index]
 	sprite.offset.x = (sprite.region_rect.size.x * 0.5 - anchor) * (-1 if sprite.flip_h else 1)
 	base_scale = awake_height() / float(data.height)
+	if fetch_running: base_scale *= fetch_perspective()
 	sprite.scale = Vector2.ONE * base_scale
+	fit_screen_width()
+
+func fetch_perspective() -> float:
+	return lerpf(0.93,1.04,clampf((position.y-505.0)/130.0,0,1))
+
+func set_run_pose(angle: String) -> void:
+	var dressed = outfit_equipped()
+	var data: Dictionary = Art.RUN_DATA[Game.breed]["dressed" if dressed else "bare"][angle]
+	var frame = int(fmod(stride_distance/stride_length(),1.0)*4)
+	var box: Array = data.regions[frame]
+	sprite.texture = Art.run_sheet(Game.breed)
+	sprite.region_enabled = true
+	sprite.region_rect = Rect2(box[0],box[1],box[2],box[3])
+	sprite.offset = Vector2((box[2]*0.5-float(data.anchors[frame]))*(-1 if sprite.flip_h else 1),-box[3]*0.5)
+	sprite.material = style_material if dressed else sleep_material
+	base_scale = awake_height()/float(data.height)*fetch_perspective()
+	sprite.scale = Vector2.ONE*base_scale
+	fit_screen_width()
 
 func react_to_care(kind: String) -> void:
 	if controlled and not location_portrait:
 		return
+	action_item_time=0
+	if is_instance_valid(action_item): action_item.visible=false
 	expression_time = 0
 	expression_clock = 0
+	welcome_duration = 0.0
 	command_delay = 0
 	if not arriving_at_decor:
 		pending_decor_action = ""
 		carrying_toy = false
 	if home_interactions and not arriving_at_decor and ((kind == "Feed" and Game.life.bowl) or (kind == "Play" and Game.items.get(Game.life.toy, 0) > 0)):
 		var point = IslandLife.feeding_point(Game) if kind == "Feed" else IslandLife.home_point(Game,kind)
+		if kind=="Feed" and not is_inf(feeding_spot.x): point=feeding_spot
 		var destination = WalkArea.destination(walk_area,active_barriers(),point)
 		if position.distance_to(destination) > 2:
 			wake_briefly()
@@ -504,6 +692,7 @@ func react_to_care(kind: String) -> void:
 			pending_decor_action = kind
 			reaction_time = 0
 			decision = 30
+			if kind=="Feed": mood = "Dinner! Hurrying over for a tasty bowl"
 			return
 	if kind == "Rest":
 		settling_for_rest = false
@@ -533,10 +722,13 @@ func react_to_care(kind: String) -> void:
 		icon_name = "heart"
 	if kind == "Play" and Game.life.toy == IslandLife.favorite(Game, "Toys") and Game.items.get(Game.life.toy, 0) > 0:
 		icon_name = "heart"
-	reaction_icon.texture = load("res://assets/ui/" + icon_name + ".svg")
+	reaction_icon.texture = load("res://assets/manga/ui/" + icon_name + ".svg")
 	if kind == "Play" and icon_name != "heart" and Game.items.get(Game.life.toy, 0) > 0:
 		reaction_icon.texture = Goods.picture(Game.life.toy)
 	reaction_icon.scale = Vector2.ONE * (58.0 / reaction_icon.texture.get_width())
+	if kind in ["Care","Treat","Play"]:
+		var picture=Goods.picture("Brush" if kind=="Care" else (Game.last_food if kind=="Treat" and Goods.ITEMS.has(Game.last_food) else (Game.life.toy if kind=="Play" and Goods.ITEMS.has(Game.life.toy) and Game.items.get(Game.life.toy,0)>0 else ("Treat" if kind=="Treat" else "Toy"))))
+		show_action_item(picture,kind,reaction_duration)
 	mood = {"Feed": "Enjoying a tasty snack", "Play": "Wiggling with excitement", "Care": "Feeling fresh and loved", "Rest": "Settling in for a nap", "Pet": "Leaning into a gentle pat", "Treat": "Savoring a little reward", "Sniff": "Sniffing the salty breeze", "Sit": "Trying a patient little sit"}.get(kind, "Enjoying island life")
 	if kind in IslandLife.COMMANDS:
 		var level = int(Game.life.training.get(kind,0))
@@ -551,6 +743,11 @@ func react_to_care(kind: String) -> void:
 		mood = "Ready for a new adventure"
 
 func _draw() -> void:
+	if celebration_time>0:
+		var rise=0.0 if Game.reduce_motion else (0.9-celebration_time)*12
+		var height=visible_size.y*base_scale
+		var color=Color(1,1,1,minf(1,celebration_time*3))
+		draw_texture_rect(preload("res://assets/manga/ui/heart.svg"),Rect2(Vector2(-12,-height-30-rise),Vector2(24,24)),false,color)
 	if discovery_time > 0 and IslandLife.personality(Game) == "Curious":
 		for i in 3:
 			draw_circle(Vector2(40+i*14,-12-i*9),3,Color(0.4,0.8,0.7,minf(1,discovery_time)))
@@ -565,6 +762,8 @@ func react_to_discovery() -> void:
 	mood = {"Curious":"Investigating a new island find", "Cuddly":"Sharing a little discovery with you", "Playful":"Excited about a new treasure"}[IslandLife.personality(Game)]
 	if not controlled and not Game.resting:
 		react_to_care("Sniff" if IslandLife.personality(Game) == "Curious" else "Pet")
+	elif not Game.resting:
+		begin_expression("Sniff",1.3)
 
 func begin_toy_visit() -> bool:
 	if not home_interactions or controlled or not Game.can_explore() or Game.items.get(Game.life.toy,0) <= 0 or not pending_decor_action.is_empty():

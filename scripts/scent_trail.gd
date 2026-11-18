@@ -40,7 +40,7 @@ func _ready() -> void:
  for i in 3:
   var spec: Dictionary = IslandAdventure.TRAILS[0][i]
   var button = UI.button(["Tree","Path","Bench"][i],choose_spot.bind(i),Color("fff0bd"))
-  button.icon = load("res://assets/ui/"+spec.icon+".svg")
+  button.icon = load("res://assets/manga/ui/"+spec.icon+".svg")
   button.expand_icon = true
   button.add_theme_constant_override("icon_max_width",24)
   button.add_theme_font_size_override("font_size",19)
@@ -73,7 +73,12 @@ func _process(_delta: float) -> void:
    habitat.puppy.target = habitat.puppy.position
    feedback.text = "A little rest or recovery first. Your trail is saved."
   elif habitat.puppy.position.distance_to(habitat.puppy.target)<2:
+   var spec: Dictionary=IslandAdventure.TRAILS[Game.life.adventure.scent.route][pending]
    var result = IslandAdventure.sniff(Game,pending)
+   if result.ok:
+    var picture=Goods.picture("PlushToy" if Game.life.adventure.scent.route==1 else "Toy") if pending==2 else load("res://assets/manga/ui/"+spec.icon+".svg")
+    habitat.puppy.show_action_item(picture)
+   else: habitat.puppy.begin_expression("Sniff",1.0)
    feedback.text = result.text
    pending = -1
  update_state()
@@ -91,7 +96,7 @@ func update_state() -> void:
  if shown_route != state.route:
   shown_route = state.route
   for i in spots.size():
-   spots[i].icon = load("res://assets/ui/"+IslandAdventure.TRAILS[state.route][i].icon+".svg")
+   spots[i].icon = load("res://assets/manga/ui/"+IslandAdventure.TRAILS[state.route][i].icon+".svg")
  var blocked = Game.activity_block_reason()
  if not blocked.is_empty():
   clue.text = blocked+". Your discoveries are saved."

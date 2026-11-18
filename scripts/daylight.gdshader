@@ -16,6 +16,14 @@ uniform vec4 falls_d = vec4(0.0);
 uniform bool motion_enabled = true;
 uniform bool island_land_mask = false;
 uniform float water_shimmer = 0.065;
+uniform float cloud_cover : hint_range(0.0,1.0) = 0.0;
+uniform float wetness : hint_range(0.0,1.0) = 0.0;
+uniform bool indoor = false;
+uniform vec4 weather_window = vec4(0.0,0.0,1.0,1.0);
+uniform float sky_height = 0.35;
+uniform float night_amount : hint_range(0.0,1.0) = 0.0;
+uniform float sunset_amount : hint_range(0.0,1.0) = 0.0;
+uniform float dawn_amount : hint_range(0.0,1.0) = 0.0;
 varying vec4 art_modulate;
 float area_mask(vec2 point, vec4 area) {
  if (area.z <= 0.0 || area.w <= 0.0) { return 0.0; }
@@ -57,8 +65,40 @@ void fragment() {
  float stream = pow(0.5+0.5*sin(UV.y*100.0-motion_time*2.0),4.0)*falls*0.10;
  art.rgb = mix(art.rgb,vec3(0.92,0.99,1.0),shimmer+stream);
 	float luminance = dot(art.rgb, vec3(0.2126, 0.7152, 0.0722));
-	vec3 night_color = mix(art.rgb, vec3(luminance), coolness * 0.42);
-	vec3 lighting = night_color * mix(vec3(1.0), tone.rgb, 0.24) * max(exposure, 0.90);
+	float outdoors = indoor ? area_mask(UV,weather_window) : 1.0;
+	float sky = (1.0-smoothstep(sky_height-0.07,sky_height+0.035,UV.y));
+	// Replace brilliant blue and warm sunset washes with a quiet overcast sky.
+	// Dark ink and green canopy remain intact rather than being painted over.
+	float sky_color = smoothstep(0.0,0.12,art.b-art.r)*smoothstep(0.0,0.08,art.b-art.g)
+		+smoothstep(0.62,0.88,luminance)*(1.0-smoothstep(0.01,0.14,art.g-art.b))
+		+smoothstep(0.02,0.20,art.r-art.b)*smoothstep(0.42,0.70,luminance);
+	vec3 grey_sky = mix(vec3(0.68,0.73,0.77),vec3(0.52,0.60,0.67),wetness);
+	grey_sky*=0.87+0.18*luminance;
+	art.rgb=mix(art.rgb,grey_sky,clamp(sky_color,0.0,1.0)*sky*cloud_cover*outdoors*0.94);
+	// Diffuse rain light softens painted sunlight; a cool, damp wash reaches the landscape.
+	luminance=dot(art.rgb,vec3(0.2126,0.7152,0.0722));
+	art.rgb=mix(art.rgb,vec3(luminance)*vec3(0.94,0.99,1.05),cloud_cover*outdoors*0.27);
+	art.rgb*=1.0-outdoors*(cloud_cover*0.09+wetness*0.10);
+	vec3 night_color = mix(art.rgb, vec3(luminance)*0.85, coolness * 0.38);
+	float local_exposure=indoor ? mix(max(exposure,0.56),exposure,outdoors) : exposure;
+	vec3 lighting = night_color * mix(vec3(1.0), tone.rgb, 0.52) * local_exposure;
+	float open_sky=sky*clamp(sky_color,0.0,1.0)*outdoors;
+	float horizon=clamp(UV.y/max(sky_height,0.01),0.0,1.0);
+	// Sunset changes the painted palette: amber sky, rose clouds, warm brown shadows.
+	vec3 amber_sky=mix(vec3(0.65,0.36,0.36),vec3(0.99,0.69,0.39),horizon);
+	vec3 dusk_art=mix(vec3(0.22,0.14,0.19),vec3(0.96,0.73,0.50),pow(luminance,0.86));
+	dusk_art=mix(art.rgb,dusk_art,0.65);
+	dusk_art=mix(dusk_art,amber_sky*(0.87+0.18*luminance),open_sky*0.94);
+	dusk_art=mix(dusk_art,vec3(dot(dusk_art,vec3(0.2126,0.7152,0.0722))),cloud_cover*0.24);
+	lighting=mix(lighting,dusk_art,sunset_amount*(indoor ? mix(0.45,1.0,outdoors) : 1.0));
+	vec3 dawn_sky=mix(vec3(0.52,0.55,0.72),vec3(1.0,0.77,0.58),horizon);
+	lighting=mix(lighting,dawn_sky*(0.87+0.15*luminance),open_sky*dawn_amount);
+	// Moonlit blues retain linework and value differences without a black veil.
+	vec3 blue_art=mix(vec3(0.065,0.115,0.22),vec3(0.34,0.46,0.66),pow(luminance,0.85));
+	vec3 blue_sky=mix(vec3(0.075,0.135,0.27),vec3(0.20,0.31,0.47),horizon);
+	blue_sky=mix(blue_sky,vec3(0.22,0.29,0.40),cloud_cover*0.32);
+	blue_art=mix(blue_art,blue_sky*(0.88+0.16*luminance),open_sky*0.90);
+	lighting=mix(lighting,blue_art,night_amount*(indoor ? mix(0.58,1.0,outdoors) : 1.0));
 	float warmth = clamp(lamp_glow(UV, lamp_0) + lamp_glow(UV, lamp_1) + lamp_glow(UV, lamp_2) + lamp_glow(UV, lamp_3), 0.0, 1.0);
 	float evening = 1.0 - smoothstep(0.85, 0.98, exposure);
 	vec3 lamplight = art.rgb * vec3(1.0, 0.93, 0.80) + vec3(0.14, 0.075, 0.025);

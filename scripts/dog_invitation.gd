@@ -6,6 +6,7 @@ var join_button: Button
 var shown = ""
 var home_clock = 0.0
 var last_invitation = ""
+var surprise_shown = false
 
 func _ready() -> void:
 	name = "DogInvitation"
@@ -39,11 +40,13 @@ func _process(delta: float) -> void:
 		home_clock += delta
 		if home_clock>=75:
 			home_clock = 0
-			IslandConnections.offer(Game)
-	var info = IslandConnections.invitation_info(Game)
+			if not IslandSurprises.offer(Game) and IslandSurprises.info(Game).is_empty(): IslandConnections.offer(Game)
+	var surprise=IslandSurprises.info(Game)
+	surprise_shown=not surprise.is_empty()
+	var info=surprise if surprise_shown else IslandConnections.invitation_info(Game)
 	visible = home and not info.is_empty() and IslandConnections.available(Game) and is_instance_valid(host.habitat) and not host.habitat.puppy.napping
 	if not visible: return
-	var current: String = Game.life.connections.invitation
+	var current: String = "Surprise:"+Game.life.surprises.kind+Game.life.surprises.buddy if surprise_shown else Game.life.connections.invitation
 	if current!=last_invitation:
 		last_invitation = current
 		var dog = host.habitat.puppy
@@ -54,11 +57,11 @@ func _process(delta: float) -> void:
 			else: dog.react_to_care(info.reaction)
 	words.text = info.text
 	join_button.text = info.join
-	join_button.disabled = IslandConnections.invitation_wait(Game)>0
+	join_button.disabled = not IslandSurprises.eligible(Game) if surprise_shown else IslandConnections.invitation_wait(Game)>0
 	arrange()
 
 func respond(join: bool) -> void:
-	var result = IslandConnections.respond(Game,join)
+	var result = IslandSurprises.respond(Game,join) if surprise_shown else IslandConnections.respond(Game,join)
 	if not result.ok:
 		host.show_feedback(result.text)
 		return
@@ -78,3 +81,4 @@ func arrange() -> void:
 	words.custom_minimum_size.x = width-40
 	size = Vector2(width,get_combined_minimum_size().y)
 	position = Vector2(safe.left,host.size.y-safe.bottom-size.y-8)
+	if host.size.y>host.size.x: position.y-=260

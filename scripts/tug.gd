@@ -82,10 +82,16 @@ func arrange() -> void:
 	panel.position = Vector2(size.x-safe.right-340,safe.top+100)
 	panel.size = Vector2(340,0)
 	hint.custom_minimum_size.x = 300
+	if size.y>size.x:
+		panel.position.x=safe.left
+		panel.custom_minimum_size.x=size.x-safe.left-safe.right
+		panel.size.x=panel.custom_minimum_size.x
+		hint.custom_minimum_size.x=panel.size.x-40
 	panel.size.y = panel.get_combined_minimum_size().y
 	var world = host.habitat.world
 	if world.scale.x>0:
 		dog_origin.x = minf(650,(panel.position.x-30-world.position.x)/world.scale.x-190)
+		if size.y>size.x: dog_origin.x=610
 		var dog = host.habitat.puppy
 		dog.position = dog_origin+Vector2(-tension*12,0)
 		dog.target = dog.position

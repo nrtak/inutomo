@@ -110,7 +110,7 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	var view = main.world_host.get_node("WelcomeDayView")
-	check(main.habitat.background.texture == preload("res://assets/backgrounds/club_picnic_anime.png"), "Picnic uses its new matching anime background")
+	check(main.habitat.background.texture == preload("res://assets/manga/backgrounds/club_picnic_anime.png"), "Picnic uses its new matching anime background")
 	check(main.habitat.puppy.current_breed == game.breed and main.habitat.companion_name() == "Momo", "The picnic uses the player's dog alongside the named friend")
 	var old_button = view.content.get_child(0)
 	for i in 5:

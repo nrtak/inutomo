@@ -1,55 +1,55 @@
 class_name Art
 extends RefCounted
 
-static var EXTRA_DOGS: Dictionary = preload("res://assets/puppies/extra_dogs_anime_frames.json").data
-static var REACTIONS: Dictionary = preload("res://assets/puppies/reactions_anime_frames.json").data
+static var EXTRA_DOGS: Dictionary = preload("res://assets/manga/puppies/extra_dogs_anime_frames.json").data
+static var REACTIONS: Dictionary = preload("res://assets/manga/puppies/reactions_anime_frames.json").data
 
 # Stable slots: replace these textures with layered production artwork.
-const HOME = preload("res://assets/backgrounds/home_anime.png")
-const PARK = preload("res://assets/backgrounds/park_anime.png")
-const BEACH = preload("res://assets/backgrounds/beach_anime.png")
-const ISLAND = preload("res://assets/backgrounds/island_anime_connected.png")
+const HOME = preload("res://assets/manga/backgrounds/home_anime.png")
+const PARK = preload("res://assets/manga/backgrounds/park_anime.png")
+const BEACH = preload("res://assets/manga/backgrounds/beach_anime.png")
+const ISLAND = preload("res://assets/manga/backgrounds/island_anime_connected.png")
 const DRESSED_PUPPIES = {
-	"Puppy": preload("res://assets/puppies/puppy_anime.tres"),
-	"Shiba Inu": preload("res://assets/puppies/shiba_anime.tres"),
-	"Golden Retriever": preload("res://assets/puppies/golden_anime.tres"),
-	"Dachshund": preload("res://assets/puppies/dachshund_anime.tres"),
-	"Miniature Collie": preload("res://assets/puppies/mini_collie_anime.tres"),
-	"Beagle": preload("res://assets/puppies/beagle_anime.tres"),
-	"Corgi": preload("res://assets/puppies/corgi_anime.tres"),
-	"Toy Poodle": preload("res://assets/puppies/toy_poodle_anime.tres")
+	"Puppy": preload("res://assets/manga/puppies/puppy_anime.tres"),
+	"Shiba Inu": preload("res://assets/manga/puppies/shiba_anime.tres"),
+	"Golden Retriever": preload("res://assets/manga/puppies/golden_anime.tres"),
+	"Dachshund": preload("res://assets/manga/puppies/dachshund_anime.tres"),
+	"Miniature Collie": preload("res://assets/manga/puppies/mini_collie_anime.tres"),
+	"Beagle": preload("res://assets/manga/puppies/beagle_anime.tres"),
+	"Corgi": preload("res://assets/manga/puppies/corgi_anime.tres"),
+	"Toy Poodle": preload("res://assets/manga/puppies/toy_poodle_anime.tres")
 }
 const PUPPIES = {
-	"Puppy":preload("res://assets/puppies/puppy_bare_anime.tres"),
-	"Shiba Inu":preload("res://assets/puppies/shiba_bare_anime.tres"),
-	"Golden Retriever":preload("res://assets/puppies/golden_bare_anime.tres"),
-	"Dachshund": preload("res://assets/puppies/dachshund_bare_anime.tres"),
-	"Miniature Collie": preload("res://assets/puppies/mini_collie_bare_anime.tres"),
-	"Beagle": preload("res://assets/puppies/beagle_bare_anime.tres"),
-	"Corgi": preload("res://assets/puppies/corgi_bare_anime.tres"),
-	"Toy Poodle": preload("res://assets/puppies/toy_poodle_bare_anime.tres")
+	"Puppy":preload("res://assets/manga/puppies/puppy_bare_anime.tres"),
+	"Shiba Inu":preload("res://assets/manga/puppies/shiba_bare_anime.tres"),
+	"Golden Retriever":preload("res://assets/manga/puppies/golden_bare_anime.tres"),
+	"Dachshund": preload("res://assets/manga/puppies/dachshund_bare_anime.tres"),
+	"Miniature Collie": preload("res://assets/manga/puppies/mini_collie_bare_anime.tres"),
+	"Beagle": preload("res://assets/manga/puppies/beagle_bare_anime.tres"),
+	"Corgi": preload("res://assets/manga/puppies/corgi_bare_anime.tres"),
+	"Toy Poodle": preload("res://assets/manga/puppies/toy_poodle_bare_anime.tres")
 }
-const PUPPY_SLEEP = preload("res://assets/puppies/puppy_bare_sleep_anime.tres")
+const PUPPY_SLEEP = preload("res://assets/manga/puppies/puppy_bare_sleep_anime.tres")
 static var PUPPY_SLEEP_REGION = Rect2i(Vector2i.ZERO,PUPPY_SLEEP.get_size())
 const DRESSED_SLEEP_TEXTURES = {
-	"Puppy": preload("res://assets/puppies/puppy_sleep_anime.tres"),
-	"Shiba Inu": preload("res://assets/puppies/shiba_sleep_anime.tres"),
-	"Golden Retriever": preload("res://assets/puppies/golden_sleep_anime.tres"),
-	"Dachshund": preload("res://assets/puppies/dachshund_sleep_anime.tres"),
-	"Miniature Collie": preload("res://assets/puppies/mini_collie_sleep_anime.tres"),
-	"Beagle": preload("res://assets/puppies/beagle_sleep_anime.tres"),
-	"Corgi": preload("res://assets/puppies/corgi_sleep_anime.tres"),
-	"Toy Poodle": preload("res://assets/puppies/toy_poodle_sleep_anime.tres")
+	"Puppy": preload("res://assets/manga/puppies/puppy_sleep_anime.tres"),
+	"Shiba Inu": preload("res://assets/manga/puppies/shiba_sleep_anime.tres"),
+	"Golden Retriever": preload("res://assets/manga/puppies/golden_sleep_anime.tres"),
+	"Dachshund": preload("res://assets/manga/puppies/dachshund_sleep_anime.tres"),
+	"Miniature Collie": preload("res://assets/manga/puppies/mini_collie_sleep_anime.tres"),
+	"Beagle": preload("res://assets/manga/puppies/beagle_sleep_anime.tres"),
+	"Corgi": preload("res://assets/manga/puppies/corgi_sleep_anime.tres"),
+	"Toy Poodle": preload("res://assets/manga/puppies/toy_poodle_sleep_anime.tres")
 }
 const SLEEP_TEXTURES = {
 	"Puppy":PUPPY_SLEEP,
-	"Shiba Inu":preload("res://assets/puppies/shiba_bare_sleep_anime.tres"),
-	"Golden Retriever":preload("res://assets/puppies/golden_bare_sleep_anime.tres"),
-	"Dachshund": preload("res://assets/puppies/dachshund_bare_sleep_anime.tres"),
-	"Miniature Collie": preload("res://assets/puppies/mini_collie_bare_sleep_anime.tres"),
-	"Beagle": preload("res://assets/puppies/beagle_bare_sleep_anime.tres"),
-	"Corgi": preload("res://assets/puppies/corgi_bare_sleep_anime.tres"),
-	"Toy Poodle": preload("res://assets/puppies/toy_poodle_bare_sleep_anime.tres")
+	"Shiba Inu":preload("res://assets/manga/puppies/shiba_bare_sleep_anime.tres"),
+	"Golden Retriever":preload("res://assets/manga/puppies/golden_bare_sleep_anime.tres"),
+	"Dachshund": preload("res://assets/manga/puppies/dachshund_bare_sleep_anime.tres"),
+	"Miniature Collie": preload("res://assets/manga/puppies/mini_collie_bare_sleep_anime.tres"),
+	"Beagle": preload("res://assets/manga/puppies/beagle_bare_sleep_anime.tres"),
+	"Corgi": preload("res://assets/manga/puppies/corgi_bare_sleep_anime.tres"),
+	"Toy Poodle": preload("res://assets/manga/puppies/toy_poodle_bare_sleep_anime.tres")
 }
 static var SLEEP_REGIONS = {
 	"Puppy": PUPPY_SLEEP_REGION,
@@ -61,36 +61,36 @@ static var SLEEP_REGIONS = {
 	"Corgi":Rect2i(Vector2i.ZERO,SLEEP_TEXTURES["Corgi"].get_size()),
 	"Toy Poodle":Rect2i(Vector2i.ZERO,SLEEP_TEXTURES["Toy Poodle"].get_size())
 }
-const NORA = preload("res://assets/characters/nora_anime_0.tres")
+const NORA = preload("res://assets/manga/characters/nora_anime_0.tres")
 
 const DRESSED_WALKS = {
-	"Puppy": preload("res://assets/puppies/puppy_walk_anime.png"),
-	"Shiba Inu": preload("res://assets/puppies/shiba_walk_anime.png"),
-	"Golden Retriever": preload("res://assets/puppies/golden_walk_anime.png"),
-	"Dachshund": preload("res://assets/puppies/dachshund_anime.png"),
-	"Miniature Collie": preload("res://assets/puppies/mini_collie_anime.png"),
-	"Beagle": preload("res://assets/puppies/beagle_anime.png"),
-	"Corgi": preload("res://assets/puppies/corgi_anime.png"),
-	"Toy Poodle": preload("res://assets/puppies/toy_poodle_anime.png")
+	"Puppy": preload("res://assets/manga/puppies/puppy_walk_anime.png"),
+	"Shiba Inu": preload("res://assets/manga/puppies/shiba_walk_anime.png"),
+	"Golden Retriever": preload("res://assets/manga/puppies/golden_walk_anime.png"),
+	"Dachshund": preload("res://assets/manga/puppies/dachshund_anime.png"),
+	"Miniature Collie": preload("res://assets/manga/puppies/mini_collie_anime.png"),
+	"Beagle": preload("res://assets/manga/puppies/beagle_anime.png"),
+	"Corgi": preload("res://assets/manga/puppies/corgi_anime.png"),
+	"Toy Poodle": preload("res://assets/manga/puppies/toy_poodle_anime.png")
 }
 
 # Registered ground bounds and torso anchors keep the eight phases aligned.
 const WALKS = {
-	"Puppy":preload("res://assets/puppies/puppy_bare_walk_anime.png"),
-	"Shiba Inu":preload("res://assets/puppies/shiba_bare_walk_anime.png"),
-	"Golden Retriever":preload("res://assets/puppies/golden_bare_walk_anime.png"),
-	"Dachshund": preload("res://assets/puppies/dachshund_bare_anime.png"),
-	"Miniature Collie": preload("res://assets/puppies/mini_collie_bare_anime.png"),
-	"Beagle": preload("res://assets/puppies/beagle_bare_anime.png"),
-	"Corgi": preload("res://assets/puppies/corgi_bare_anime.png"),
-	"Toy Poodle": preload("res://assets/puppies/toy_poodle_bare_anime.png")
+	"Puppy":preload("res://assets/manga/puppies/puppy_bare_walk_anime.png"),
+	"Shiba Inu":preload("res://assets/manga/puppies/shiba_bare_walk_anime.png"),
+	"Golden Retriever":preload("res://assets/manga/puppies/golden_bare_walk_anime.png"),
+	"Dachshund": preload("res://assets/manga/puppies/dachshund_bare_anime.png"),
+	"Miniature Collie": preload("res://assets/manga/puppies/mini_collie_bare_anime.png"),
+	"Beagle": preload("res://assets/manga/puppies/beagle_bare_anime.png"),
+	"Corgi": preload("res://assets/manga/puppies/corgi_bare_anime.png"),
+	"Toy Poodle": preload("res://assets/manga/puppies/toy_poodle_bare_anime.png")
 }
-static var DRESSED_WALK_DATA: Dictionary = with_extra(preload("res://assets/puppies/walk_anime_frames.json").data,"walk",true)
-static var WALK_DATA: Dictionary = with_extra(preload("res://assets/puppies/bare_anime_frames.json").data.walks,"walk")
+static var DRESSED_WALK_DATA: Dictionary = with_extra(preload("res://assets/manga/puppies/walk_anime_frames.json").data,"walk",true)
+static var WALK_DATA: Dictionary = with_extra(preload("res://assets/manga/puppies/bare_anime_frames.json").data.walks,"walk")
 static var WALK_REGIONS: Dictionary = walk_values("regions")
 static var WALK_ANCHORS: Dictionary = walk_values("anchors")
 static var WALK_HEIGHTS: Dictionary = walk_values("height")
-static var RESIDENT_DATA: Dictionary = preload("res://assets/characters/anime_frames.json").data
+static var RESIDENT_DATA: Dictionary = preload("res://assets/manga/characters/anime_frames.json").data
 
 static func walk_values(field: String) -> Dictionary:
 	var result = {}
@@ -103,27 +103,27 @@ static func walk_values(field: String) -> Dictionary:
 			result[breed] = WALK_DATA[breed][field]
 	return result
 
-const REN = preload("res://assets/characters/ren_anime_0.tres")
-const BACKGROUNDS = {"Lighthouse Room":preload("res://assets/backgrounds/lighthouse_room_anime.png"),"Harbor": preload("res://assets/backgrounds/harbor_anime.png"), "Keeper’s Cottage": preload("res://assets/backgrounds/cottage_anime.png"),"Home": HOME, "Park": PARK, "Beach": BEACH,
-	"Puppy Club": preload("res://assets/backgrounds/club_anime.png"),
-	"Shop": preload("res://assets/backgrounds/shop_anime.png"),
-	"Vet Clinic": preload("res://assets/backgrounds/vet_anime.png"),
-	"Lighthouse": preload("res://assets/backgrounds/lighthouse_anime.png"),
+const REN = preload("res://assets/manga/characters/ren_anime_0.tres")
+const BACKGROUNDS = {"Lighthouse Room":preload("res://assets/manga/backgrounds/lighthouse_room_anime.png"),"Harbor": preload("res://assets/manga/backgrounds/harbor_anime.png"), "Keeper’s Cottage": preload("res://assets/manga/backgrounds/cottage_anime.png"),"Home": HOME, "Park": PARK, "Beach": BEACH,
+	"Puppy Club": preload("res://assets/manga/backgrounds/club_anime.png"),
+	"Shop": preload("res://assets/manga/backgrounds/shop_anime.png"),
+	"Vet Clinic": preload("res://assets/manga/backgrounds/vet_anime.png"),
+	"Lighthouse": preload("res://assets/manga/backgrounds/lighthouse_anime.png"),
 }
-const JUNE = preload("res://assets/characters/june_anime_0.tres")
-const LEAH = preload("res://assets/characters/leah_anime_0.tres")
+const JUNE = preload("res://assets/manga/characters/june_anime_0.tres")
+const LEAH = preload("res://assets/manga/characters/leah_anime_0.tres")
 
-const BEN = preload("res://assets/characters/ben_anime_0.tres")
-const KAI = preload("res://assets/characters/kai_anime_0.tres")
-const OWEN = preload("res://assets/characters/owen_anime_0.tres")
+const BEN = preload("res://assets/manga/characters/ben_anime_0.tres")
+const KAI = preload("res://assets/manga/characters/kai_anime_0.tres")
+const OWEN = preload("res://assets/manga/characters/owen_anime_0.tres")
 
-const NORA_CORAL = preload("res://assets/characters/nora_anime_1.tres")
-const JUNE_MINT = preload("res://assets/characters/june_anime_1.tres")
+const NORA_CORAL = preload("res://assets/manga/characters/nora_anime_1.tres")
+const JUNE_MINT = preload("res://assets/manga/characters/june_anime_1.tres")
 
-const BEN_TRAINING = preload("res://assets/characters/ben_anime_1.tres")
-const LEAH_TUNIC = preload("res://assets/characters/leah_anime_1.tres")
-const OWEN_PARCEL = preload("res://assets/characters/owen_anime_1.tres")
-const REN_SWEATER = preload("res://assets/characters/ren_anime_1.tres")
+const BEN_TRAINING = preload("res://assets/manga/characters/ben_anime_1.tres")
+const LEAH_TUNIC = preload("res://assets/manga/characters/leah_anime_1.tres")
+const OWEN_PARCEL = preload("res://assets/manga/characters/owen_anime_1.tres")
+const REN_SWEATER = preload("res://assets/manga/characters/ren_anime_1.tres")
 
 static func daily_portrait(texture: Texture2D, date: String = "") -> Texture2D:
 	if date.is_empty():
@@ -172,8 +172,8 @@ static func resident_frames(source: Texture2D, torso_up: bool = false) -> Array[
 	frame.region = source.get_image().get_used_rect()
 	return [frame]
 
-static var DRESSED_TRICK_DATA: Dictionary = with_extra(preload("res://assets/puppies/trick_anime_frames.json").data,"tricks",true)
-static var TRICK_DATA: Dictionary = with_extra(preload("res://assets/puppies/bare_anime_frames.json").data.tricks,"tricks")
+static var DRESSED_TRICK_DATA: Dictionary = with_extra(preload("res://assets/manga/puppies/trick_anime_frames.json").data,"tricks",true)
+static var TRICK_DATA: Dictionary = with_extra(preload("res://assets/manga/puppies/bare_anime_frames.json").data.tricks,"tricks")
 static var trick_cache: Dictionary = {}
 static func trick_frames(breed: String, command: String, dressed: bool = false) -> Array[Rect2]:
 	var result: Array[Rect2] = []
@@ -203,6 +203,12 @@ static func sleeping_width(breed: String) -> float:
 	return {"Dachshund":350.0,"Miniature Collie":370.0,"Beagle":365.0,"Corgi":350.0,"Toy Poodle":310.0}.get(breed,390.0)
 
 static var expression_cache: Dictionary = {}
+static var RUN_DATA: Dictionary = preload("res://assets/manga/puppies/run_angles_frames.json").data
+static var run_cache: Dictionary = {}
+static func run_sheet(breed: String) -> Texture2D:
+	if not run_cache.has(breed): run_cache[breed] = load("res://"+RUN_DATA[breed].atlas)
+	return run_cache[breed]
+
 static func tug_mouth(breed: String, dressed: bool = false) -> Vector2:
 	var clothing = "dressed" if dressed else "bare"
 	var point: Array = EXTRA_DOGS[breed][clothing].mouth if EXTRA_DOGS.has(breed) else REACTIONS[clothing].mouths[breed]

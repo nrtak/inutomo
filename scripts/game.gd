@@ -27,6 +27,7 @@ var active_outing: Dictionary = {}
 var saved_outings: Dictionary = {}
 var nap_actor: WeakRef
 var home_greeted = false
+var welcome_away_seconds = 0.0
 var pending_home_reaction = ""
 var pending_stage = ""
 var coins = 50
@@ -564,9 +565,9 @@ func load_game() -> void:
 		needs[key] = clampf(float(data.needs[key]), 0, 100)
 	walking = PuppySteps.normalized(data.get("walking", {}))
 	play_days = data.get("play_days", []).duplicate()
-	record_play_day()
 	puppy_name = data.name.left(16)
 	life = IslandLife.normalized(data.get("life", {}))
+	record_play_day()
 	health = PuppyHealth.normalized(data.get("health", {}))
 	coins = int(data.get("coins", 50))
 	items = {}
@@ -603,7 +604,9 @@ func load_game() -> void:
 	collection = data.collection.slice(0, 32)
 	journal = data.journal.slice(0, 32)
 	# Offline needs are gentle and capped at two hours; no death or punishment.
-	advance(clampf(Time.get_unix_time_from_system() - float(data.saved_at), 0, 7200), false)
+	var away = maxf(0,Time.get_unix_time_from_system()-float(data.saved_at))
+	record_return(away)
+	advance(clampf(away,0,7200),false)
 	var reminders = get_node_or_null("/root/Reminders")
 	if is_instance_valid(reminders):
 		reminders.sync_preference()
@@ -613,10 +616,18 @@ func _notification(what: int) -> void:
 		paused_at = Time.get_unix_time_from_system()
 		save_game()
 	elif what == NOTIFICATION_APPLICATION_RESUMED and paused_at > 0:
-		advance(clampf(Time.get_unix_time_from_system() - paused_at, 0, 7200), false)
+		var away = maxf(0,Time.get_unix_time_from_system()-paused_at)
+		record_return(away)
+		advance(clampf(away,0,7200),false)
 		paused_at = 0.0
 	elif what == NOTIFICATION_WM_CLOSE_REQUEST:
 		save_game()
+
+func record_return(seconds: float) -> void:
+	# Presentation only: a clock change must never grant rewards or extra growth.
+	if not is_finite(seconds) or seconds < 1800: return
+	welcome_away_seconds = minf(seconds,86400)
+	home_greeted = false
 
 func record_play_day(date: String = "") -> void:
 	if date.is_empty():
@@ -625,6 +636,7 @@ func record_play_day(date: String = "") -> void:
 		return
 	if play_days.is_empty() or date > play_days.back():
 		play_days.append(date)
+	DailyCheckIn.record(self,date)
 
 func days_played() -> int:
 	record_play_day()

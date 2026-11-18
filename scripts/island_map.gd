@@ -11,6 +11,24 @@ var travel_clock = 0.0
 var travel_duration = 1.5
 var travel_path = PackedVector2Array()
 var target_place = ""
+var pan_x = NAN
+var pan_start = Vector2.ZERO
+var pan_held = false
+var pan_distance=0.0
+var pan_hint: Label
+var signs: Dictionary = {}
+const LANDMARKS = {
+ "Home":Rect2(.145,.16,.15,.15),"Puppy Club":Rect2(.455,.07,.17,.24),
+ "Shop":Rect2(.24,.42,.15,.18),"Vet Clinic":Rect2(.686,.38,.18,.18),
+ "Lighthouse":Rect2(.86,.045,.10,.19),"Keeper’s Cottage":Rect2(.905,.198,.075,.095),
+ "Park":Rect2(.465,.36,.095,.13),"Beach":Rect2(.59,.63,.29,.18),"Harbor":Rect2(.33,.73,.15,.17)
+}
+const SIGN_POINTS = {
+ "Home":Vector2(.225,.247),"Puppy Club":Vector2(.54,.255),"Shop":Vector2(.315,.49),
+ "Vet Clinic":Vector2(.78,.493),"Lighthouse":Vector2(.86,.19),"Keeper’s Cottage":Vector2(.86,.31),
+ "Park":Vector2(.595,.53),"Beach":Vector2(.70,.70),"Harbor":Vector2(.34,.76)
+}
+
 const FOOT_POINTS = {
  "Home":Vector2(0.25,0.32), "Puppy Club":Vector2(0.54,0.31),
  "Park":Vector2(0.54,0.53), "Shop":Vector2(0.31,0.57),
@@ -73,6 +91,9 @@ func _ready() -> void:
  var layout = Control.new()
  inset.add_child(layout)
  canvas = Control.new()
+ canvas.clip_contents = true
+ canvas.mouse_filter = Control.MOUSE_FILTER_STOP
+ canvas.gui_input.connect(pan_input)
  canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  layout.add_child(canvas)
  map_image = TextureRect.new()
@@ -92,11 +113,32 @@ func _ready() -> void:
  for place in places:
   var caption = "Cottage" if place == "Keeper’s Cottage" else place
   var pin = UI.button(caption, travel_to.bind(place), UI.PLACE_COLORS[place])
-  pin.custom_minimum_size = Vector2(160 if place in ["Park", "Shop", "Home", "Beach"] else 210, 80)
-  pin.add_theme_font_size_override("font_size", 22)
-  pin.icon = UI.place_icon(place)
-  pin.expand_icon = true
-  pin.add_theme_constant_override("icon_max_width", 38)
+  pin.custom_minimum_size=Vector2(64,44)
+  for state in ["normal","hover","pressed","disabled","focus"]:
+   pin.add_theme_stylebox_override(state,StyleBoxEmpty.new())
+  for state in ["font_color","font_hover_color","font_pressed_color","font_disabled_color","font_focus_color"]:
+   pin.add_theme_color_override(state,Color.TRANSPARENT)
+  var plaque=Panel.new()
+  plaque.mouse_filter=Control.MOUSE_FILTER_IGNORE
+  var wood=UI.style(Color("eee0c3"),2)
+  wood.set_border_width_all(1)
+  wood.border_color=Color("755a40")
+  plaque.add_theme_stylebox_override("panel",wood)
+  pin.add_child(plaque)
+  if place in ["Park","Beach","Harbor","Lighthouse","Keeper’s Cottage"]:
+   var post=ColorRect.new()
+   post.color=Color("8f7353")
+   post.mouse_filter=Control.MOUSE_FILTER_IGNORE
+   plaque.add_child(post)
+   plaque.move_child(post,0)
+   post.set_meta("sign_post",true)
+  var words=UI.label(caption,16,Color("574330"))
+  words.autowrap_mode=TextServer.AUTOWRAP_OFF
+  words.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+  words.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+  words.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+  plaque.add_child(words)
+  signs[place]=plaque
   canvas.add_child(pin)
   pin.z_index = 10
   pins[place] = pin
@@ -106,61 +148,83 @@ func _ready() -> void:
  map_dog.controlled = true
  map_dog.z_index = 1
  canvas.add_child(map_dog)
+ map_dog.sleep_material.set_shader_parameter("small_sprite",true)
+ map_dog.style_material.set_shader_parameter("small_sprite",true)
  map_dog.set_process(false)
+ pan_hint = UI.label("Drag the map to explore",20,UI.INK)
+ pan_hint.custom_minimum_size=Vector2(320,30)
+ pan_hint.autowrap_mode=TextServer.AUTOWRAP_OFF
+ pan_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ add_child(pan_hint)
  call_deferred("place_pins")
+
+func pan_input(event: InputEvent) -> void:
+ if travelling: return
+ if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT:
+  if event.pressed:
+   pan_held=true
+   pan_start=event.position
+   pan_distance=0
+  else:
+   var tapped=pan_held and pan_distance<10
+   pan_held=false
+   if tapped:
+    for place in LANDMARKS:
+     if landmark_rect(place).has_point(event.position):
+      travel_to(place)
+      break
+ elif event is InputEventMouseMotion and pan_held:
+  var motion=event.relative if event.relative!=Vector2.ZERO else event.position-pan_start
+  pan_distance+=motion.length()
+  pan_start=event.position
+  if canvas.size.y>canvas.size.x:
+   pan_x+=motion.x
+   place_pins()
+
+func landmark_rect(place: String) -> Rect2:
+ var region: Rect2=LANDMARKS[place]
+ return Rect2(map_rect.position+region.position*map_rect.size,region.size*map_rect.size)
 
 func place_pins() -> void:
  if canvas.size.x <= 0 or canvas.size.y <= 0:
   return
  var safe = UI.safe_insets()
- # The overview fills the screen, including the space behind the safe-area controls.
- # Keep the entire island visible so the lighthouse and harbor never get cropped.
- map_rect = Rect2(Vector2.ZERO,canvas.size)
+ # Fill wide phones without squashing the island into a short strip.
+ # Keep the upper coastline in view; the extra crop comes mostly from the sea below the harbor.
+ var artwork_size = map_image.texture.get_size()
+ var zoom = maxf(canvas.size.x/artwork_size.x,canvas.size.y/artwork_size.y)
+ var drawn_size = (artwork_size*zoom).max(canvas.size)
+ var overflow = drawn_size-canvas.size
+ map_rect = Rect2(Vector2(-overflow.x*0.5,-overflow.y*0.2),drawn_size)
+ var portrait = canvas.size.y>canvas.size.x
+ if portrait:
+  if is_nan(pan_x): pan_x=canvas.size.x*0.5-FOOT_POINTS[foot_location(selected)].x*drawn_size.x
+  pan_x=clampf(pan_x,-overflow.x,0)
+  map_rect.position.x=pan_x
+ else:
+  pan_x=NAN
+ pan_hint.visible=portrait
+ pan_hint.position=Vector2(safe.left,safe.top+84)
  map_image.position = map_rect.position
  map_image.size = map_rect.size
  for place in pins:
-  var pin: Button = pins[place]
-  pin.size = pin.get_combined_minimum_size()
-  var center = map_rect.position + PLACES[place].point * map_rect.size
-  pin.position = (center - pin.size * 0.5).clamp(Vector2(safe.left, safe.top + 110), (canvas.size - pin.size - Vector2(safe.right, safe.bottom + 24)).max(Vector2(safe.left, safe.top + 110)))
-
- var occupied: Array[Rect2] = [Rect2(map_rect.position+Vector2(0.86,0.045)*map_rect.size,Vector2(0.10,0.19)*map_rect.size)]
- if is_instance_valid(map_dog):
-  if not travelling:
-   map_dog.set_pose(Game.resting)
-  var dog_scale = clampf(map_rect.size.x/1280.0*0.34,0.28,0.46)
-  var dog_size = map_dog.visible_size*map_dog.base_scale*dog_scale
-  var foot = map_rect.position + FOOT_POINTS.get(foot_location(selected),FOOT_POINTS.Home)*map_rect.size
-  occupied.append(Rect2(foot-Vector2(dog_size.x*0.5,dog_size.y)-Vector2(8,8),dog_size+Vector2(16,16)))
- for place in pins:
-  var pin: Button = pins[place]
-  var lower = Vector2(safe.left, safe.top + 110)
-  var upper = canvas.size - pin.size - Vector2(safe.right, safe.bottom + 24)
-  var xs = [pin.position.x, lower.x, upper.x]
-  var ys = [pin.position.y, lower.y, upper.y]
-  for rect in occupied:
-   xs.append(rect.position.x - pin.size.x - 12)
-   xs.append(rect.end.x + 12)
-   ys.append(rect.position.y - pin.size.y - 12)
-   ys.append(rect.end.y + 12)
-  var best = pin.position
-  var distance = INF
-  for x in xs:
-   for y in ys:
-    var candidate = Vector2(x, y)
-    if candidate.x < lower.x or candidate.y < lower.y or candidate.x > upper.x or candidate.y > upper.y:
-     continue
-    var bounds = Rect2(candidate, pin.size)
-    var free = true
-    for rect in occupied:
-     if bounds.grow(5).intersects(rect):
-      free = false
-      break
-    if free and candidate.distance_squared_to(pin.position) < distance:
-     best = candidate
-     distance = candidate.distance_squared_to(pin.position)
-  pin.position = best
-  occupied.append(Rect2(best, pin.size))
+  var pin: Button=pins[place]
+  var plaque: Panel=signs[place]
+  var words=plaque.get_child(plaque.get_child_count()-1)
+  var font=clampi(roundi(map_rect.size.x/1558.0*16),14,26)
+  pin.add_theme_font_size_override("font_size",font)
+  words.add_theme_font_size_override("font_size",font)
+  var width=maxf(64,words.get_minimum_size().x+18)
+  var height=font+12.0
+  plaque.size=Vector2(width,height)
+  pin.size=Vector2(width,maxf(44,height))
+  pin.position=map_rect.position+SIGN_POINTS[place]*map_rect.size-pin.size*.5
+  plaque.position=Vector2(0,(pin.size.y-height)*.5)
+  for child in plaque.get_children():
+   if child.has_meta("sign_post"):
+    child.position=Vector2(width*.5-3,height-1)
+    child.size=Vector2(6,16)
+  pin.tooltip_text=place
  if is_instance_valid(map_dog):
   map_dog.scale = Vector2.ONE*clampf(map_rect.size.x/1280.0*0.34,0.28,0.46)
   if not travelling:
@@ -219,6 +283,8 @@ static func route_between(origin: String, destination: String) -> Array:
  return route
 
 func _process(delta: float) -> void:
+ var blue=float(Daylight.material.get_shader_parameter("night_amount"))
+ for sign in signs.values(): sign.modulate=Color.WHITE.lerp(Color("a9b7d0"),blue*.7)
  if not travelling or Game.paused_at > 0:
   return
  travel_clock += delta
@@ -242,6 +308,12 @@ func _process(delta: float) -> void:
  map_dog.sprite.flip_h = movement.x < 0 if absf(movement.x) > 0.05 else map_dog.sprite.flip_h
  map_dog.set_walk_pose()
  map_dog.position = next_position
+ if canvas.size.y>canvas.size.x:
+  var camera_shift=canvas.size.x*0.5-map_dog.position.x
+  var old_x=map_rect.position.x
+  pan_x=map_rect.position.x+camera_shift
+  place_pins()
+  map_dog.position.x+=map_rect.position.x-old_x
  if progress >= 1.0:
   travelling = false
   selected = target_place

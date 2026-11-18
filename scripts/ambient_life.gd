@@ -3,15 +3,29 @@ extends Node2D
 
 var location = "Island"
 var clock = 12.0
+var lighting: Node
+
+func _ready() -> void:
+ lighting=get_node("/root/Daylight")
+ update_light()
+
+func update_light() -> void:
+ if not is_instance_valid(lighting): return
+ var light: ShaderMaterial=lighting.material_for(location)
+ var exposure=float(light.get_shader_parameter("exposure"))
+ var tone: Color=light.get_shader_parameter("tone")
+ var cover=float(light.get_shader_parameter("cloud_cover"))
+ var brightness=exposure*(1.0-cover*0.16)
+ modulate=Color.WHITE.lerp(tone,0.35)*Color(brightness,brightness,brightness,1)
 const LANES = {
- "Moment:Home":[Vector4(0.53,0.39,0.77,0.39)],
+ "Moment:Home":[Vector4(0.53,0.43,0.77,0.43)],
  "Moment:Recall":[Vector4(0.45,0.39,0.67,0.39)],
  "Moment:Beach":[Vector4(0.31,0.43,0.76,0.43)],
  "Moment:Cottage":[Vector4(0.55,0.46,0.73,0.46)],
  "Moment:Lighthouse":[Vector4(0.19,0.48,0.40,0.48)],
  "Lighthouse Room":[Vector4(0.70,0.46,0.78,0.46)],
  "Island":[Vector4(0.015,0.20,0.095,0.20),Vector4(0.935,0.40,0.99,0.40)],
- "Home":[Vector4(0.53,0.39,0.77,0.39)],
+ "Home":[Vector4(0.53,0.43,0.77,0.43)],
  "Park":[Vector4(0.50,0.40,0.62,0.40)],
  "Beach":[Vector4(0.65,0.39,0.85,0.39)],
  "Beach Arrival":[Vector4(0.31,0.43,0.76,0.43)],
@@ -21,6 +35,7 @@ const LANES = {
  "Lighthouse":[Vector4(0.40,0.47,0.67,0.47)]
 }
 func _process(delta: float) -> void:
+ update_light()
  var game = get_node_or_null("/root/Game")
  if (is_instance_valid(game) and (game.paused_at > 0 or game.reduce_motion)) or not is_visible_in_tree():
   return

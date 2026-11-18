@@ -1,0 +1,313 @@
+{
+  "style": "Warm ink manga; simplified cel colors with restrained soft washes; quiet tropical scenery; bare neck by default.",
+  "assets": [
+    {
+      "source": "assets/backgrounds/beach_anime.png",
+      "production": "assets/manga/backgrounds/beach_anime.png"
+    },
+    {
+      "source": "assets/characters/kai_idle_sheet.png",
+      "production": "assets/manga/characters/kai_idle_sheet.png"
+    },
+    {
+      "source": "assets/backgrounds/home_anime.png",
+      "production": "assets/manga/backgrounds/home_anime.png"
+    },
+    {
+      "source": "assets/backgrounds/park_anime.png",
+      "production": "assets/manga/backgrounds/park_anime.png"
+    },
+    {
+      "source": "assets/backgrounds/island_anime_connected.png",
+      "production": "assets/manga/backgrounds/island_anime_connected.png"
+    },
+    {
+      "source": "assets/backgrounds/shop_anime.png",
+      "production": "assets/manga/backgrounds/shop_anime.png"
+    },
+    {
+      "source": "assets/backgrounds/vet_anime.png",
+      "production": "assets/manga/backgrounds/vet_anime.png"
+    },
+    {
+      "source": "assets/backgrounds/harbor_anime.png",
+      "production": "assets/manga/backgrounds/harbor_anime.png"
+    },
+    {
+      "source": "assets/backgrounds/cottage_anime.png",
+      "production": "assets/manga/backgrounds/cottage_anime.png"
+    },
+    {
+      "source": "assets/backgrounds/club_anime.png",
+      "production": "assets/manga/backgrounds/club_anime.png"
+    },
+    {
+      "source": "assets/backgrounds/club_picnic_anime.png",
+      "production": "assets/manga/backgrounds/club_picnic_anime.png"
+    },
+    {
+      "source": "assets/backgrounds/lighthouse_room_anime.png",
+      "production": "assets/manga/backgrounds/lighthouse_room_anime.png"
+    },
+    {
+      "source": "assets/backgrounds/cottage_discovery_anime.png",
+      "production": "assets/manga/backgrounds/cottage_discovery_anime.png"
+    },
+    {
+      "source": "assets/backgrounds/beach_arrival.png",
+      "production": "assets/manga/backgrounds/beach_arrival.png"
+    },
+    {
+      "source": "assets/backgrounds/lighthouse_anime.png",
+      "production": "assets/manga/backgrounds/lighthouse_anime.png"
+    },
+    {
+      "source": "assets/backgrounds/lighthouse_gathering_anime.png",
+      "production": "assets/manga/backgrounds/lighthouse_gathering_anime.png"
+    },
+    {
+      "source": "assets/backgrounds/park_practice_anime.png",
+      "production": "assets/manga/backgrounds/park_practice_anime.png"
+    },
+    {
+      "source": "assets/characters/leah_idle_sheet.png",
+      "production": "assets/manga/characters/leah_idle_sheet.png"
+    },
+    {
+      "source": "assets/characters/owen_idle_sheet.png",
+      "production": "assets/manga/characters/owen_idle_sheet.png"
+    },
+    {
+      "source": "assets/characters/june_idle_sheet.png",
+      "production": "assets/manga/characters/june_idle_sheet.png"
+    },
+    {
+      "source": "assets/characters/ben_idle_sheet.png",
+      "production": "assets/manga/characters/ben_idle_sheet.png"
+    },
+    {
+      "source": "assets/characters/nora_smile_anime_greeting_v3.png",
+      "production": "assets/manga/characters/nora_smile_anime_greeting_v3.png"
+    },
+    {
+      "source": "assets/characters/residents_moments_anime.png",
+      "production": "assets/manga/characters/residents_moments_anime.png"
+    },
+    {
+      "source": "assets/characters/ren_idle_sheet.png",
+      "production": "assets/manga/characters/ren_idle_sheet.png"
+    },
+    {
+      "source": "assets/puppies/puppy_bare_walk_anime.png",
+      "production": "assets/manga/puppies/puppy_bare_walk_anime.png"
+    },
+    {
+      "source": "assets/puppies/puppy_bare_tricks_anime.png",
+      "production": "assets/manga/puppies/puppy_bare_tricks_anime.png"
+    },
+    {
+      "source": "assets/puppies/puppy_bare_sleep_anime.png",
+      "production": "assets/manga/puppies/puppy_bare_sleep_anime.png"
+    },
+    {
+      "source": "assets/puppies/shiba_bare_anime.png",
+      "production": "assets/manga/puppies/shiba_bare_anime.png"
+    },
+    {
+      "source": "assets/puppies/shiba_bare_sleep_anime.png",
+      "production": "assets/manga/puppies/shiba_bare_sleep_anime.png"
+    },
+    {
+      "source": "assets/puppies/golden_bare_anime.png",
+      "production": "assets/manga/puppies/golden_bare_anime.png"
+    },
+    {
+      "source": "assets/puppies/shiba_bare_walk_anime.png",
+      "production": "assets/manga/puppies/shiba_bare_walk_anime.png"
+    },
+    {
+      "source": "assets/puppies/shiba_bare_tricks_anime.png",
+      "production": "assets/manga/puppies/shiba_bare_tricks_anime.png"
+    },
+    {
+      "source": "assets/puppies/puppy_bare_anime.png",
+      "production": "assets/manga/puppies/puppy_bare_anime.png"
+    },
+    {
+      "source": "assets/puppies/golden_bare_sleep_anime.png",
+      "production": "assets/manga/puppies/golden_bare_sleep_anime.png"
+    },
+    {
+      "source": "assets/puppies/golden_bare_walk_anime.png",
+      "production": "assets/manga/puppies/golden_bare_walk_anime.png"
+    },
+    {
+      "source": "assets/puppies/golden_bare_tricks_anime.png",
+      "production": "assets/manga/puppies/golden_bare_tricks_anime.png"
+    },
+    {
+      "source": "assets/puppies/dachshund_bare_anime.png",
+      "production": "assets/manga/puppies/dachshund_bare_anime.png"
+    },
+    {
+      "source": "assets/goods/goods_anime.png",
+      "production": "assets/manga/goods/goods_anime.png"
+    },
+    {
+      "source": "assets/puppies/mini_collie_bare_anime.png",
+      "production": "assets/manga/puppies/mini_collie_bare_anime.png"
+    },
+    {
+      "source": "assets/puppies/beagle_bare_anime.png",
+      "production": "assets/manga/puppies/beagle_bare_anime.png"
+    },
+    {
+      "source": "assets/puppies/reactions_bare_anime.png",
+      "production": "assets/manga/puppies/reactions_bare_anime.png"
+    },
+    {
+      "source": "assets/puppies/dogs_bare_moments_anime.png",
+      "production": "assets/manga/puppies/dogs_bare_moments_anime.png"
+    },
+    {
+      "source": "assets/puppies/corgi_bare_anime.png",
+      "production": "assets/manga/puppies/corgi_bare_anime.png"
+    },
+    {
+      "source": "assets/ui/beach_activities.png",
+      "production": "assets/manga/ui/beach_activities.png"
+    },
+    {
+      "source": "assets/goods/expanded_goods_anime.png",
+      "production": "assets/manga/goods/expanded_goods_anime.png"
+    },
+    {
+      "source": "assets/goods/moment_keepsakes_anime.png",
+      "production": "assets/manga/goods/moment_keepsakes_anime.png"
+    },
+    {
+      "source": "assets/puppies/corgi_bare_sleep_pose_anime.png",
+      "production": "assets/manga/puppies/corgi_bare_sleep_pose_anime.png"
+    },
+    {
+      "source": "assets/puppies/puppy_walk_anime.png",
+      "production": "assets/manga/puppies/puppy_walk_anime.png"
+    },
+    {
+      "source": "assets/puppies/shiba_sleep_anime.png",
+      "production": "assets/manga/puppies/shiba_sleep_anime.png"
+    },
+    {
+      "source": "assets/puppies/shiba_walk_anime.png",
+      "production": "assets/manga/puppies/shiba_walk_anime.png"
+    },
+    {
+      "source": "assets/puppies/puppy_anime.png",
+      "production": "assets/manga/puppies/puppy_anime.png"
+    },
+    {
+      "source": "assets/puppies/shiba_tricks_anime.png",
+      "production": "assets/manga/puppies/shiba_tricks_anime.png"
+    },
+    {
+      "source": "assets/puppies/puppy_sleep_anime.png",
+      "production": "assets/manga/puppies/puppy_sleep_anime.png"
+    },
+    {
+      "source": "assets/puppies/puppy_tricks_anime.png",
+      "production": "assets/manga/puppies/puppy_tricks_anime.png"
+    },
+    {
+      "source": "assets/puppies/shiba_anime.png",
+      "production": "assets/manga/puppies/shiba_anime.png"
+    },
+    {
+      "source": "assets/puppies/golden_anime.png",
+      "production": "assets/manga/puppies/golden_anime.png"
+    },
+    {
+      "source": "assets/puppies/golden_walk_anime.png",
+      "production": "assets/manga/puppies/golden_walk_anime.png"
+    },
+    {
+      "source": "assets/puppies/golden_sleep_anime.png",
+      "production": "assets/manga/puppies/golden_sleep_anime.png"
+    },
+    {
+      "source": "assets/puppies/golden_tricks_anime.png",
+      "production": "assets/manga/puppies/golden_tricks_anime.png"
+    },
+    {
+      "source": "assets/puppies/beagle_anime.png",
+      "production": "assets/manga/puppies/beagle_anime.png"
+    },
+    {
+      "source": "assets/puppies/dachshund_anime.png",
+      "production": "assets/manga/puppies/dachshund_anime.png"
+    },
+    {
+      "source": "assets/puppies/dogs_moments_anime.png",
+      "production": "assets/manga/puppies/dogs_moments_anime.png"
+    },
+    {
+      "source": "assets/puppies/toy_poodle_anime.png",
+      "production": "assets/manga/puppies/toy_poodle_anime.png"
+    },
+    {
+      "source": "assets/puppies/toy_poodle_bare_anime.png",
+      "production": "assets/manga/puppies/toy_poodle_bare_anime.png"
+    },
+    {
+      "source": "assets/puppies/mini_collie_anime.png",
+      "production": "assets/manga/puppies/mini_collie_anime.png"
+    },
+    {
+      "source": "assets/puppies/corgi_sleep_pose_anime.png",
+      "production": "assets/manga/puppies/corgi_sleep_pose_anime.png"
+    },
+    {
+      "source": "assets/puppies/corgi_anime.png",
+      "production": "assets/manga/puppies/corgi_anime.png"
+    },
+    {
+      "source": "assets/icon.png",
+      "production": "assets/manga/icon.png"
+    },
+    {
+      "source": "assets/puppies/reactions_anime.png",
+      "production": "assets/manga/puppies/reactions_anime.png"
+    },
+    {
+      "source": "assets/manga/puppies/puppy_bare_anime.png",
+      "production": "assets/manga/puppies/puppy_run_angles.png"
+    },
+    {
+      "source": "assets/manga/puppies/shiba_bare_anime.png",
+      "production": "assets/manga/puppies/shiba_run_angles.png"
+    },
+    {
+      "source": "assets/manga/puppies/golden_bare_anime.png",
+      "production": "assets/manga/puppies/golden_run_angles.png"
+    },
+    {
+      "source": "assets/manga/puppies/dachshund_bare_anime.png",
+      "production": "assets/manga/puppies/dachshund_run_angles.png"
+    },
+    {
+      "source": "assets/manga/puppies/mini_collie_bare_anime.png",
+      "production": "assets/manga/puppies/mini_collie_run_angles.png"
+    },
+    {
+      "source": "assets/manga/puppies/beagle_bare_anime.png",
+      "production": "assets/manga/puppies/beagle_run_angles.png"
+    },
+    {
+      "source": "assets/manga/puppies/corgi_bare_anime.png",
+      "production": "assets/manga/puppies/corgi_run_angles.png"
+    },
+    {
+      "source": "assets/manga/puppies/toy_poodle_bare_anime.png",
+      "production": "assets/manga/puppies/toy_poodle_run_angles.png"
+    }
+  ]
+}

@@ -72,7 +72,8 @@ func run() -> void:
 		if puppy.pending_decor_action == "":
 			break
 	puppy._process(0.1)
-	check(not puppy.napping and puppy.sprite.texture == Art.PUPPIES.Puppy, "Care briefly wakes the puppy")
+	check(not puppy.napping and puppy.reaction_kind=="Feed", "Care briefly wakes the puppy for its meal")
+	puppy._process(3.3)
 	check(is_equal_approx(puppy.sprite.region_rect.size.y * puppy.base_scale, lerpf(180, 280, game.growth_fraction())), "Baby puppy is much smaller than an adult")
 	puppy.controlled = true
 	puppy.nap_remaining = 60
@@ -84,6 +85,8 @@ func run() -> void:
 	puppy.controlled = false
 	puppy.target = puppy.position
 	puppy.settle_time = 0
+	# This size check measures growth independently of the Home camera's headroom.
+	puppy.home_interactions = false
 	game.breed = "Shiba Inu"
 	puppy._process(0.1)
 	check(is_equal_approx(puppy.sprite.region_rect.size.y * puppy.base_scale, 320), "Adult size stays unchanged")

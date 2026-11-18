@@ -18,6 +18,7 @@ var name_error: Label
 var sound_button: Button
 
 func _ready() -> void:
+	add_to_group("responsive_scenes")
 	Game.set_process(false)
 	Sound.set_location("Home")
 	var background = TextureRect.new()
@@ -38,7 +39,7 @@ func _ready() -> void:
 	for edge in safe_edges:
 		margin.add_theme_constant_override("margin_" + edge, safe_edges[edge])
 	add_child(margin)
-	var row = HBoxContainer.new()
+	var row = BoxContainer.new()
 	row.add_theme_constant_override("separation", 32)
 	margin.add_child(row)
 	var panel = UI.card()
@@ -67,8 +68,11 @@ func _ready() -> void:
 	puppy.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	puppy.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	puppy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	puppy.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	puppy.custom_minimum_size.y = 240
 	puppy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(puppy)
+	resized.connect(func(): ScreenLayout.schedule())
 
 func enter_game() -> void:
 	if not Game.name_chosen and not Game.intro_seen:

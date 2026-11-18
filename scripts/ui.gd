@@ -4,11 +4,15 @@ extends RefCounted
 const INK = Color("603e29")
 const TEAL = Color("429f98")
 const PINK = Color("ef8b9b")
+const CARE_ICONS = {"Hunger":"feed","Happiness":"heart","Energy":"rest","Cleanliness":"care"}
 const PLACE_COLORS = {"Harbor": Color("c2ecf4"), "Keeper’s Cottage": Color("ffdfb5"),"Home": Color("ffdfb5"), "Puppy Club": Color("f9d8e2"), "Park": Color("c8eddd"), "Shop": Color("ffdfb5"), "Vet Clinic": Color("c2ecf4"), "Beach": Color("c2ecf4"), "Lighthouse": Color("e1d9f6")}
 
 static func place_icon(place: String) -> Texture2D:
 	var file: String = {"Harbor": "harbor", "Keeper’s Cottage": "cottage","Home": "home", "Puppy Club": "club", "Park": "leaf", "Shop": "menu_bag", "Vet Clinic": "clinic", "Beach": "shell", "Lighthouse": "lighthouse"}.get(place, "island")
-	return load("res://assets/ui/" + file + ".svg")
+	return load("res://assets/manga/ui/" + file + ".svg")
+
+static func care_icon(need: String) -> Texture2D:
+	return load("res://assets/manga/ui/"+CARE_ICONS[need]+".svg")
 
 static var cutout_material: ShaderMaterial
 static func art_cutout() -> ShaderMaterial:
@@ -70,6 +74,10 @@ static func button(text: String, action: Callable, color: Color = TEAL) -> Butto
 	b.resized.connect(func(): b.pivot_offset = b.size * 0.5)
 	b.button_down.connect(func(): press_feedback(b,0.97))
 	b.button_up.connect(func(): press_feedback(b,1.0))
+	b.mouse_exited.connect(func(): press_feedback(b,1.0))
+	b.visibility_changed.connect(func():
+		if not b.is_visible_in_tree(): reset_press(b)
+	)
 	return b
 
 static func hint_label(text: String, font_size: int = 24, color: Color = INK) -> CommandHint:
@@ -136,7 +144,21 @@ static func conversation_body(parent: Control, texture: Texture2D, character_nam
 	panel.add_child(content)
 	content.add_child(label(character_name, 29, TEAL))
 	var arrange = func():
+		var edges=safe_insets(24)
+		for key in safe: safe[key]=edges[key]
+		stage.offset_left=safe.left
+		stage.offset_right=-safe.right
+		stage.offset_top=safe.top
 		var image_size = Vector2(cutout.get_size())
+		if stage.size.y>stage.size.x:
+			var factor=minf(stage.size.x*0.92/image_size.x,stage.size.y*0.52/image_size.y)
+			portrait.size=image_size*factor
+			portrait.position=Vector2((stage.size.x-portrait.size.x)*0.5,stage.size.y-portrait.size.y+2)
+			panel.offset_left=-safe.right-stage.size.x
+			panel.offset_right=-safe.right
+			panel.offset_bottom=safe.top+20+panel.get_combined_minimum_size().y
+			tail.position=Vector2(40,panel.size.y)
+			return
 		var factor = minf(stage.size.x * 0.50 / image_size.x, maxf(1,stage.size.y - 84) / image_size.y)
 		portrait.size = image_size * factor
 		portrait.position = Vector2((stage.size.x * 0.50 - portrait.size.x) * 0.5, stage.size.y - portrait.size.y + 2)
@@ -152,6 +174,7 @@ static func conversation_body(parent: Control, texture: Texture2D, character_nam
 
 static func icon_button(text: String, texture: Texture2D, action: Callable, color: Color = TEAL) -> Button:
 	var tile = button(text, action, color)
+	tile.clip_text = true
 	tile.custom_minimum_size = Vector2(100, 110)
 	tile.tooltip_text = text
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color"]:
@@ -265,6 +288,7 @@ static func picture_button(text: String, texture: Texture2D, action: Callable, c
 
 static func location_button(text: String, texture: Texture2D, action: Callable, color: Color) -> Button:
 	var tile = button(text, action, color)
+	tile.clip_text = true
 	tile.custom_minimum_size = Vector2(380, 112)
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color"]:
 		tile.add_theme_color_override(state,Color.TRANSPARENT)
@@ -301,9 +325,18 @@ static func press_feedback(button: Button, amount: float) -> void:
 	var previous = button.get_meta("press_tween") as Tween if button.has_meta("press_tween") else null
 	if previous != null and previous.is_valid():
 		previous.kill()
+	var game=Engine.get_main_loop().root.get_node_or_null("Game")
+	if button.disabled or (game!=null and game.reduce_motion):
+		button.scale=Vector2.ONE
+		return
 	var tween = button.create_tween()
 	button.set_meta("press_tween",tween)
 	tween.tween_property(button,"scale",Vector2.ONE*amount,0.09).set_trans(Tween.TRANS_SINE)
+
+static func reset_press(button: Button) -> void:
+	var previous=button.get_meta("press_tween") as Tween if button.has_meta("press_tween") else null
+	if previous!=null and previous.is_valid(): previous.kill()
+	button.scale=Vector2.ONE
 
 static func location_portrait_rect(view: Vector2, image: Vector2, safe: Dictionary) -> Rect2:
 	return BeachStyle.portrait_rect(view,image,safe)

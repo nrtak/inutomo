@@ -1,11 +1,11 @@
 class_name BeachStyle
 extends RefCounted
 
-const BACKGROUND = preload("res://assets/backgrounds/beach_arrival.png")
-const KAI = preload("res://assets/characters/kai_idle_sheet.png")
+const BACKGROUND = preload("res://assets/manga/backgrounds/beach_arrival.png")
+const KAI = preload("res://assets/manga/characters/kai_idle_sheet.png")
 const INK = Color("603e29")
 const PAPER = Color("fff6e5")
-const ACTIVITIES = preload("res://assets/ui/beach_activities.png")
+const ACTIVITIES = preload("res://assets/manga/ui/beach_activities.png")
 static var activity_cache: Dictionary = {}
 
 static func activity_picture(index: int) -> Texture2D:
@@ -27,6 +27,7 @@ static func dog_texture(breed: String, asleep: bool) -> Texture2D:
 	return Art.SLEEP_TEXTURES[breed] if asleep else Art.PUPPIES[breed]
 
 static func column_width(view: Vector2, safe: Dictionary) -> float:
+	if view.y>view.x: return 140
 	return floorf(clampf((view.x-safe.left-safe.right)*0.34,300,440))
 
 static func portrait_rect(view: Vector2, image: Vector2, safe: Dictionary) -> Rect2:

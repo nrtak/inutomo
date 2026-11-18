@@ -1,7 +1,7 @@
 class_name MomentArt
 extends RefCounted
 
-static var data: Dictionary = preload("res://assets/moments_anime_frames.json").data
+static var data: Dictionary = preload("res://assets/manga/moments_anime_frames.json").data
 static var cache: Dictionary = {}
 
 static func frame(group: String, key: String) -> Texture2D:
@@ -28,4 +28,4 @@ static func prop(kind: String) -> Texture2D:
 	return frame("props", kind)
 
 static func background(kind: String) -> Texture2D:
-	return load("res://" + {"Home":"assets/backgrounds/home_anime.png", "Recall":"assets/backgrounds/park_practice_anime.png", "Beach":"assets/backgrounds/beach_arrival.png", "Cottage":"assets/backgrounds/cottage_discovery_anime.png", "Lighthouse":"assets/backgrounds/lighthouse_gathering_anime.png"}[kind])
+	return load("res://" + {"Home":"assets/manga/backgrounds/home_anime.png", "Recall":"assets/manga/backgrounds/park_practice_anime.png", "Beach":"assets/manga/backgrounds/beach_arrival.png", "Cottage":"assets/manga/backgrounds/cottage_discovery_anime.png", "Lighthouse":"assets/manga/backgrounds/lighthouse_gathering_anime.png"}[kind])

@@ -1,0 +1,3 @@
+const float ISLAND_SATURATION = 0.80;
+const float ISLAND_HIGHLIGHT_SOFTNESS = 0.065;
+const vec3 ISLAND_LUMA = vec3(0.2126, 0.7152, 0.0722);

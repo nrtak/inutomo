@@ -44,7 +44,9 @@ func run():
   await process_frame
   check(main.page == place and main.habitat.background.texture == Art.BACKGROUNDS[place], "New destination loads its own scene")
   check(WalkArea.contains(main.habitat.puppy.walk_area, main.habitat.puppy.position), "Puppy starts on clear ground")
-  check(main.camera_button.visible, "New destinations support photos")
+  main.open_photo_mode()
+  check(is_instance_valid(main.photo_overlay), "New destinations support photos")
+  main.close_photo_mode()
  game.life = IslandLife.fresh()
  for step in ["kit", "deliver", "lantern"]:
   var place = "Harbor" if step in ["welcome", "kit"] else "Keeper’s Cottage"

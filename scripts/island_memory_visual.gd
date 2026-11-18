@@ -6,7 +6,7 @@ func _ready() -> void:
 	if Game.life.connections.mystery!=5: return
 	if location=="Puppy Club":
 		var star = Sprite2D.new()
-		star.texture = preload("res://assets/goods/welcome_star.svg")
+		star.texture = preload("res://assets/manga/goods/welcome_star.svg")
 		star.material = UI.art_cutout()
 		star.scale = Vector2.ONE*(48.0/star.texture.get_width())
 		star.position = Vector2(210,175)
@@ -20,7 +20,7 @@ func _ready() -> void:
 		frame.position = Vector2(1050,393)
 		add_child(frame)
 		var star = Sprite2D.new()
-		star.texture = preload("res://assets/goods/welcome_star.svg")
+		star.texture = preload("res://assets/manga/goods/welcome_star.svg")
 		star.material = UI.art_cutout()
 		star.scale = Vector2.ONE*(20.0/star.texture.get_width())
 		star.position = Vector2(1077,416)

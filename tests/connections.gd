@@ -200,7 +200,7 @@ func run() -> void:
 			await process_frame
 			var view = phone.world_host.get_node("IslandMysteryView")
 			var panel_rect = view.panel.get_global_rect()
-			check(panel_rect.end.x<=dimensions.x-100 and panel_rect.end.y<=dimensions.y-25,"Clue controls remain inside the phone safe area")
+			check(panel_rect.end.x<=dimensions.x-100 and panel_rect.end.y<=dimensions.y-25,"Clue controls remain inside the phone safe area: "+str(dimensions)+" "+str(panel_rect))
 			var portrait_rect = view.greeting.get_child(0).get_global_rect()
 			for item in view.props:
 				var bounds: Rect2 = item.get_global_transform()*item.get_rect()

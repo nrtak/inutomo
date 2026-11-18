@@ -1,0 +1,136 @@
+{
+  "residents": {
+    "atlas": "assets/manga/characters/residents_moments_anime.png",
+    "frames": {
+      "Ben": [
+        76,
+        8,
+        517,
+        611
+      ],
+      "Nora": [
+        758,
+        6,
+        328,
+        606
+      ],
+      "Kai": [
+        103,
+        630,
+        403,
+        624
+      ],
+      "Ren": [
+        705,
+        628,
+        466,
+        621
+      ]
+    }
+  },
+  "dogs": {
+    "atlas": "assets/manga/puppies/dogs_moments_anime.png",
+    "frames": {
+      "Puppy:Bow": [
+        32,
+        26,
+        454,
+        417
+      ],
+      "Puppy:Sniff": [
+        541,
+        28,
+        461,
+        406
+      ],
+      "Shiba Inu:Bow": [
+        22,
+        472,
+        486,
+        473
+      ],
+      "Shiba Inu:Sniff": [
+        542,
+        474,
+        443,
+        457
+      ],
+      "Golden Retriever:Bow": [
+        7,
+        963,
+        505,
+        550
+      ],
+      "Golden Retriever:Sniff": [
+        512,
+        970,
+        510,
+        528
+      ]
+    }
+  },
+  "bare_dogs": {
+    "atlas": "assets/manga/puppies/dogs_bare_moments_anime.png",
+    "frames": {
+      "Puppy:Bow": [
+        32,
+        27,
+        454,
+        416
+      ],
+      "Puppy:Sniff": [
+        542,
+        28,
+        460,
+        406
+      ],
+      "Shiba Inu:Bow": [
+        22,
+        473,
+        485,
+        472
+      ],
+      "Shiba Inu:Sniff": [
+        542,
+        474,
+        442,
+        456
+      ],
+      "Golden Retriever:Bow": [
+        7,
+        964,
+        505,
+        549
+      ],
+      "Golden Retriever:Sniff": [
+        512,
+        970,
+        509,
+        528
+      ]
+    }
+  },
+  "props": {
+    "atlas": "assets/manga/goods/moment_keepsakes_anime.png",
+    "frames": {
+      "Shell": [
+        61,
+        111,
+        612,
+        510
+      ],
+      "Glass": [
+        808,
+        180,
+        531,
+        380
+      ],
+      "Star": [
+        1480,
+        77,
+        612,
+        559
+      ]
+    }
+  }
+}

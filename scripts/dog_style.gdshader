@@ -1,4 +1,5 @@
 shader_type canvas_item;
+uniform bool small_sprite = false;
 varying vec4 item_tint;
 void vertex() {
 	item_tint = COLOR;
@@ -13,6 +14,6 @@ void fragment() {
 		pixel.rgb = bandana.rgb * shade;
 	}
 	// Registered poses share a clean edge, including newly added trick sheets.
-	pixel.a = smoothstep(0.38, 0.76, pixel.a);
+	pixel.a = small_sprite ? smoothstep(0.04,0.32,pixel.a) : smoothstep(0.38, 0.76, pixel.a);
 	COLOR = pixel * item_tint;
 }

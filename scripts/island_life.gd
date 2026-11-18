@@ -7,7 +7,7 @@ const KEEPSAKES = ["Heart leaf", "Pearl shell", "Sea glass"]
 const KEEPSAKE_ICONS = ["leaf", "shell", "sea_glass"]
 const PERSONALITIES = ["Curious", "Cuddly", "Playful"]
 static func fresh() -> Dictionary:
-	return {"growth_paths":GrowthRoutes.fresh(), "tug_games":0, "connections":IslandConnections.fresh(), "moments":IslandMoments.fresh(), "welcome_day":WelcomeDay.fresh(), "adventure":IslandAdventure.fresh(), "beach":IslandActivities.fresh(), "bowl":true, "bowl_spot":0, "toy_spot":1, "delivery":{"recipient":"", "claimed":"", "completed":0}, "playdate": {"day":"", "step":0, "claimed":"", "visits":0}, "story": {}, "accessory": "", "bed": "", "toy": "", "spot": 1, "training": {"Sit": 0, "Stay": 0, "Come": 0, "Paw":0, "Spin":0, "Bow":0, "Roll Over":0}, "friends": {}, "favors": {}, "keepsakes": [], "photos": [], "day": "", "daily": {}, "event_claimed": ""}
+	return {"check_in":DailyCheckIn.fresh(), "surprises":IslandSurprises.fresh(), "festivals":IslandFestivals.fresh(), "memories":{}, "growth_paths":GrowthRoutes.fresh(), "tug_games":0, "connections":IslandConnections.fresh(), "moments":IslandMoments.fresh(), "welcome_day":WelcomeDay.fresh(), "adventure":IslandAdventure.fresh(), "beach":IslandActivities.fresh(), "bowl":true, "bowl_spot":0, "toy_spot":1, "delivery":{"recipient":"", "claimed":"", "completed":0}, "playdate": {"day":"", "step":0, "claimed":"", "visits":0}, "story": {}, "accessory": "", "bed": "", "toy": "", "spot": 1, "training": {"Sit": 0, "Stay": 0, "Come": 0, "Paw":0, "Spin":0, "Bow":0, "Roll Over":0}, "friends": {}, "favors": {}, "keepsakes": [], "photos": [], "day": "", "daily": {}, "event_claimed": ""}
 
 static func home_point(game: Node, kind: String) -> Vector2:
 	match kind:
@@ -58,6 +58,7 @@ static func talk(game: Node, person: String) -> void:
 		friend.hearts = mini(20, friend.hearts + 1)
 		friend.talked = today()
 		game.life.friends[person] = friend
+		IslandMemories.unlock(game,"first_friend")
 		game.save_game()
 
 static func favor(game: Node, person: String) -> String:
@@ -120,6 +121,7 @@ static func train(game: Node, command: String) -> String:
 	if game.cooldowns.get("Training", 0) > 0:
 		return "Let those paws take a breather before another lesson."
 	if game.life.training[command] >= 5:
+		IslandMemories.unlock(game,"first_trick")
 		GrowthRoutes.record(game,"Training")
 		game.cooldowns.Training = 20.0
 		game.care_performed.emit(command)
@@ -130,6 +132,7 @@ static func train(game: Node, command: String) -> String:
 	GrowthRoutes.record(game,"Training")
 	game.cooldowns.Training = 20.0
 	game.life.training[command] += 1
+	if game.life.training[command]==5: IslandMemories.unlock(game,"first_trick")
 	IslandAdventure.record_task(game,"Training")
 	game.needs.Energy = maxf(0, game.needs.Energy - 2)
 	game.needs.Happiness = minf(100, game.needs.Happiness + 3)
@@ -228,6 +231,7 @@ static func discover(game: Node, index: int) -> void:
 	if item not in game.life.keepsakes:
 		game.life.keepsakes.append(item)
 		game.remember("Collected a " + item.to_lower() + " for Home.")
+	IslandMemories.unlock(game,"first_find")
 
 static func event_info() -> Dictionary:
 	var weekday = int(Time.get_datetime_dict_from_system(false).weekday)
@@ -255,6 +259,9 @@ static func claim_event(game: Node) -> String:
 static func valid(data: Variant) -> bool:
 	if not data is Dictionary:
 		return false
+	if not IslandFestivals.valid(data.get("festivals",{})) or not IslandMemories.valid(data.get("memories",{})): return false
+	if not IslandSurprises.valid(data.get("surprises",{})): return false
+	if not DailyCheckIn.valid(data.get("check_in",{})): return false
 	if not GrowthRoutes.valid(data.get("growth_paths",{})) or not IslandAdventure.integer(data.get("tug_games",0),100000):
 		return false
 	if not IslandConnections.valid(data.get("connections",{})):
@@ -363,6 +370,9 @@ static func normalized(data: Dictionary) -> Dictionary:
 	result.moments = IslandMoments.normalized(result.moments)
 	result.connections = IslandConnections.normalized(result.connections)
 	result.beach = IslandActivities.normalized(result.beach)
+	result.festivals = IslandFestivals.normalized(result.festivals)
+	result.surprises = IslandSurprises.normalized(result.surprises)
+	result.check_in = DailyCheckIn.normalized(result.check_in)
 	result.delivery = {"recipient": result.delivery.get("recipient", ""), "claimed": result.delivery.get("claimed", ""), "completed": int(result.delivery.get("completed", 0))}
 	for key in ["day", "claimed"]:
 		result.playdate[key] = result.playdate.get(key, "")

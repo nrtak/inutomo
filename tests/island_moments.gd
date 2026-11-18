@@ -86,7 +86,7 @@ func run() -> void:
 		game.resting = false
 		actor.react_to_care("Rest")
 		actor._process(0.1)
-		check(actor.sprite.texture == Art.PUPPIES[breed] and actor.sprite.material == null, "Wake restores the adult standing pose and normal material")
+		check(actor.sprite.texture == Art.PUPPIES[breed] and actor.sprite.material == actor.sleep_material, "Wake restores the adult standing pose with its clean manga edge")
 	actor.queue_free()
 	await process_frame
 	for suffix in ["", ".tmp", ".bak"]:

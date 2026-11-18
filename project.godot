@@ -5,7 +5,7 @@ config/name="Puppy Island"
 config/version="0.1.0"
 run/main_scene="res://scenes/launch.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
-config/icon="res://assets/icon.png"
+config/icon="res://assets/manga/icon.png"
 boot_splash/show_image=false
 boot_splash/image="res://assets/launch_blank.png"
 boot_splash/bg_color=Color(0.93, 0.98, 0.97, 1)
@@ -16,15 +16,17 @@ Sound="*res://scripts/sound.gd"
 Daylight="*res://scripts/daylight.gd"
 Reminders="*res://scripts/reminders.gd"
 Widgets="*res://scripts/widgets.gd"
+VisualTone="*res://scripts/visual_tone.gd"
+ScreenLayout="*res://scripts/screen_layout.gd"
 
 [display]
-window/size/viewport_width=1280
+window/size/viewport_width=720
 window/size/viewport_height=720
 window/size/window_width_override=1152
 window/size/window_height_override=648
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
-window/handheld/orientation=0
+window/handheld/orientation=6
 
 [rendering]
 renderer/rendering_method="gl_compatibility"

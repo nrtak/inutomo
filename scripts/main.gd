@@ -50,7 +50,11 @@ var health_badge: Button
 var age_label: Label
 var days_label: Label
 var rest_button: Button
-var actions: VBoxContainer
+var actions: BoxContainer
+var action_dock: CenterContainer
+var header: HBoxContainer
+var utility_layer: Control
+var travel: BoxContainer
 var habitat: Habitat
 var intro_step = 0
 var intro_text: CommandHint
@@ -71,10 +75,11 @@ var reward_total = 0
 var reward_notice: Control
 var reward_version = 0
 var home_suggestion: Label
-var home_suggestion_card: PanelContainer
+var home_suggestion_card: Button
 var dog_invitation: PanelContainer
 
 func _ready() -> void:
+	add_to_group("responsive_scenes")
 	world_host = Control.new()
 	world_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(world_host)
@@ -89,7 +94,7 @@ func _ready() -> void:
 	var layout = UI.column(10)
 	layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(layout)
-	var header = HBoxContainer.new()
+	header = HBoxContainer.new()
 	header.add_theme_constant_override("separation", 24)
 	header.name = "ScreenHeader"
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -120,10 +125,11 @@ func _ready() -> void:
 	header_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header_space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(header_space)
-	var utility_layer = Control.new()
+	utility_layer = Control.new()
 	utility_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(utility_layer)
-	var travel = VBoxContainer.new()
+	travel = BoxContainer.new()
+	travel.vertical = true
 	travel.name = "TravelNavigation"
 	travel.position = Vector2(0, 156)
 	travel.add_theme_constant_override("separation", 16)
@@ -151,14 +157,14 @@ func _ready() -> void:
 	island_button.get_child(island_button.get_child_count()-1).offset_left = -30
 	island_button.get_child(island_button.get_child_count()-1).offset_right = -4
 	travel.add_child(island_button)
-	daily_button = UI.location_button("To-do Today", preload("res://assets/ui/sunset.svg"), request_page.bind("Life:Daily"), Color("fff0bd"))
+	daily_button = UI.location_button("To-do Today", preload("res://assets/manga/ui/sunset.svg"), request_page.bind("Life:Daily"), Color("fff0bd"))
 	daily_button.custom_minimum_size = Vector2(210, 72)
 	daily_button.get_meta("picture").offset_right = 70
 	daily_button.get_meta("caption").offset_left = 78
 	daily_button.get_meta("caption").add_theme_font_size_override("font_size", 22)
 	travel.add_child(daily_button)
 	camera_button = UI.button("Take photo", open_photo_mode, Color("f9d8e2"))
-	camera_button.icon = preload("res://assets/ui/camera.svg")
+	camera_button.icon = preload("res://assets/manga/ui/camera.svg")
 	camera_button.expand_icon = true
 	camera_button.add_theme_constant_override("icon_max_width", 34)
 	camera_button.add_theme_font_size_override("font_size", 22)
@@ -189,24 +195,28 @@ func _ready() -> void:
 	for i in Game.NEEDS.size():
 		var key: String = Game.NEEDS[i]
 		var col = UI.column(2)
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		need_col.add_child(col)
 		var line = HBoxContainer.new()
+		line.add_theme_constant_override("separation",6)
 		col.add_child(line)
 		var icon = UI.button("", show_need_tip.bind(key), Color("fff0cf"))
-		icon.icon = load("res://assets/ui/" + ["feed", "play", "rest", "care"][i] + ".svg")
+		icon.icon = UI.care_icon(key)
 		icon.expand_icon = true
 		icon.add_theme_constant_override("icon_max_width", 30)
-		icon.custom_minimum_size = Vector2(38, 38)
+		icon.custom_minimum_size = Vector2(44, 44)
 		for state in ["normal", "hover", "pressed", "disabled"]:
 			icon.add_theme_stylebox_override(state, StyleBoxEmpty.new())
 		icon.tooltip_text = key
 		line.add_child(icon)
 		var need_name = UI.label(key, 18)
+		need_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		need_name.autowrap_mode = TextServer.AUTOWRAP_OFF
 		line.add_child(need_name)
 		meter_labels[key] = UI.label(key, 20)
 		meter_labels[key].autowrap_mode = TextServer.AUTOWRAP_OFF
 		meter_labels[key].custom_minimum_size.x = 40
+		meter_labels[key].horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		line.add_child(meter_labels[key])
 		var bar = ProgressBar.new()
 		bar.custom_minimum_size = Vector2(166, 10)
@@ -229,7 +239,7 @@ func _ready() -> void:
 	menu_gap.custom_minimum_size.x = 20
 	header.add_child(menu_gap)
 	header.add_child(camera_button)
-	menu_button = UI.icon_button("Menu", preload("res://assets/ui/menu.svg"), open_navigation, Color("fff5e2"))
+	menu_button = UI.icon_button("Menu", preload("res://assets/manga/ui/menu.svg"), open_navigation, Color("fff5e2"))
 	menu_button.custom_minimum_size = Vector2(72, 68)
 	menu_button.get_meta("caption").visible = false
 	menu_button.get_meta("picture").offset_bottom = -9
@@ -247,12 +257,13 @@ func _ready() -> void:
 	message.custom_minimum_size.x = 300
 	message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	message_card.add_child(message)
-	actions = VBoxContainer.new()
+	actions = BoxContainer.new()
+	actions.vertical = true
 	actions.add_theme_constant_override("separation", 12)
 	var dock_layer = Control.new()
 	dock_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(dock_layer)
-	var action_dock = CenterContainer.new()
+	action_dock = CenterContainer.new()
 	action_dock.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
 	action_dock.offset_left = -116
 	action_dock.offset_right = 0
@@ -261,10 +272,10 @@ func _ready() -> void:
 	action_dock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dock_layer.add_child(action_dock)
 	action_dock.add_child(actions)
-	var suggestion = UI.card()
+	var suggestion = UI.button("",func(): daily_shortcut(IslandMemories.suggestion(Game)),Color("fff6e5"))
 	home_suggestion_card = suggestion
 	suggestion.visible = false
-	suggestion.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	suggestion.tooltip_text="An optional idea. Tap to go there."
 	suggestion.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	suggestion.offset_left = 0
 	suggestion.offset_right = 210
@@ -273,11 +284,17 @@ func _ready() -> void:
 	suggestion.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	utility_layer.add_child(suggestion)
 	home_suggestion = UI.label("",22)
+	home_suggestion.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	home_suggestion.offset_left=18
+	home_suggestion.offset_right=-18
+	home_suggestion.offset_top=14
+	home_suggestion.offset_bottom=-14
+	home_suggestion.custom_minimum_size.x=174
 	suggestion.add_child(home_suggestion)
 	var action_colors = [Color("ffe0a0"), Color("bdeab0"), Color("b7def4"), Color("d9c9f6")]
 	for i in 4:
 		var kind: String = ["Feed", "Play", "Care", "Rest"][i]
-		var b = UI.icon_button(kind, load("res://assets/ui/" + kind.to_lower() + ".svg"), home_action.bind(kind), action_colors[i])
+		var b = UI.icon_button(kind, load("res://assets/manga/ui/" + kind.to_lower() + ".svg"), home_action.bind(kind), action_colors[i])
 		b.expand_icon = true
 		b.add_theme_constant_override("icon_max_width", 44)
 		b.add_theme_constant_override("h_separation", 12)
@@ -299,11 +316,84 @@ func _ready() -> void:
 		show_intro()
 	if not Game.save_error.is_empty():
 		_notice(Game.save_error)
+	hud.set_meta("screen_layout_manual",true)
+	resized.connect(func(): arrange_screen.call_deferred())
+	arrange_screen.call_deferred()
+
+func arrange_screen() -> void:
+	if not is_instance_valid(menu_button) or not is_instance_valid(action_dock): return
+	var safe = UI.safe_insets(20)
+	for edge in safe: hud.add_theme_constant_override("margin_"+edge,safe[edge])
+	var portrait = size.y>size.x
+	if page.begins_with("Festival:"):
+		back_button.text="‹ Festivals" if portrait else "‹ Back to Festivals"
+		back_button.custom_minimum_size.x=150 if portrait else 190
+	var available = size-Vector2(safe.left+safe.right,safe.top+safe.bottom)
+	for item in [identity_card,needs_card]:
+		var destination = utility_layer if portrait else header
+		if item.get_parent()!=destination: item.reparent(destination)
+	if portrait:
+		header.add_theme_constant_override("separation",10)
+		page_label.clip_text = true
+		page_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		identity_card.position = Vector2(0,0 if page=="Home" else 84)
+		identity_card.custom_minimum_size.x = 260
+		identity_card.size = Vector2(260,identity_card.get_combined_minimum_size().y)
+		needs_card.position = Vector2(0,identity_card.position.y+identity_card.size.y+14)
+		needs_card.custom_minimum_size.x = available.x
+		needs_card.size = Vector2(available.x,needs_card.get_combined_minimum_size().y)
+		travel.vertical = false
+		travel.add_theme_constant_override("separation",10)
+		travel.position = Vector2(0,available.y-238)
+		travel.size = Vector2(available.x,80)
+		for button in travel.get_children():
+			button.custom_minimum_size.x = (available.x-10)/2
+			button.custom_minimum_size.y = 80
+		actions.vertical = false
+		actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		action_dock.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+		action_dock.offset_top = -126
+		action_dock.offset_bottom = -8
+		for button in action_buttons.values(): button.custom_minimum_size.x = (available.x-36)/4
+		camera_button.visible = false
+		page_label.add_theme_font_size_override("font_size",24)
+		page_label.custom_minimum_size.x = 0
+		page_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	else:
+		header.add_theme_constant_override("separation",12 if page in ["Fetch","Walk","Scent Trail"] else 24)
+		header.move_child(identity_card,2)
+		var utility_index=mini(menu_button.get_index(),camera_button.get_index() if camera_button.get_parent()==header else menu_button.get_index())
+		if needs_card.get_index()<utility_index: utility_index-=1
+		header.move_child(needs_card,maxi(0,utility_index))
+		identity_card.custom_minimum_size.x = 220
+		needs_card.custom_minimum_size.x = 370
+		travel.vertical = true
+		travel.add_theme_constant_override("separation",16)
+		travel.position = Vector2(0,196 if health_badge.visible else 156)
+		travel.size = Vector2(210,0)
+		for button in travel.get_children(): button.custom_minimum_size.x = 210
+		actions.vertical = true
+		action_dock.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
+		action_dock.offset_left = -116
+		action_dock.offset_top = -190
+		action_dock.offset_bottom = 262
+		for button in action_buttons.values(): button.custom_minimum_size.x = 116
+		camera_button.visible = false
+	ScreenLayout.fit_content(body,available.x)
+	for child in get_children():
+		if child is Control and child!=hud and child!=world_host:
+			ScreenLayout.fit_content(child,available.x)
+	if is_instance_valid(habitat): habitat._resize_world()
 
 func _process(delta: float) -> void:
+	if page=="Home" and Game.intro_seen and not Game.home_greeted and Game.paused_at<=0 and Game.is_processing() and not has_open_overlay():
+		greet_at_home()
 	if not Game.pending_stage.is_empty() and page == "Home" and not is_instance_valid(intro_overlay) and not is_instance_valid(stage_overlay) and not is_instance_valid(resident_overlay) and not is_instance_valid(tip_overlay) and not is_instance_valid(navigation_overlay) and not is_instance_valid(photo_overlay):
 		show_growth_moment()
 	status_clock += delta
+	var gift_ready=not DailyCheckIn.pending(Game).is_empty()
+	daily_button.get_meta("picture").texture=preload("res://assets/manga/ui/coin.svg") if gift_ready else preload("res://assets/manga/ui/sunset.svg")
+	daily_button.tooltip_text="A welcome-back gift is ready in To-do Today" if gift_ready else "Optional ideas for today"
 	message_card.visible = false
 	if is_instance_valid(intro_overlay):
 		return
@@ -326,7 +416,7 @@ func _process(delta: float) -> void:
 		var hint = home_hint()
 		var previous_hint = home_suggestion.text
 		var was_visible = home_suggestion_card.visible
-		home_suggestion_card.visible = page == "Home" and not hint.is_empty() and not is_instance_valid(photo_overlay) and not is_instance_valid(notice_overlay) and not (is_instance_valid(dog_invitation) and dog_invitation.visible)
+		home_suggestion_card.visible = page == "Home" and size.x>=size.y and not hint.is_empty() and not is_instance_valid(photo_overlay) and not is_instance_valid(notice_overlay) and not (is_instance_valid(dog_invitation) and dog_invitation.visible)
 		home_suggestion.text = hint
 		if home_suggestion_card.visible and (hint!=previous_hint or not was_visible or home_suggestion_card.get_meta("view_size",Vector2.ZERO)!=size):
 			arrange_home_hint.call_deferred()
@@ -350,7 +440,7 @@ func home_hint() -> String:
 		if Game.needs[key] < Game.needs[lowest]:
 			lowest = key
 	if Game.needs[lowest] >= 45:
-		return "" if Game.points > 0 else "Try Feed, Play or Care."
+		return "Try next →\n"+IslandMemories.suggestion(Game).text if Game.points>0 else "Try Feed, Play or Care."
 	return Game.puppy_name + {"Hunger":" could use a meal.","Happiness":" would enjoy a little play.","Energy":" could use a nap.","Cleanliness":" could use a brush."}[lowest]
 
 func _notice(text: String) -> void:
@@ -360,7 +450,7 @@ func _notice(text: String) -> void:
 
 func home_message_position(message_size: Vector2) -> Vector2:
 	var safe = UI.safe_insets(20)
-	var preferred = Vector2(safe.left,camera_button.get_global_rect().end.y+12)
+	var preferred = Vector2(safe.left,identity_card.get_global_rect().end.y+12)
 	var blocked: Array[Rect2] = []
 	for control in [identity_card,island_button,daily_button,camera_button,needs_card,menu_button,actions]:
 		if control.is_visible_in_tree(): blocked.append(control.get_global_rect().grow(8))
@@ -394,6 +484,7 @@ func home_message_position(message_size: Vector2) -> Vector2:
 
 func arrange_home_hint() -> void:
 	if not is_instance_valid(home_suggestion_card) or not home_suggestion_card.visible: return
+	home_suggestion_card.custom_minimum_size.y=maxf(84,home_suggestion.get_minimum_size().y+28)
 	home_suggestion_card.size = Vector2(210,home_suggestion_card.get_combined_minimum_size().y)
 	home_suggestion_card.global_position = home_message_position(home_suggestion_card.size)
 	home_suggestion_card.set_meta("view_size",size)
@@ -462,7 +553,7 @@ func _update_needs() -> void:
 	days_label.text = "Days played: %d" % Game.days_played()
 	health_badge.visible = page == "Home" and PuppyHealth.unwell(Game)
 	var travel = hud.find_child("TravelNavigation", true, false)
-	if is_instance_valid(travel):
+	if is_instance_valid(travel) and size.x>=size.y:
 		travel.position.y = 196 if health_badge.visible else 156
 	UI.button_caption(rest_button, "Wake" if Game.resting else "Rest")
 
@@ -479,20 +570,20 @@ func update_navigation() -> void:
 			BeachStyle.style_button(button,BeachStyle.PAPER)
 		else:
 			BeachStyle.restore_button(button)
-	camera_button.icon = preload("res://assets/ui/beach_camera.svg")
+	camera_button.icon = preload("res://assets/manga/ui/beach_camera.svg")
 	var header = menu_button.get_parent()
 	# Keep map controls together on the left, clear of the distant tower.
 	var compact_header = page in ["Island","Lighthouse"]
 	header.move_child(menu_button,page_label.get_index()+1 if compact_header else header.get_child_count()-1)
 	page_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN if compact_header else Control.SIZE_EXPAND_FILL
-	var camera_parent = island_button.get_parent() if page == "Home" else menu_button.get_parent()
+	var camera_parent = menu_button.get_parent()
 	if camera_button.get_parent() != camera_parent:
 		camera_button.reparent(camera_parent)
 	if page != "Home":
 		var camera_index = menu_button.get_index()-(1 if camera_button.get_index() < menu_button.get_index() else 0)
 		camera_parent.move_child(camera_button,camera_index)
 	camera_button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	camera_button.visible = page in ["Home", "Shop", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Lighthouse Room", "Harbor", "Keeper’s Cottage"]
+	camera_button.visible = false
 	var scene_page = page in ["Home", "Park", "Beach", "Puppy Club", "Vet Clinic", "Lighthouse", "Harbor", "Keeper’s Cottage", "Lighthouse Room", "Fetch", "Walk", "Scent Trail"]
 	identity_card.visible = page == "Home" or page in ["Fetch", "Walk"]
 	bag_button.visible = false
@@ -510,9 +601,27 @@ func update_navigation() -> void:
 	if page.begins_with("Moment:"):
 		page_label.text = IslandMoments.PLACES.get(page.get_slice(":",1),"Island moment")
 		back_button.text = "‹ Back"
-		camera_button.visible = true
+		camera_button.visible = false
 	if page == "Life:Welcome Day":
 		page_label.text = "Welcome Day"
+	if page=="Life:Club Plans": page_label.visible=false
+	if page.begins_with("Plans:"): page_label.visible=false
+	if page=="Surprise": page_label.text="Little visits" if Game.life.surprises.kind=="Visit" else "Neighbor help"
+	if page.begins_with("Festival:"):
+		page_label.text=IslandFestivals.EVENTS.get(page.get_slice(":",1),{}).get("name","Island gathering")
+	var back_to = back_target()
+	var back_name: String = {"Life:Events":"Festivals","Shop":"Shop","Life:Daily":"Today","Life:Wardrobe":"Wardrobe","Life:Dog Friends":"Dog Friends","Life:Health Record":"Health History","Shop Goods":"Shop","Life":"Island life"}.get(back_to,back_to.get_slice(":",1) if back_to.begins_with("Life:") else back_to)
+	if back_to.begins_with("Plans:"): back_name={"Keeper’s Cottage":"Cottage plans","Vet Clinic":"Vet plans","Lighthouse Room":"Lookout plans"}.get(back_to.get_slice(":",1),back_to.get_slice(":",1)+" plans")
+	if page.begins_with("Plans:"): back_name={"Keeper’s Cottage":"Cottage","Lighthouse Room":"Lookout room"}.get(back_to,back_name)
+	if back_name.length()<=16 and not back_to.begins_with("Moment:"):
+		back_button.text = "‹ Back to "+back_name
+		back_button.custom_minimum_size.x = 190 if back_name.length()<11 else 250
+		if page in ["Fetch","Walk"]:
+			back_button.text="‹ "+back_name
+			back_button.custom_minimum_size.x=112
+	if page.begins_with("Festival:") and size.y>size.x:
+		back_button.text="‹ Festivals"
+		back_button.custom_minimum_size.x=150
 	island_button.get_parent().visible = page == "Home"
 	actions.visible = page == "Home"
 	needs_card.visible = page in ["Home", "Fetch", "Walk", "Scent Trail"]
@@ -532,9 +641,20 @@ func set_scenery(location: String) -> void:
 		habitat.puppy.react_to_care(Game.pending_home_reaction)
 		Game.pending_home_reaction = ""
 		Game.home_greeted = true
+		Game.welcome_away_seconds = 0.0
 	elif page=="Home" and Game.intro_seen and not Game.home_greeted:
-		Game.home_greeted = true
-		habitat.puppy.welcome_player()
+		greet_at_home()
+
+func greet_at_home() -> void:
+	if not is_instance_valid(habitat): return
+	Game.home_greeted = true
+	habitat.puppy.welcome_player(Game.welcome_away_seconds)
+	Game.welcome_away_seconds = 0.0
+
+func has_open_overlay() -> bool:
+	for overlay in [intro_overlay,stage_overlay,resident_overlay,tip_overlay,navigation_overlay,photo_overlay,leave_overlay]:
+		if is_instance_valid(overlay): return true
+	return false
 
 func show_page(dest: String) -> void:
 	if dest=="Tug" and (not Game.can_explore() or Game.cooldowns.get("Play",0)>0):
@@ -580,6 +700,58 @@ func show_page(dest: String) -> void:
 		mystery.host = self
 		world_host.add_child(mystery)
 		return
+	if dest.begins_with("Festival:"):
+		var id=dest.get_slice(":",1)
+		if id not in IslandFestivals.EVENTS:
+			show_page("Life:Events")
+			return
+		current_place=IslandFestivals.EVENTS[id].place
+		set_scenery(current_place)
+		var festival=load("res://scripts/festival_view.gd").new()
+		festival.host=self
+		festival.event_id=id
+		world_host.add_child(festival)
+		return
+	if dest.begins_with("Plans:"):
+		var place=dest.get_slice(":",1)
+		if place not in LOCATION_PAGES:
+			show_page("Island")
+			return
+		if place=="Puppy Club":
+			show_page("Life:Club Plans")
+			return
+		if place=="Lighthouse Room" and not IslandAdventure.tower_open(Game):
+			show_page("Lighthouse")
+			return
+		current_place=place
+		set_scenery(place)
+		var hub=load("res://scripts/location_hub.gd").new()
+		hub.host=self
+		hub.location=place
+		hub.plans_mode=true
+		hub.size_flags_vertical=Control.SIZE_EXPAND_FILL
+		body.add_child(hub)
+		return
+	if dest=="Surprise":
+		if Game.life.surprises.kind.is_empty():
+			show_page("Home")
+			return
+		if not Game.can_explore():
+			show_page("Home")
+			show_feedback("A little rest or recovery first. Your visitor and clues will wait.")
+			return
+		if not Game.life.surprises.accepted:
+			var reply=IslandSurprises.respond(Game,true)
+			if not reply.ok:
+				show_page("Home")
+				show_feedback(reply.text)
+				return
+		current_place=IslandSurprises.place(Game)
+		set_scenery(current_place)
+		var surprise=load("res://scripts/neighbor_surprise_view.gd").new()
+		surprise.host=self
+		world_host.add_child(surprise)
+		return
 	if dest.begins_with("Moment:"):
 		var kind = dest.get_slice(":",1)
 		if kind in IslandMoments.PLACES:
@@ -619,7 +791,36 @@ func show_page(dest: String) -> void:
 		"Shop Goods": goods_page(true)
 		"Vet Supplies": goods_page(true, true)
 
+func back_target() -> String:
+	if page=="Surprise": return IslandSurprises.place(Game)
+	if page.begins_with("Plans:"): return page.get_slice(":",1)
+	if page=="Life:Club Plans": return "Puppy Club"
+	if page.begins_with("Festival:"): return "Life:Events"
+	if page=="Tug": return "Home"
+	if page=="Mystery": return current_place
+	if page.begins_with("Moment:"): return IslandMoments.PLACES.get(page.get_slice(":",1),"Home")
+	if page=="Life:Welcome Day": return "Puppy Club"
+	if page=="Lighthouse Room": return "Lighthouse"
+	if page=="Scent Trail": return "Park"
+	if page in LOCATION_PAGES: return "Island"
+	if page in ["Fetch","Walk"]: return activity_origin
+	if page=="Life:Beach Activities": return "Beach"
+	if not page_history.is_empty(): return page_history.back()
+	return {"Life:Training":"Park","Life:Playdate":"Puppy Club","Life:Deliveries":"Harbor","Life:Health Record":"Vet Clinic","Vet Supplies":"Vet Clinic","Shop Goods":"Shop"}.get(page,"Home")
+
 func go_back() -> void:
+	if page=="Surprise":
+		request_page(IslandSurprises.place(Game))
+		return
+	if page.begins_with("Plans:"):
+		request_page(page.get_slice(":",1))
+		return
+	if page=="Life:Club Plans":
+		request_page("Puppy Club")
+		return
+	if page.begins_with("Festival:"):
+		request_page("Life:Events")
+		return
 	if page=="Tug":
 		request_page("Home")
 		return
@@ -667,7 +868,7 @@ func start_activity(kind: String) -> void:
 	if not Game.can_explore():
 		_notice(Game.personalize("Mochi needs to recover first. Visit Vet Clinic for a free checkup." if PuppyHealth.unwell(Game) else "Rest at Home first. Mochi needs to be awake with 15 energy."))
 		return
-	activity_origin = page if page in LOCATION_PAGES else ("Park" if kind == "Fetch" else "Beach")
+	activity_origin = page if page in LOCATION_PAGES else ("Home" if page=="Surprise" and Game.life.surprises.kind=="Visit" else ("Park" if kind == "Fetch" else "Beach"))
 	clear_body()
 	page = kind
 	current_place = "Park" if kind == "Fetch" else "Beach"
@@ -751,7 +952,7 @@ func journal_page() -> void:
 		var caption: String = {"Care": "Care for your puppy at Home", "Nora": "Meet Nora at the Puppy Club", "Outing": "Finish a Walk or Fetch"}[goal]
 		var destination: String = {"Care": "Home", "Nora": "Puppy Club", "Outing": "Island"}[goal]
 		var button = UI.button(("✓  " if done else "○  ") + caption, request_page.bind(destination), Color("bdeab0") if done else Color("fff5e2"))
-		button.icon = load("res://assets/ui/" + {"Care": "care", "Nora": "play", "Outing": "map"}[goal] + ".svg")
+		button.icon = load("res://assets/manga/ui/" + {"Care": "care", "Nora": "play", "Outing": "map"}[goal] + ".svg")
 		button.expand_icon = true
 		button.add_theme_constant_override("icon_max_width", 32)
 		content.add_child(button)
@@ -775,13 +976,18 @@ func journal_page() -> void:
 	content.add_child(UI.button(chapter.button, request_page.bind(chapter.place), Color("c2ecf4")))
 	content.add_child(UI.button("Island life: training, friends and keepsakes", show_page.bind("Life"), Color("c8eddd")))
 	content.add_child(UI.label("Little memories", 26))
+	for key in IslandMemories.ENTRIES:
+		if not Game.life.memories.has(key): continue
+		var memory: Dictionary=IslandMemories.ENTRIES[key]
+		content.add_child(UI.label("♥ "+memory.title+" · "+Game.life.memories[key],22,UI.TEAL))
 	if Game.life.welcome_day.started:
-		var memory = UI.location_button("Our Welcome Day memory" if Game.life.welcome_day.celebrated else "Nora's Welcome Day invitation", preload("res://assets/ui/heart.svg"), request_page.bind("Life:Welcome Day"), Color("f9d8e2"))
+		var memory = UI.location_button("Our Welcome Day memory" if Game.life.welcome_day.celebrated else "Nora's Welcome Day invitation", preload("res://assets/manga/ui/heart.svg"), request_page.bind("Life:Welcome Day"), Color("f9d8e2"))
 		memory.custom_minimum_size.y = 76
 		content.add_child(memory)
 	if Game.journal.is_empty():
 		content.add_child(UI.label("Your first chapter is waiting. Try a little care at Home.", 22))
 	for entry in Game.journal:
+		if str(entry).begins_with("Memory: "): continue
 		content.add_child(UI.label("• " + str(entry), 22))
 
 func dogs_page() -> void:
@@ -911,6 +1117,10 @@ func location_page(location: String) -> void:
 	hub.location = location
 	hub.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_child(hub)
+	if location=="Puppy Club":
+		habitat.background.z_index=-2
+		var neighbors=load("res://scripts/club_neighbors.gd").new()
+		world_host.add_child(neighbors)
 
 func show_resident(texture: Texture2D, character_name: String, role: String, text: String) -> void:
 	if is_instance_valid(resident_overlay):
@@ -975,6 +1185,12 @@ func pause_outing_for_dialog() -> void:
 		if page != "Scent Trail":
 			if activity.complete: return
 			timer = activity.timer
+	elif page.begins_with("Festival:"):
+		activity=world_host.get_node_or_null("IslandFestivalView")
+		if not is_instance_valid(activity): return
+	elif page=="Surprise":
+		activity=world_host.get_node_or_null("NeighborSurpriseView")
+		if not is_instance_valid(activity): return
 	elif page.begins_with("Moment:"):
 		activity = world_host.get_node_or_null("IslandMomentView")
 		if not is_instance_valid(activity) or activity.phase=="done": return
@@ -1060,19 +1276,26 @@ func open_navigation() -> void:
 	var content = UI.column(10)
 	content.custom_minimum_size.x = 880
 	panel.add_child(content)
-	content.add_child(UI.label("Your puppy", 34, UI.TEAL))
+	content.add_child(UI.label("Menu", 34, UI.TEAL))
 	var grid = GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 12)
 	grid.add_theme_constant_override("v_separation", 12)
 	content.add_child(grid)
-	var pictures = {"Home": preload("res://assets/ui/home.svg"), "Island": preload("res://assets/ui/island.svg"), "Bag": preload("res://assets/ui/menu_bag.svg"), "Journal": preload("res://assets/ui/menu_journal.svg"), "My Dogs": Art.PUPPIES[Game.breed], "Menu": preload("res://assets/ui/title.svg"), "Life": preload("res://assets/ui/club.svg"), "Life:Events": preload("res://assets/ui/sunset.svg")}
+	var pictures = {"Home": preload("res://assets/manga/ui/home.svg"), "Island": preload("res://assets/manga/ui/island.svg"), "Bag": preload("res://assets/manga/ui/menu_bag.svg"), "Journal": preload("res://assets/manga/ui/menu_journal.svg"), "My Dogs": Art.PUPPIES[Game.breed], "Menu": preload("res://assets/manga/ui/title.svg"), "Life": preload("res://assets/manga/ui/club.svg"), "Life:Events": preload("res://assets/manga/ui/sunset.svg")}
 	var tile_colors = {"Home": Color("ffdfb5"), "Island": Color("c2ecf4"), "Bag": Color("c8eddd"), "Journal": Color("f9d8e2"), "My Dogs": Color("fff0bd"), "Menu": Color("e1d9f6"), "Life": Color("c2ecf4"), "Life:Events": Color("ffdfb5")}
-	for destination in ["Bag", "Journal", "My Dogs", "Life", "Life:Events", "Menu"]:
-		var label = {"Menu": "Title screen", "Life": "Island life", "Life:Events": "Events"}.get(destination, destination)
+	var destinations=["Bag", "Journal", "My Dogs", "Life", "Life:Events"]
+	if page in ["Home"]+LOCATION_PAGES or page.begins_with("Moment:"):
+		destinations.push_front("Photo")
+		pictures.Photo=preload("res://assets/manga/ui/camera.svg")
+		tile_colors.Photo=Color("f9d8e2")
+	for destination in destinations:
+		var label = {"Menu": "Title screen", "Life": "Dog & home", "Life:Events": "Events"}.get(destination, destination)
+		if destination=="Photo": label="Take photo"
 		var button = UI.picture_button(label, pictures[destination], func():
 			close_navigation()
-			request_page(destination)
+			if destination=="Photo": open_photo_mode()
+			else: request_page(destination)
 		)
 		button.custom_minimum_size.y = clampf(get_viewport_rect().size.y*0.18,112,140)
 		for state in ["normal", "hover", "pressed"]:
@@ -1080,11 +1303,23 @@ func open_navigation() -> void:
 			button.add_theme_stylebox_override(state, UI.style(color.lightened(0.1) if state == "hover" else (color.darkened(0.08) if state == "pressed" else color), 22))
 		grid.add_child(button)
 	content.add_child(UI.motion_toggle())
+	var footer=HBoxContainer.new()
+	footer.alignment=BoxContainer.ALIGNMENT_CENTER
+	footer.add_theme_constant_override("separation",16)
+	content.add_child(footer)
+	var title_button=UI.button("Title screen",func():
+		close_navigation()
+		request_page("Menu")
+	,Color("fff6e5"))
+	title_button.custom_minimum_size=Vector2(180,56)
+	title_button.size_flags_horizontal=Control.SIZE_SHRINK_CENTER
+	title_button.add_theme_font_size_override("font_size",22)
+	footer.add_child(title_button)
 	var close_button = UI.button("Close", close_navigation, Color("bdeab0"))
 	close_button.custom_minimum_size = Vector2(180, 56)
 	close_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	close_button.add_theme_font_size_override("font_size", 24)
-	content.add_child(close_button)
+	footer.add_child(close_button)
 
 func close_navigation() -> void:
 	resume_outing_after_dialog()
@@ -1095,16 +1330,16 @@ func close_navigation() -> void:
 func life_page(section: String) -> void:
 	if section == "Welcome Day":
 		set_scenery("Puppy Club")
-		habitat.background.texture = preload("res://assets/backgrounds/club_picnic_anime.png")
+		habitat.background.texture = preload("res://assets/manga/backgrounds/club_picnic_anime.png")
 		var welcome = load("res://scripts/welcome_day_view.gd").new()
 		welcome.host = self
 		world_host.add_child(welcome)
 		return
-	var scenery = {"Beach Activities":"Beach", "Deliveries":"Harbor", "Health Record":"Vet Clinic", "Playdate":"Puppy Club", "Training":"Park", "Events":"Puppy Club", "Friends":"Puppy Club", "Dog Friends":"Puppy Club", "Stories":"Puppy Club"}.get(section,"Home")
+	var scenery = {"Club Plans":"Puppy Club", "Beach Activities":"Beach", "Deliveries":"Harbor", "Health Record":"Vet Clinic", "Playdate":"Puppy Club", "Training":"Park", "Events":"Puppy Club", "Friends":"Puppy Club", "Dog Friends":"Puppy Club", "Stories":"Puppy Club"}.get(section,"Home")
 	set_scenery(scenery)
 	var browser = load("res://scripts/life_browser.gd").new()
 	browser.host = self
-	browser.mode = section if section in browser.MODES or section in ["Playdate", "Health Record", "Deliveries", "Beach Activities", "Daily", "Dog Friends", "Stories"] else "Dog"
+	browser.mode = section if section in browser.MODES or section in ["Club Plans", "Playdate", "Health Record", "Deliveries", "Beach Activities", "Daily", "Dog Friends", "Stories"] else "Dog"
 	browser.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	if section == "Beach Activities":
 		browser.beach_mode = pending_beach_mode
@@ -1181,9 +1416,16 @@ func open_photo_mode() -> void:
 	row.offset_top = -110 - safe.bottom
 	row.offset_bottom = -safe.bottom
 	photo_overlay.add_child(row)
+	var arrange_photo=func():
+		var edges=UI.safe_insets()
+		row.offset_left=edges.left
+		row.offset_right=-edges.right
+		row.offset_top=-110-edges.bottom
+		row.offset_bottom=-edges.bottom
+	photo_overlay.resized.connect(arrange_photo)
 	row.add_child(UI.icon_button("Back", UI.place_icon("Home"), close_photo_mode, Color("ffdfb5")))
-	row.add_child(UI.icon_button("Capture", preload("res://assets/ui/camera.svg"), capture_photo, Color("f9d8e2")))
-	row.add_child(UI.icon_button("Album", preload("res://assets/ui/menu_journal.svg"), func():
+	row.add_child(UI.icon_button("Capture", preload("res://assets/manga/ui/camera.svg"), capture_photo, Color("f9d8e2")))
+	row.add_child(UI.icon_button("Album", preload("res://assets/manga/ui/menu_journal.svg"), func():
 		if photo_busy:
 			return
 		close_photo_mode()
@@ -1227,7 +1469,7 @@ func capture_photo() -> void:
 	var image = get_viewport().get_texture().get_image()
 	var directory = ProjectSettings.globalize_path("user://photos")
 	var result = DirAccess.make_dir_recursive_absolute(directory)
-	var filename = "puppy_photo_" + str(int(Time.get_unix_time_from_system())) + "_" + str(Time.get_ticks_usec()) + ".png"
+	var filename = "puppy_photo_soft1_" + str(int(Time.get_unix_time_from_system())) + "_" + str(Time.get_ticks_usec()) + ".png"
 	if result == OK:
 		result = image.save_png("user://photos/" + filename)
 	if result == OK:
@@ -1274,29 +1516,25 @@ func show_need_tip(key: String) -> void:
 func show_arrival(place: String) -> void:
 	if is_instance_valid(arrival_overlay):
 		arrival_overlay.queue_free()
+	arrival_overlay=null
+	if Game.reduce_motion: return
 	var overlay = Control.new()
 	arrival_overlay = overlay
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(overlay)
 	var wash = ColorRect.new()
-	wash.color = Color("fff6e5")
+	wash.color = Color(1.0,0.965,0.90,0.16)
 	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.add_child(wash)
-	var title = UI.label(place, 38, UI.TEAL)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay.add_child(title)
-	var transition = create_tween()
-	transition.tween_property(wash, "modulate:a", 0.0, 0.35)
-	transition.tween_interval(0.5)
-	transition.tween_property(overlay, "modulate:a", 0.0, 0.3)
+	overlay.set_meta("destination",place)
+	var transition = overlay.create_tween()
+	transition.tween_property(wash, "modulate:a", 0.0, 0.22)
 	transition.tween_callback(overlay.queue_free)
 
 func location_story_refresh(location: String) -> void:
-	if page != location or not is_instance_valid(habitat):
+	if page not in [location,"Plans:"+location] or not is_instance_valid(habitat):
 		return
 	if is_instance_valid(resident_overlay):
 		pending_location_refresh = location
@@ -1307,6 +1545,7 @@ func location_story_refresh(location: String) -> void:
 	var hub = load("res://scripts/location_hub.gd").new()
 	hub.host = self
 	hub.location = location
+	hub.plans_mode=page.begins_with("Plans:")
 	hub.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_child(hub)
 
@@ -1329,6 +1568,7 @@ func daily_shortcut(idea: Dictionary) -> void:
 		pulse.tween_property(target,"modulate",Color.WHITE,0.4)
 
 func show_coin_reward(amount: int) -> void:
+	if page.begins_with("Festival:"): return
 	if page in ["Fetch","Walk","Scent Trail","Life:Playdate","Life:Beach Activities"]:
 		return
 	reward_total = reward_total + amount if is_instance_valid(reward_notice) else amount

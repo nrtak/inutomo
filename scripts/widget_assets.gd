@@ -6,12 +6,12 @@ func _initialize() -> void:
 func export_assets() -> void:
 	var target = "res://build/widget-assets"
 	DirAccess.make_dir_recursive_absolute(target)
-	var files = {"CareFood": "feed", "CareHappy": "happy", "CareEnergy": "rest", "CareClean": "care"}
+	var files = {"CareFood":UI.CARE_ICONS.Hunger,"CareHappy":UI.CARE_ICONS.Happiness,"CareEnergy":UI.CARE_ICONS.Energy,"CareClean":UI.CARE_ICONS.Cleanliness}
 	var failure = false
 	for name in files:
 		var picture = Image.new()
 		# Rasterize the vectors at 3x instead of upscaling their imported 1x bitmap.
-		var error = picture.load_svg_from_string(FileAccess.get_file_as_string("res://assets/ui/" + files[name] + ".svg"), 3.0)
+		var error = picture.load_svg_from_string(FileAccess.get_file_as_string("res://assets/manga/ui/" + files[name] + ".svg"), 3.0)
 		if error != OK:
 			failure = true
 			continue

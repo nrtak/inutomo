@@ -44,7 +44,7 @@ func _ready() -> void:
 	progress = UI.label("●○○  Palm trail", 24, UI.TEAL)
 	controls.add_child(progress)
 	souvenir = TextureRect.new()
-	souvenir.texture = load("res://assets/ui/" + ["leaf", "shell", "sunset"][mini(step, 2)] + ".svg")
+	souvenir.texture = load("res://assets/manga/ui/" + ["leaf", "shell", "sunset"][mini(step, 2)] + ".svg")
 	souvenir.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	souvenir.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	souvenir.custom_minimum_size = Vector2(0, 78)
@@ -52,8 +52,8 @@ func _ready() -> void:
 	habitat.set_walk_stop(mini(step, 2))
 	status = UI.hint_label("Find three little treasures.", 22)
 	controls.add_child(status)
-	next_button = UI.icon_button("Head back" if step == 3 else "Explore", load("res://assets/ui/leaf.svg"), _next, Color("bdeab0"))
-	next_button.get_meta("picture").texture = preload("res://assets/ui/home.svg") if step == 3 else souvenir.texture
+	next_button = UI.icon_button("Head back" if step == 3 else "Explore", load("res://assets/manga/ui/leaf.svg"), _next, Color("bdeab0"))
+	next_button.get_meta("picture").texture = preload("res://assets/manga/ui/home.svg") if step == 3 else souvenir.texture
 	controls.add_child(next_button)
 	if step > 0:
 		progress.text = "%d of 3 discoveries saved" % step
@@ -68,7 +68,7 @@ func _next() -> void:
 		await return_up_path()
 		return
 	progress.text = "●".repeat(step + 1) + "○".repeat(2 - step) + "  " + STOPS[step]
-	souvenir.texture = load("res://assets/ui/" + ["leaf", "shell", "sunset"][step] + ".svg")
+	souvenir.texture = load("res://assets/manga/ui/" + ["leaf", "shell", "sunset"][step] + ".svg")
 	habitat.set_walk_stop(step)
 	habitat.puppy.target = WalkArea.WALK_STOPS[step]
 	status.text = "Strolling to " + STOPS[step] + "..."
@@ -80,6 +80,9 @@ func _next() -> void:
 	Game.remember(MOMENTS[step])
 	IslandLife.discover(Game, step)
 	habitat.puppy.react_to_discovery()
+	if step==0: habitat.puppy.show_action_item(preload("res://assets/manga/ui/leaf.svg"))
+	elif step==1: habitat.puppy.begin_expression("Sniff",1.5)
+	else: habitat.puppy.celebrate_success()
 	status.text += {"Curious":" A curious little sniff!", "Cuddly":" A little moment shared with you.", "Playful":" An excited tail wiggle!"}[IslandLife.personality(Game)]
 	habitat.discovery.visible = false
 	step += 1
@@ -90,7 +93,7 @@ func _next() -> void:
 		next_button.get_meta("picture").texture = UI.place_icon(return_place)
 	else:
 		UI.button_caption(next_button, "Explore")
-		next_button.get_meta("picture").texture = load("res://assets/ui/" + ["leaf", "shell", "sunset"][step] + ".svg")
+		next_button.get_meta("picture").texture = load("res://assets/manga/ui/" + ["leaf", "shell", "sunset"][step] + ".svg")
 	busy = false
 	next_button.disabled = false
 

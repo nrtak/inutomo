@@ -15,6 +15,7 @@ var playmate: Sprite2D
 var playmate_shadow: Sprite2D
 var playmate_height: float = 170.0
 var visiting_buddy = ""
+var surprise_guest_key = ""
 var playmate_name: Label
 var shared_clock = -1.0
 var shared_kind = ""
@@ -90,6 +91,13 @@ func _ready() -> void:
 		visiting_buddy = "Momo"
 		show_playmate()
 
+func use_scenery(texture: Texture2D, scene_name: String) -> void:
+	background.texture=texture
+	Daylight.refresh_weather()
+	background.material=Daylight.material_for(scene_name)
+	for child in background.get_children():
+		if child is WeatherLayer or child is AmbientLife: child.location=scene_name
+
 func add_home_decor() -> void:
 	if Game.items.get(Game.life.bed, 0) > 0:
 		var bed = Sprite2D.new()
@@ -123,13 +131,40 @@ func add_home_decor() -> void:
 	for index in Game.life.keepsakes.size():
 		var keepsake = Sprite2D.new()
 		var kind = IslandLife.KEEPSAKES.find(Game.life.keepsakes[index])
-		keepsake.texture = load("res://assets/ui/" + IslandLife.KEEPSAKE_ICONS[maxi(0, kind)] + ".svg")
+		keepsake.texture = load("res://assets/manga/ui/" + IslandLife.KEEPSAKE_ICONS[maxi(0, kind)] + ".svg")
 		keepsake.scale = Vector2.ONE * 0.35
 		keepsake.position = Vector2(1050 + index * 18, 400)
 		world.add_child(keepsake)
 
 func _resize_world() -> void:
 	if world:
+		if size.y>size.x and location_presentation:
+			world.scale=Vector2.ONE
+			world.position=Vector2.ZERO
+			background.position=Vector2.ZERO
+			background.size=size
+			if is_instance_valid(puppy):
+				puppy.presentation_style="Beach"
+				puppy.screen_width_limit=INF
+				puppy.include_actor_scale_in_width_limit=false
+				puppy.scale=Vector2.ONE
+				puppy.portrait_scale_height=0
+				puppy.portrait_width=minf(340,size.x*0.52)
+				puppy.portrait_height=360.0
+				puppy.position=Vector2(size.x*0.42,size.y*0.79)
+				puppy.target=puppy.position
+			return
+		background.position=Vector2.ZERO
+		background.size=Vector2(1280,720)
+		puppy.presentation_style="Beach" if location=="Beach" and location_presentation else ""
+		puppy.screen_width_limit=INF
+		puppy.include_actor_scale_in_width_limit=false
+		puppy.feeding_spot=Vector2(INF,INF)
+		puppy.feeding_barrier=Rect2()
+		if decor_sprites.has("Feed"):
+			decor_sprites.Feed.position=IslandLife.home_point(Game,"Feed")
+			decor_sprites.Feed.scale=Vector2.ONE*(110.0/decor_sprites.Feed.texture.get_width())
+			decor_targets.Feed=decor_sprites.Feed.position
 		if location == "Beach" and location_presentation:
 			world.scale = Vector2.ONE
 			world.position = Vector2.ZERO
@@ -144,15 +179,38 @@ func _resize_world() -> void:
 				puppy.target = puppy.position
 			return
 		var zoom = 1.42 if not cinematic and (location == "Home" or not is_zero_approx(view_offset.x)) else 1.0
+		if size.y>size.x: zoom=1.0
 		var factor = maxf(size.x / 1280.0, size.y / 720.0) * zoom
 		world.scale = Vector2.ONE * factor
 		var focus = Vector2(650,410) if location == "Home" and not cinematic else Vector2(640,410 if not is_zero_approx(view_offset.x) else 360)
 		world.position = size * 0.5 - focus * factor + view_offset
+		if size.y>size.x and location=="Home" and not cinematic:
+			world.position.y=clampf(world.position.y,size.y-720.0*factor,0.0)
+		if size.y>size.x and (cinematic or location!="Home"):
+			factor=size.x/960.0
+			world.scale=Vector2.ONE*factor
+			world.position=Vector2(size.x*0.5-640*factor,size.y*0.78-620*factor)
+			background.position=-world.position/factor
+			background.size=size/factor
 		if location=="Home" and not cinematic and is_instance_valid(puppy) and factor>0:
 			var safe = UI.safe_insets(20)
 			puppy.home_headroom = (safe.top+150-world.position.y)/factor
 			var floor_bottom = maxf(500,(size.y-safe.bottom-world.position.y)/factor-4)
 			var visible_floor = PackedVector2Array([Vector2(0,0),Vector2(1280,0),Vector2(1280,floor_bottom),Vector2(0,floor_bottom)])
+			if size.y>size.x:
+				puppy.screen_width_limit=size.x*0.46/factor
+				var half=puppy.screen_width_limit*0.5+8
+				var left=(-world.position.x)/factor
+				var right=(size.x-world.position.x)/factor
+				floor_bottom=maxf(500,(size.y-safe.bottom-260-world.position.y)/factor)
+				visible_floor=PackedVector2Array([Vector2(left+half,0),Vector2(right-half,0),Vector2(right-half,floor_bottom),Vector2(left+half,floor_bottom)])
+				if decor_sprites.has("Feed"):
+					var bowl=decor_sprites.Feed
+					bowl.position=Vector2(left+50,580)
+					bowl.scale=Vector2.ONE*(75.0/bowl.texture.get_width())
+					decor_targets.Feed=bowl.position
+					puppy.feeding_spot=bowl.position+Vector2(puppy.screen_width_limit*0.5+63,20)
+					puppy.feeding_barrier=Rect2(bowl.position+Vector2(-45,-28),Vector2(90,72))
 			var clipped = Geometry2D.intersect_polygons(WalkArea.AREAS.Home,visible_floor)
 			if not clipped.is_empty():
 				puppy.walk_area = clipped[0]
@@ -166,9 +224,20 @@ func _resize_world() -> void:
 				puppy.set_walk_pose()
 			else:
 				puppy.set_pose(Game.resting or (Game.breed=="Puppy" and puppy.napping))
-		background.position.y = maxf(0,-world.position.y/factor) if location in ["Lighthouse","Keeper’s Cottage"] else 0.0
+		if not (size.y>size.x and (cinematic or location!="Home")):
+			background.position.y = maxf(0,-world.position.y/factor) if location in ["Lighthouse","Keeper’s Cottage"] else 0.0
 		if is_instance_valid(restoration):
 			restoration.position = background.position
+		fit_location_dog_width()
+
+func fit_location_dog_width() -> void:
+	if not location_presentation or location=="Beach" or size.y>size.x or not is_instance_valid(puppy): return
+	var safe=UI.safe_insets(20)
+	var column_left=size.x-safe.right-BeachStyle.column_width(size,safe)
+	var center=world.position.x+puppy.position.x*world.scale.x
+	puppy.screen_width_limit=maxf(120,(column_left-center-16)*2)/maxf(.01,world.scale.x)
+	puppy.include_actor_scale_in_width_limit=true
+	puppy.fit_screen_width()
 
 func _gui_input(event: InputEvent) -> void:
 	if moment_input.is_valid() and moment_input.call(event):
@@ -204,6 +273,7 @@ func _gui_input(event: InputEvent) -> void:
 		var puppy_point = puppy.sprite.to_local(world.to_global(point))
 		if puppy.sprite.get_rect().has_point(puppy_point):
 			Game.pet_puppy()
+			puppy.notice_point(point)
 			accept_event()
 			return
 		if location == "Home":
@@ -225,7 +295,7 @@ func interact_decor(action: String) -> void:
 	Game.action(action)
 
 func set_walk_stop(index: int) -> void:
-	discovery.texture = load("res://assets/ui/" + ["leaf", "shell", "sunset"][index] + ".svg")
+	discovery.texture = load("res://assets/manga/ui/" + ["leaf", "shell", "sunset"][index] + ".svg")
 	discovery.position = WalkArea.WALK_STOPS[index] + Vector2(0, -8)
 	discovery.scale = Vector2.ONE * 0.7
 	discovery.visible = true
@@ -235,7 +305,7 @@ func show_playmate() -> void:
 		update_playmate()
 		return
 	playmate_shadow = Sprite2D.new()
-	playmate_shadow.texture = preload("res://assets/puppies/shadow.svg")
+	playmate_shadow.texture = preload("res://assets/manga/puppies/shadow.svg")
 	playmate_shadow.scale = Vector2(1.05, 0.65) * (playmate_height / 170.0)
 	world.add_child(playmate_shadow)
 	playmate = Sprite2D.new()
@@ -329,6 +399,27 @@ func roll_sand_ball() -> void:
 	playdate_tween.tween_callback(func(): ball.visible = false)
 
 func _process(delta: float) -> void:
+	if location=="Home" and not cinematic:
+		var guest=Game.life.surprises
+		var key=guest.buddy if guest.kind=="Visit" and guest.accepted else ""
+		if key!=surprise_guest_key:
+			var previous=surprise_guest_key
+			surprise_guest_key=key
+			if not key.is_empty():
+				visiting_buddy=key
+				show_playmate()
+			elif not previous.is_empty():
+				if Game.life.welcome_day.guest:
+					visiting_buddy="Momo"
+					update_playmate(true)
+				else:
+					for node in [playmate,playmate_shadow,playmate_name]:
+						if is_instance_valid(node): node.queue_free()
+					playmate=null
+					playmate_shadow=null
+					playmate_name=null
+					visiting_buddy=""
+		fit_surprise_guest()
 	if welcome_roll_ready and not Game.can_explore():
 		welcome_roll_ready = false
 		ball_dragging = false
@@ -346,6 +437,17 @@ func _process(delta: float) -> void:
 	if is_instance_valid(home_toy) and is_instance_valid(puppy):
 		home_toy.visible = not cinematic and not puppy.carrying_toy
 
+func fit_surprise_guest() -> void:
+	if not is_instance_valid(playmate) or not is_instance_valid(puppy) or puppy.controlled or shared_clock>=0 or Game.life.surprises.kind!="Visit" or not Game.life.surprises.accepted: return
+	var factor=maxf(.01,world.scale.x)
+	var dimensions=playmate.get_rect().size
+	if size.y>size.x:
+		playmate.scale=Vector2.ONE*minf(220/(dimensions.y*factor),size.x*.32/(dimensions.x*factor))
+		playmate.position=world.to_local(Vector2(size.x*.76,minf(size.y*.72,size.y-UI.safe_insets(20).bottom-300)))
+	else:
+		playmate.scale=Vector2.ONE*(playmate_height/dimensions.y)
+		playmate.position=buddy_origin()
+
 func present_location_dog() -> void:
 	if not location_presentation:
 		return
@@ -360,6 +462,7 @@ func present_location_dog() -> void:
 	puppy.target = puppy.position
 	puppy.portrait_scale_height = 320.0
 	puppy.scale = Vector2.ONE * minf(1.85,320.0/(puppy.visible_size.y*puppy.base_scale))
+	fit_location_dog_width()
 
 func decor_contains(action: String, point: Vector2) -> bool:
 	var prop = decor_sprites.get(action) as Sprite2D

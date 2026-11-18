@@ -6,12 +6,17 @@ from pathlib import Path
 
 NAME = 'Inushima'
 
-def branded_plist(data):
+def branded_plist(data, ios=False):
     info = plistlib.loads(data)
     if info.get('CFBundlePackageType') != 'APPL':
         return None
     info['CFBundleDisplayName'] = NAME
     info['CFBundleName'] = NAME
+    if ios:
+        orientations = ['UIInterfaceOrientationPortrait', 'UIInterfaceOrientationLandscapeLeft',
+                        'UIInterfaceOrientationLandscapeRight', 'UIInterfaceOrientationPortraitUpsideDown']
+        info['UISupportedInterfaceOrientations'] = orientations
+        info['UISupportedInterfaceOrientations~ipad'] = orientations
     return plistlib.dumps(info, fmt=plistlib.FMT_XML)
 
 def branded_strings(data):
@@ -21,7 +26,7 @@ def branded_strings(data):
 def apply(ios, macos):
     updated = 0
     for path in ios.rglob('*Info.plist'):
-        result = branded_plist(path.read_bytes())
+        result = branded_plist(path.read_bytes(), ios=True)
         if result is not None:
             path.write_bytes(result)
             updated += 1

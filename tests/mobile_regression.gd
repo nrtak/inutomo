@@ -175,7 +175,7 @@ func run() -> void:
   for need in ["Hunger", "Happiness", "Energy", "Cleanliness"]:
    check(need in label_texts, "Each need has a beginner-readable name")
   check(not main.island_button.get_global_rect().intersects(main.menu_button.get_global_rect()), "Travel and menu occupy separate areas")
-  check(not main.camera_button.get_global_rect().intersects(main.menu_button.get_global_rect()), "Photo has a separate position")
+  check(not main.camera_button.visible, "Photo does not clutter the Home header")
   var previous_button: Button = null
   for kind in ["Feed", "Play", "Care", "Rest"]:
    var action_button: Button = main.action_buttons[kind]
@@ -192,8 +192,15 @@ func run() -> void:
   await process_frame
   await process_frame
   var map = main.world_host.get_child(0)
-  check(map.map_rect == Rect2(Vector2.ZERO,Vector2(mobile_view.size)),"The entire island fills the phone screen without letterboxing or cropping")
+  var screen_rect = Rect2(Vector2.ZERO,Vector2(mobile_view.size))
+  check(map.map_rect.encloses(screen_rect),"The island artwork covers the entire phone screen")
+  var artwork_size = map.map_image.texture.get_size()
+  check(is_equal_approx(map.map_rect.size.x/artwork_size.x,map.map_rect.size.y/artwork_size.y),"The full-screen island keeps its proportions instead of flattening buildings on wide phones")
+  for place in map.FOOT_POINTS:
+   var foot = map.map_rect.position+map.FOOT_POINTS[place]*map.map_rect.size
+   check(screen_rect.has_point(foot),"Full-screen framing keeps the dog route visible: "+place)
   var tower = Rect2(map.map_rect.position+Vector2(0.86,0.045)*map.map_rect.size,Vector2(0.10,0.19)*map.map_rect.size)
+  check(screen_rect.encloses(tower),"Full-screen framing keeps the lighthouse on screen")
   for control in [main.back_button,main.page_label,main.menu_button]:
    check(not control.get_global_rect().intersects(tower),"The map header leaves the lighthouse visible")
   var keys = map.pins.keys()
@@ -201,7 +208,7 @@ func run() -> void:
    var rect: Rect2 = map.pins[keys[i]].get_global_rect()
    check(rect.position.x >= 105 and rect.end.x <= mobile_view.size.x - 105, "Map markers clear the screen cutouts")
    check(rect.position.y >= 20 and rect.end.y <= 695, "Map markers stay within the visible screen height")
-   check(not rect.intersects(tower),"Map labels leave the lighthouse roof and tower visible")
+   check(not rect.intersects(tower) or keys[i]=="Lighthouse","Building signs leave the lighthouse roof visible")
    for j in range(i + 1, keys.size()):
     check(not rect.intersects(map.pins[keys[j]].get_global_rect()), "Map markers " + str(keys[i]) + " / " + str(keys[j]) + " do not overlap at " + str(screen_size))
   map.pins["Shop"].pressed.emit()
@@ -225,13 +232,11 @@ func run() -> void:
    main.show_page(place)
    await process_frame
    await process_frame
-   for header_item in [main.back_button, main.page_label, main.menu_button, main.camera_button]:
+   for header_item in [main.back_button, main.page_label, main.menu_button]:
     var header_bounds = header_item.get_global_rect()
     check(header_bounds.position.x >= 105 and header_bounds.end.x <= mobile_view.size.x - 105, place + " header clears phone cutouts")
-   check(not main.camera_button.get_global_rect().intersects(main.menu_button.get_global_rect()), "Location camera does not overlap Menu")
-   if place != "Lighthouse":
-    check(main.camera_button.get_global_rect().position.x > mobile_view.size.x * 0.5,"Location camera returns to the right utility group after leaving the map")
-   else:
+   check(not main.camera_button.visible, "Location utilities keep Photo in Menu")
+   if place == "Lighthouse":
     check(main.menu_button.get_global_rect().end.x < mobile_view.size.x*0.82,"Lighthouse utilities leave the tower roof unobstructed")
    var hub = main.body.get_child(0)
    for button in hub.choices.get_children() + hub.primary_actions.get_children():

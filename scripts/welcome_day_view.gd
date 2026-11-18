@@ -92,27 +92,27 @@ func refresh() -> void:
 		speech.set_hint("Let's help every puppy feel at home. Will you and " + Game.puppy_name + " join our little picnic?")
 		content.add_child(UI.label("A new island memory", 23))
 		content.add_child(UI.label("Meet a friend, practice together, then enjoy a picnic. Your invitation stays open.", 21))
-		add_action("Join Nora's picnic", preload("res://assets/ui/heart.svg"), accept_invitation)
+		add_action("Join Nora's picnic", preload("res://assets/manga/ui/heart.svg"), accept_invitation)
 	elif state.picnic_step == 3:
 		speech.set_hint(feedback if not feedback.is_empty() else "Momo has a friend to visit now. There's always a place for you both here.")
 		content.add_child(UI.label("Our picnic memory", 23, UI.TEAL))
 		content.add_child(UI.label("A cuddle plush for Home.\nMomo can come over to play.", 21))
 		add_action("Invite Momo Home", Art.PUPPIES["Shiba Inu"], invite_home)
-		add_action("A light for everyone", preload("res://assets/ui/lighthouse.svg"), host.request_page.bind("Moment:Lighthouse"), Color("f9d8e2"))
-		repeat_button = add_action("Picnic together again", preload("res://assets/ui/heart.svg"), repeat_picnic, Color("fff0bd"))
+		add_action("A light for everyone", preload("res://assets/manga/ui/lighthouse.svg"), host.request_page.bind("Moment:Lighthouse"), Color("f9d8e2"))
+		repeat_button = add_action("Picnic together again", preload("res://assets/manga/ui/heart.svg"), repeat_picnic, Color("fff0bd"))
 	elif WelcomeDay.prepared(state):
 		speech.set_hint(feedback if not feedback.is_empty() else "Everyone helped make this day. Momo's waiting to say hello!")
 		var captions = ["Welcome Momo", "Call and roll the ball", "Share our picnic"]
 		var icons = ["heart", "play", "treat"]
 		content.add_child(UI.label(["A familiar friend", "A skill to share", "A place for both of you"][state.picnic_step], 23, UI.TEAL))
 		if rolling_ball and state.picnic_step == 1:
-			picnic_button = add_action("Roll to Momo", preload("res://assets/ui/play.svg"), finish_ball_game)
+			picnic_button = add_action("Roll to Momo", preload("res://assets/manga/ui/play.svg"), finish_ball_game)
 		else:
-			picnic_button = add_action(captions[state.picnic_step], load("res://assets/ui/" + icons[state.picnic_step] + ".svg"), enjoy_picnic)
+			picnic_button = add_action(captions[state.picnic_step], load("res://assets/manga/ui/" + icons[state.picnic_step] + ".svg"), enjoy_picnic)
 		var reason = Game.activity_block_reason()
 		if not reason.is_empty():
 			content.add_child(UI.label(reason + ". We'll wait for you.", 21))
-			add_action("Rest at Home", preload("res://assets/ui/rest.svg"), host.request_page.bind("Home"), Color("e1d9f6"))
+			add_action("Rest at Home", preload("res://assets/manga/ui/rest.svg"), host.request_page.bind("Home"), Color("e1d9f6"))
 	else:
 		speech.set_hint("Meet Ben, June and Kai. Practice, make a friend, then return for our picnic.")
 		content.add_child(UI.label("Getting ready together", 22))
@@ -135,7 +135,7 @@ func add_action(caption: String, picture: Texture2D, action: Callable, color: Co
 
 func preparation(caption: String, key: String, icon: String, action: Callable) -> void:
 	var done: bool = Game.life.welcome_day[key]
-	var button = add_action(("✓ " if done else "") + caption, load("res://assets/ui/" + icon + ".svg"), action, Color("c8eddd") if done else Color("c2ecf4"))
+	var button = add_action(("✓ " if done else "") + caption, load("res://assets/manga/ui/" + icon + ".svg"), action, Color("c8eddd") if done else Color("c2ecf4"))
 	button.disabled = done
 
 func accept_invitation() -> void:
@@ -186,6 +186,20 @@ func arrange() -> void:
 	if not is_instance_valid(actions_panel) or not is_instance_valid(speech_panel):
 		return
 	var safe = UI.safe_insets(20)
+	if size.y>size.x:
+		var width=size.x-safe.left-safe.right
+		actions_panel.position=Vector2(safe.left,safe.top+90)
+		actions_panel.size=Vector2(width,minf(550,content.get_combined_minimum_size().y+32))
+		action_scroll.custom_minimum_size.x=width-40
+		speech_panel.position=Vector2(safe.left,actions_panel.position.y+actions_panel.size.y+16)
+		speech_panel.custom_minimum_size.x=width
+		speech.custom_minimum_size.x=width-32
+		speech_panel.size=Vector2(width,speech_panel.get_combined_minimum_size().y)
+		tail.position=Vector2(14,speech_panel.size.y-2)
+		var portrait_height=260.0
+		portrait.size=Vector2(portrait_height*portrait.texture.get_width()/portrait.texture.get_height(),portrait_height)
+		portrait.position=Vector2(safe.left,size.y*0.78-portrait_height)
+		return
 	var width = clampf(size.x * 0.29, 295, 370)
 	actions_panel.position = Vector2(size.x - safe.right - width, safe.top + 100)
 	actions_panel.size = Vector2(width, minf(content.get_combined_minimum_size().y + 32, maxf(120, size.y - safe.top - safe.bottom - 116)))

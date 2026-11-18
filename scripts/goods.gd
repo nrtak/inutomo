@@ -38,10 +38,11 @@ static func prices() -> Dictionary:
   values[kind] = ITEMS[kind].price
  return values
 static func icon(kind: String) -> Texture2D:
- return load("res://assets/ui/" + ITEMS[kind].icon + ".svg")
+ return load("res://assets/manga/ui/" + ITEMS[kind].icon + ".svg")
 
-const PICTURE_SHEET = preload("res://assets/goods/goods_anime.png")
-const EXPANDED_SHEET = preload("res://assets/goods/expanded_goods_anime.png")
+const PICTURE_SHEET = preload("res://assets/manga/goods/goods_anime.png")
+const EXPANDED_SHEET = preload("res://assets/manga/goods/expanded_goods_anime.png")
+const PICTURE_DATA = preload("res://assets/manga/goods/frames.json")
 const PICTURE_REGIONS = {
  "Treat": Rect2(53,57,459,412), "TrainingTreat": Rect2(564,100,441,344),
  "Toy": Rect2(1118,96,361,361), "Brush": Rect2(50,512,462,457),
@@ -61,7 +62,8 @@ static func picture(kind: String) -> Texture2D:
  if not picture_cache.has(kind):
   var frame = AtlasTexture.new()
   frame.atlas = PICTURE_SHEET if PICTURE_REGIONS.has(kind) else EXPANDED_SHEET
-  frame.region = PICTURE_REGIONS[kind] if PICTURE_REGIONS.has(kind) else EXPANDED_REGIONS[kind]
+  var box: Array = PICTURE_DATA.data[kind]
+  frame.region = Rect2(box[0],box[1],box[2],box[3])
   frame.filter_clip = true
   picture_cache[kind] = frame
  return picture_cache[kind]

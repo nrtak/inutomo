@@ -27,7 +27,7 @@ func _process(_delta: float) -> void:
 	if mode in ["Playdate", "Deliveries", "Events", "Beach Activities", "Daily", "Dog Friends", "Stories"] and shown_day != IslandLife.today():
 		feedback = ""
 		render()
-	if mode == "Events" and shown_event != str(Game.life.daily) + str(Game.life.event_claimed):
+	if mode == "Events" and shown_event != str(Game.life.daily) + str(Game.life.event_claimed) + str(Game.life.festivals):
 		render()
 	if mode == "Daily" and shown_daily != str(IslandActivities.daily_card(Game)):
 		render()
@@ -64,7 +64,7 @@ func health_snapshot() -> String:
 	return PuppyHealth.status(Game) + PuppyHealth.advice(Game) + str(Game.health.history.size())
 
 func render() -> void:
-	shown_event = str(Game.life.daily) + str(Game.life.event_claimed)
+	shown_event = str(Game.life.daily) + str(Game.life.event_claimed) + str(Game.life.festivals)
 	shown_daily = str(IslandActivities.daily_card(Game))
 	shown_day = IslandLife.today()
 	shown_health = health_snapshot()
@@ -99,7 +99,7 @@ func render() -> void:
 		panel.add_theme_stylebox_override("panel",box)
 	var top = HBoxContainer.new()
 	layout.add_child(top)
-	var title = UI.label({"Dog": "Your Puppy", "Wardrobe": "Wardrobe", "Home": "Home Décor", "Finds": "Walk Keepsakes", "Photos": "Photo Album", "Daily": "To-do Today", "Dog Friends":"Dog Friends", "Stories":"Island Stories"}.get(mode, mode), 28, UI.TEAL)
+	var title = UI.label({"Club Plans":"Club events & stories", "Dog": "Your Puppy", "Wardrobe": "Wardrobe", "Home": "Home Décor", "Finds": "Walk Keepsakes", "Photos": "Photo Album", "Daily": "To-do Today", "Dog Friends":"Dog Friends", "Stories":"Island Stories"}.get(mode, mode), 28, UI.TEAL)
 	if mode == "Beach Activities":
 		title.text = {"Shells":"Find shells","Cleanup":"Beach cleanup","Sand Fetch":"Sand fetch"}.get(beach_mode,"Beach activities")
 		title.add_theme_color_override("font_color",BeachStyle.INK)
@@ -113,7 +113,7 @@ func render() -> void:
 	layout.add_child(tabs)
 	for section in MODES:
 		var icon_name: String = {"Dog": "club", "Wardrobe": "bandana_coral", "Training": "training_treat", "Friends": "heart", "Finds": "shell", "Home": "home", "Events": "sunset", "Photos": "camera"}[section]
-		var tab = UI.icon_button(section, load("res://assets/ui/" + icon_name + ".svg"), choose.bind(section), Color("ffe0a0") if section == mode else Color("c2ecf4"))
+		var tab = UI.icon_button(section, load("res://assets/manga/ui/" + icon_name + ".svg"), choose.bind(section), Color("ffe0a0") if section == mode else Color("c2ecf4"))
 		tab.custom_minimum_size = Vector2(0, 72)
 		tab.get_meta("caption").add_theme_font_size_override("font_size", 20)
 		tab.get_meta("caption").autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -151,6 +151,7 @@ func render() -> void:
 		"Finds": finds()
 		"Home": decorating()
 		"Events": events()
+		"Club Plans": club_plans()
 		"Photos": photos()
 		"Dog Friends": dog_friends()
 		"Stories": stories()
@@ -201,11 +202,11 @@ func dog_page() -> void:
 		var favorite = IslandLife.favorite(Game, category)
 		var picture = UI.picture_button(Goods.ITEMS[favorite].name, Goods.picture(favorite), host.show_page.bind("Shop"))
 		row.add_child(picture)
-	tile("Take a photo", preload("res://assets/ui/camera.svg"), host.open_photo_mode)
+	tile("Take a photo", preload("res://assets/manga/ui/camera.svg"), host.open_photo_mode)
 
 func wardrobe() -> void:
 	content.add_child(UI.hint_label("Preview a color before you buy.", 23))
-	tile("No accessory", preload("res://assets/ui/club.svg"), func():
+	tile("No accessory", preload("res://assets/manga/ui/club.svg"), func():
 		Game.life.accessory = ""
 		host.habitat.puppy.preview_accessory = ""
 		Game.save_game()
@@ -248,7 +249,7 @@ func training() -> void:
 		content.add_child(lessons)
 		for command in IslandLife.COMMANDS:
 			var level = int(Game.life.training[command])
-			var lesson = UI.icon_button(command + (" · Learned" if level==5 else " · %d of 5" % level),preload("res://assets/ui/training_treat.svg"),select_lesson.bind(command),Color("c8eddd"))
+			var lesson = UI.icon_button(command + (" · Learned" if level==5 else " · %d of 5" % level),preload("res://assets/manga/ui/training_treat.svg"),select_lesson.bind(command),Color("c8eddd"))
 			lesson.custom_minimum_size = Vector2(0,88)
 			lesson.get_meta("caption").add_theme_font_size_override("font_size",18)
 			lessons.add_child(lesson)
@@ -269,9 +270,9 @@ func training() -> void:
 	content.add_child(UI.label("Learned! You can practice for fun." if level == 5 else str(level) + " of 5 practices", 23))
 	if not feedback.is_empty():
 		content.add_child(UI.label(feedback, 23, UI.TEAL))
-	var button = tile("Practice " + command.to_lower(), preload("res://assets/ui/training_treat.svg"), practice_lesson)
+	var button = tile("Practice " + command.to_lower(), preload("res://assets/manga/ui/training_treat.svg"), practice_lesson)
 	training_buttons[command] = button
-	tile("Choose another lesson", preload("res://assets/ui/menu_journal.svg"), select_lesson.bind(""), Color("ffe0a0"))
+	tile("Choose another lesson", preload("res://assets/manga/ui/menu_journal.svg"), select_lesson.bind(""), Color("ffe0a0"))
 
 func select_lesson(command: String) -> void:
 	lesson_command = command
@@ -300,7 +301,7 @@ func playdate() -> void:
 		content.add_child(UI.label("Step " + str(step + 1) + " of 3 · 5 coins on completion", 22))
 		var captions = ["Say hello", "Roll the ball", "Rest together"]
 		var icons = ["heart", "play", "rest"]
-		var button = tile(captions[step], load("res://assets/ui/" + icons[step] + ".svg"), func():
+		var button = tile(captions[step], load("res://assets/manga/ui/" + icons[step] + ".svg"), func():
 			var previous_step = int(Game.life.playdate.step) if Game.life.playdate.day == IslandLife.today() else 0
 			feedback = IslandLife.playdate_step(Game)
 			if Game.life.playdate.day == IslandLife.today() and int(Game.life.playdate.step) > previous_step:
@@ -318,7 +319,7 @@ func playdate() -> void:
 	content.add_child(help)
 	for kind in ["Mirror tricks","Treasure pals"]:
 		if buddy_visits >= (2 if kind=="Mirror tricks" else 4):
-			var shared = tile(kind,preload("res://assets/ui/heart.svg"),shared_game.bind(buddy_name,kind))
+			var shared = tile(kind,preload("res://assets/manga/ui/heart.svg"),shared_game.bind(buddy_name,kind))
 			shared.set_meta("shared_buddy",buddy_name)
 			shared.disabled = not Game.can_explore() or Game.life.adventure.buddies.get(buddy_name,{}).get("bonus_day","")>=IslandLife.today()
 	var back = UI.button("Back to Puppy Club",host.request_page.bind("Puppy Club"),Color("fff6e5"))
@@ -349,9 +350,9 @@ func deliveries() -> void:
 	if not feedback.is_empty():
 		content.add_child(UI.label(feedback, 23, UI.TEAL))
 	if Game.life.delivery.recipient != "":
-		tile("Visit " + info.person, UI.place_icon(info.place), host.request_page.bind(info.place))
+		tile("Visit " + info.person, UI.place_icon(info.place), host.request_page.bind("Life:Club Plans" if info.place=="Puppy Club" else "Plans:"+info.place))
 	elif Game.life.delivery.claimed < IslandLife.today():
-		tile("Collect parcel", preload("res://assets/ui/menu_bag.svg"), func():
+		tile("Collect parcel", preload("res://assets/manga/ui/menu_bag.svg"), func():
 			feedback = IslandLife.collect_delivery(Game)
 			if not Game.save_error.is_empty():
 				feedback = Game.save_error
@@ -360,8 +361,8 @@ func deliveries() -> void:
 	tile("Back to Harbor", UI.place_icon("Harbor"), host.request_page.bind("Harbor"))
 
 func friends() -> void:
-	tile("Dog friends",preload("res://assets/ui/club.svg"),host.request_page.bind("Life:Dog Friends"))
-	tile("Island stories",preload("res://assets/ui/menu_journal.svg"),host.request_page.bind("Life:Stories"),Color("f9d8e2"))
+	tile("Dog friends",preload("res://assets/manga/ui/club.svg"),host.request_page.bind("Life:Dog Friends"))
+	tile("Island stories",preload("res://assets/manga/ui/menu_journal.svg"),host.request_page.bind("Life:Stories"),Color("f9d8e2"))
 	content.add_child(UI.label("Little favors, growing friendships", 27, UI.TEAL))
 	var residents = {"Kai": Art.KAI, "Nora": Art.NORA, "Ben": Art.BEN, "June": Art.JUNE, "Leah": Art.LEAH, "Owen": Art.OWEN, "Ren": Art.REN}
 	var grid = GridContainer.new()
@@ -401,7 +402,7 @@ func finds() -> void:
 	content.add_child(UI.hint_label("Discover them on a Walk. Collected treasures appear at Home.", 23))
 	for index in IslandLife.KEEPSAKES.size():
 		var item: String = IslandLife.KEEPSAKES[index]
-		tile(item if item in Game.life.keepsakes else "Still to discover", load("res://assets/ui/" + IslandLife.KEEPSAKE_ICONS[index] + ".svg"), host.show_page.bind("Beach"), Color("c2ecf4"))
+		tile(item if item in Game.life.keepsakes else "Still to discover", load("res://assets/manga/ui/" + IslandLife.KEEPSAKE_ICONS[index] + ".svg"), host.show_page.bind("Beach"), Color("c2ecf4"))
 
 func decorating() -> void:
 	for category in ["Comfort", "Toys"]:
@@ -426,13 +427,13 @@ func decorating() -> void:
 		content.add_child(positions)
 		for index in 3:
 			positions.add_child(UI.button((["Far left", "Left side", "Right side"] if slot == "bowl_spot" else ["Left", "Middle", "Right"])[index], move_decoration.bind(slot, index), Color("ffe0a0") if Game.life[slot] == index else Color("c2ecf4")))
-	tile("Hide bowl" if Game.life.bowl else "Place feeding bowl", preload("res://assets/ui/feed.svg"), func():
+	tile("Hide bowl" if Game.life.bowl else "Place feeding bowl", preload("res://assets/manga/ui/feed.svg"), func():
 		Game.life.bowl = not Game.life.bowl
 		Game.save_game()
 		host.show_page("Life:Home")
 	)
 	content.add_child(UI.hint_label("At Home, tap the bowl to Feed, the toy to Play, or the bed to Rest.", 22))
-	tile("Clear decorations", preload("res://assets/ui/home.svg"), func():
+	tile("Clear decorations", preload("res://assets/manga/ui/home.svg"), func():
 		Game.life.bed = ""
 		Game.life.toy = ""
 		Game.life.bowl = false
@@ -460,9 +461,41 @@ func move_bed(index: int) -> void:
 	Game.save_game()
 	host.show_page("Life:Home")
 
+func club_plans() -> void:
+	tile("Island Welcome Day",preload("res://assets/manga/ui/heart.svg"),host.request_page.bind("Life:Welcome Day"),Color("f9d8e2"))
+	tile("Neighbor festivals",preload("res://assets/manga/ui/sunset.svg"),host.request_page.bind("Life:Events"),Color("fff0bd"))
+	if Game.life.connections.mystery<5:
+		var clue=IslandConnections.mystery_step(Game)
+		tile(clue.button,load("res://assets/manga/ui/"+clue.icon+".svg"),open_club_story.bind("mystery"),Color("c8eddd"))
+	if Game.life.delivery.recipient=="Nora":
+		tile("Deliver Nora’s parcel",preload("res://assets/manga/ui/menu_bag.svg"),open_club_story.bind("parcel"),Color("fff0bd"))
+	tile("Island stories",preload("res://assets/manga/ui/menu_journal.svg"),host.request_page.bind("Life:Stories"),Color("c2ecf4"))
+
+func open_club_story(kind: String) -> void:
+	host.show_page("Puppy Club")
+	var club=host.body.get_child(0)
+	if kind=="parcel": club.deliver_parcel()
+	else: club.mystery_action()
+
 func events() -> void:
 	IslandLife.refresh_day(Game)
-	var welcome = UI.location_button("Island Welcome Day", preload("res://assets/ui/heart.svg"), host.request_page.bind("Life:Welcome Day"), Color("f9d8e2"))
+	content.add_child(UI.label("Island gatherings",30,UI.TEAL))
+	content.add_child(UI.label("Join the neighbors at your own pace. Unfinished gatherings stay saved. Participation earns 15 coins and happiness.",22))
+	var featured=IslandFestivals.featured()
+	var order=IslandFestivals.EVENTS.keys()
+	order.erase(featured)
+	order.push_front(featured)
+	for id in order:
+		var festival: Dictionary=IslandFestivals.EVENTS[id]
+		var state: Dictionary=Game.life.festivals[id]
+		var completed=state.claimed>=IslandLife.today()
+		var title=festival.name
+		if id==featured: content.add_child(UI.label("Today's featured gathering",22,UI.TEAL))
+		var subtitle="Thank-you collected today" if completed else ("Continue · %d of 3 saved" % state.step if state.step>0 and state.step<3 else "Join "+" & ".join(festival.neighbors))
+		var button=UI.location_button(title+"\n"+subtitle,load("res://assets/manga/ui/"+festival.icon+".svg"),host.request_page.bind("Festival:"+id),Color("eee5d9") if completed else Color("c8eddd") if id==featured else Color("fff0bd"))
+		button.custom_minimum_size.y=100
+		content.add_child(button)
+	var welcome = UI.location_button("Island Welcome Day", preload("res://assets/manga/ui/heart.svg"), host.request_page.bind("Life:Welcome Day"), Color("f9d8e2"))
 	welcome.custom_minimum_size.y = 76
 	content.add_child(welcome)
 	content.add_child(UI.label("Nora's invitation stays open across visits.", 21, UI.TEAL))
@@ -485,7 +518,7 @@ func events() -> void:
 		var done = Game.life.daily.get(action,0) > 0
 		var choice: Dictionary = choices[action]
 		var row = UI.button(("✓  " if done else "➜  ") + choice.text, host.daily_shortcut.bind(choice), Color("c8eddd") if done else Color("c2ecf4"))
-		row.icon = load("res://assets/ui/" + choice.icon + ".svg")
+		row.icon = load("res://assets/manga/ui/" + choice.icon + ".svg")
 		row.expand_icon = true
 		row.add_theme_constant_override("icon_max_width",36)
 		row.custom_minimum_size.y = 64
@@ -498,7 +531,7 @@ func events() -> void:
 	content.add_child(reward)
 
 func photos() -> void:
-	var take = tile("Take a photo", preload("res://assets/ui/camera.svg"), host.open_photo_mode)
+	var take = tile("Take a photo", preload("res://assets/manga/ui/camera.svg"), host.open_photo_mode)
 	take.custom_minimum_size.x = 240
 	take.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	content.add_child(UI.label(str(Game.life.photos.size()) + " of 20 memories. Tap a photo to view it.", 23))
@@ -525,6 +558,7 @@ func photos() -> void:
 		if image.get_width() > 640:
 			image.resize(640, maxi(1, roundi(image.get_height() * 640.0 / image.get_width())), Image.INTERPOLATE_LANCZOS)
 		var picture = UI.picture_button("View photo", ImageTexture.create_from_image(image), show_photo.bind(filename))
+		VisualTone.prepare_photo(picture.get_meta("picture"),filename)
 		picture.custom_minimum_size.y = 210
 		box.add_child(picture)
 		var remove = UI.button("Delete", confirm_delete.bind(filename), Color("f9d8e2"))
@@ -559,6 +593,7 @@ func show_photo(filename: String) -> void:
 	var safe = UI.safe_insets()
 	var picture = TextureRect.new()
 	picture.texture = ImageTexture.create_from_image(image)
+	VisualTone.prepare_photo(picture,filename)
 	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	picture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -605,11 +640,32 @@ func _exit_tree() -> void:
 
 func daily_card() -> void:
 	content.add_child(UI.hint_label("Optional ideas. Enjoy them at your own pace.", 23))
+	var visits=UI.card()
+	content.add_child(visits)
+	var reward_content=UI.column(6)
+	visits.add_child(reward_content)
+	reward_content.add_child(UI.label("Welcome-back streak · %d days" % Game.life.check_in.streak,23,UI.TEAL))
+	var pending=DailyCheckIn.pending(Game)
+	if not pending.is_empty():
+		reward_content.add_child(UI.button("Collect welcome-back gift",func():
+			feedback=DailyCheckIn.claim(Game)
+			render()
+		,Color("fff0bd")))
+	else:
+		reward_content.add_child(UI.label("3 days: 10 coins · 7 days: 20 coins · 14 days: a bandana" if Game.life.check_in.best<14 else "All three gifts earned. Best streak: %d days." % Game.life.check_in.best,20))
+	if not feedback.is_empty(): reward_content.add_child(UI.hint_label(feedback,21))
+	if Game.life.surprises.kind!="":
+		var request=Game.life.surprises
+		var title="Visit with "+request.buddy if request.kind=="Visit" else "Help "+IslandSurprises.REQUESTS[request.kind].person
+		var place="Plans:"+IslandSurprises.REQUESTS[request.kind].place if request.kind in IslandSurprises.REQUESTS and request.step==2 else "Surprise"
+		tile(title,preload("res://assets/manga/ui/heart.svg"),host.request_page.bind(place),Color("f9d8e2"))
+	var suggestion=IslandMemories.suggestion(Game)
+	tile("Try next: "+suggestion.text,load("res://assets/manga/ui/"+suggestion.icon+".svg"),host.daily_shortcut.bind(suggestion),Color("c8eddd"))
 	if Game.life.connections.mystery<5:
 		var mystery = IslandConnections.mystery_step(Game)
-		tile(mystery.button,load("res://assets/ui/"+mystery.icon+".svg"),host.request_page.bind(mystery.place),Color("f9d8e2"))
+		tile(mystery.button,load("res://assets/manga/ui/"+mystery.icon+".svg"),host.request_page.bind("Life:Club Plans" if mystery.place=="Puppy Club" else "Plans:"+mystery.place),Color("f9d8e2"))
 	for idea in IslandActivities.daily_card(Game):
-		tile(("✓ " if idea.done else "") + idea.title, load("res://assets/ui/" + idea.icon + ".svg"), host.daily_shortcut.bind(idea), Color("c8eddd") if idea.done else Color("fff0bd"))
+		tile(("✓ " if idea.done else "") + idea.title, load("res://assets/manga/ui/" + idea.icon + ".svg"), host.daily_shortcut.bind(idea), Color("c8eddd") if idea.done else Color("fff0bd"))
 
 func choose_beach(kind: String) -> void:
 	beach_mode = kind
@@ -625,7 +681,7 @@ func beach_activities() -> void:
 		content.add_child(UI.hint_label("Kai's gentle beach games. Each earns 4 coins once a day.", 23))
 		for kind in IslandActivities.BEACH_GAMES:
 			var done = kind in Game.life.beach.done
-			tile(kind + (" · Done today" if done else ""), load("res://assets/ui/" + {"Shells":"shell", "Cleanup":"menu_bag", "Sand Fetch":"play"}[kind] + ".svg"), choose_beach.bind(kind))
+			tile(kind + (" · Done today" if done else ""), load("res://assets/manga/ui/" + {"Shells":"shell", "Cleanup":"menu_bag", "Sand Fetch":"play"}[kind] + ".svg"), choose_beach.bind(kind))
 	else:
 		if not feedback.is_empty():
 			content.add_child(UI.hint_label(feedback, 23, UI.TEAL))
@@ -633,7 +689,7 @@ func beach_activities() -> void:
 			content.add_child(UI.label("Completed today. Thank you!", 23))
 		elif beach_mode == "Shells":
 			var shell = TextureRect.new()
-			shell.texture = preload("res://assets/ui/beach_shell.svg")
+			shell.texture = preload("res://assets/manga/ui/beach_shell.svg")
 			shell.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			shell.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			shell.custom_minimum_size.y = 90
@@ -653,12 +709,14 @@ func beach_activities() -> void:
 	tile("Ask Kai", UI.resident_icon(Art.KAI), func(): host.show_resident(Art.KAI,"Kai","Beach lifeguard",IslandActivities.greeting(Game,"Kai","Choose Shells to identify a find, Cleanup to tidy the shore, or Sand Fetch for three gentle rolls. Rest first if your puppy is tired.")))
 
 func beach_button(caption: String, icon: String, choice: int) -> void:
-	var picture = load("res://assets/ui/" + {"shell":"beach_shell","play":"beach_ball"}.get(icon,icon) + ".svg")
+	var picture = load("res://assets/manga/ui/" + {"shell":"beach_shell","play":"beach_ball"}.get(icon,icon) + ".svg")
 	if icon in ["shell","play"]:
 		picture = BeachStyle.activity_picture(0 if icon == "shell" else 2)
 	var button = tile(caption, picture, func():
 		var before = Game.life.beach.duplicate(true)
 		feedback = IslandActivities.beach_action(Game, beach_mode, choice)
+		if (beach_mode=="Shells" and Game.life.beach.shell and not before.shell) or (beach_mode=="Cleanup" and Game.life.beach.cleaned.size()>before.cleaned.size()):
+			host.habitat.puppy.show_action_item(picture)
 		if beach_mode == "Sand Fetch" and int(Game.life.beach.throws) > (int(before.throws) if before.day == IslandLife.today() else 0):
 			host.habitat.roll_sand_ball()
 		if not Game.save_error.is_empty():

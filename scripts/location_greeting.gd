@@ -35,7 +35,7 @@ func _ready() -> void:
  bubble.add_theme_stylebox_override("panel",style)
  bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
  add_child(bubble)
- var bubble_width = minf(340, get_viewport_rect().size.x * 0.23)
+ var bubble_width = clampf(get_viewport_rect().size.x*0.23,220,340)
  bubble.custom_minimum_size.x = bubble_width
  var content = UI.column(4)
  content.custom_minimum_size.x = bubble_width - 32
@@ -58,14 +58,24 @@ func _ready() -> void:
   tail.add_child(contour)
  var arrange = func():
   var edges = UI.safe_insets(24)
-  var speech_width = minf(340,size.x*0.23)
+  if size.y>size.x:
+   portrait.visible=false
+   var width=size.x-edges.left-edges.right-170
+   bubble.custom_minimum_size.x=width
+   content.custom_minimum_size.x=width-32
+   speech.custom_minimum_size.x=width-32
+   bubble.position=Vector2(edges.left,edges.top+84)
+   bubble.size=Vector2(width,bubble.get_combined_minimum_size().y)
+   return
+  portrait.visible=true
+  var speech_width = clampf(size.x*0.23,220,340)
   bubble.custom_minimum_size.x = speech_width
   content.custom_minimum_size.x = speech_width-32
   speech.custom_minimum_size.x = speech_width-32
   var bounds = BeachStyle.portrait_rect(size,atlas.get_size(),edges) if scene_style == "Beach" else UI.location_portrait_rect(size, atlas.get_size(), edges)
   portrait.size = bounds.size
   portrait.position = bounds.position
-  var actions_width = BeachStyle.column_width(size,edges) if scene_style == "Beach" else 400.0
+  var actions_width = BeachStyle.column_width(size,edges)
   var speech_left = minf(size.x*(0.35 if scene_style == "Beach" else 0.39),size.x-edges.right-actions_width-16-speech_width)
   bubble.position = Vector2(maxf(edges.left,speech_left),edges.top+68)
   bubble.size = Vector2(speech_width,bubble.get_combined_minimum_size().y)

@@ -25,14 +25,8 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var habitat = host.habitat
 	habitat.cinematic = true
-	habitat.background.texture = MomentArt.background(kind)
-	# Each new painting has its own registered water/treetop masks.
-	for child in habitat.background.get_children():
-		if child is AmbientLife:
-			child.location = "Moment:" + kind
-		elif child.get_script() == load("res://scripts/weather_layer.gd"):
-			child.location = "Moment:" + kind
-	habitat.background.material = Daylight.material_for("Moment:" + kind) if kind != "Lighthouse" else null
+	# Story scenery follows the same clock and weather as ordinary visits.
+	habitat.use_scenery(MomentArt.background(kind),"Moment:"+kind)
 	if is_instance_valid(habitat.restoration):
 		habitat.restoration.visible = false
 	habitat._resize_world()
@@ -89,7 +83,7 @@ func _ready() -> void:
 
 func add_resident(person: String, feet: Vector2, height: float, flipped: bool = false) -> void:
 	var shadow = Sprite2D.new()
-	shadow.texture = preload("res://assets/puppies/shadow.svg")
+	shadow.texture = preload("res://assets/manga/puppies/shadow.svg")
 	shadow.scale = Vector2(1.75,0.8)
 	shadow.position = feet + Vector2(0,-4)
 	host.habitat.world.add_child(shadow)
@@ -131,24 +125,24 @@ func refresh() -> void:
 	content.add_child(UI.label(IslandMoments.TITLES[kind],25,UI.TEAL))
 	last_block = IslandMoments.block_reason(Game, kind)
 	if phase == "done":
-		add_button("Take a photo", preload("res://assets/ui/camera.svg"), host.open_photo_mode)
+		add_button("Take a photo", preload("res://assets/manga/ui/camera.svg"), host.open_photo_mode)
 		if kind in ["Home","Recall","Beach"]:
-			add_button("Play together again",preload("res://assets/ui/heart.svg"),restart)
+			add_button("Play together again",preload("res://assets/manga/ui/heart.svg"),restart)
 		elif kind == "Lighthouse":
-			add_button("See our keepsake",preload("res://assets/ui/bandana_sunshine.svg"),host.request_page.bind("Life:Wardrobe"))
+			add_button("See our keepsake",preload("res://assets/manga/ui/bandana_sunshine.svg"),host.request_page.bind("Life:Wardrobe"))
 	elif not last_block.is_empty():
 		speech.set_hint(last_block)
 		if not Game.can_explore():
-			add_button("Rest at Home",preload("res://assets/ui/rest.svg"),host.request_page.bind("Home"))
+			add_button("Rest at Home",preload("res://assets/manga/ui/rest.svg"),host.request_page.bind("Home"))
 		elif kind == "Lighthouse" and (not Game.life.story.get("beacon_checked",false) or not Game.life.welcome_day.celebrated):
 			var place = "Keeper’s Cottage" if not Game.life.story.get("beacon_checked",false) else "Life:Welcome Day"
-			add_button("Visit Ren" if place == "Keeper’s Cottage" else "Visit Nora's picnic",preload("res://assets/ui/heart.svg"),host.request_page.bind(place))
+			add_button("Visit Ren" if place == "Keeper’s Cottage" else "Visit Nora's picnic",preload("res://assets/manga/ui/heart.svg"),host.request_page.bind(place))
 		elif kind == "Cottage" and not Game.life.story.get("path_repaired",false):
 			add_button("Help with the path",UI.place_icon("Keeper’s Cottage"),host.request_page.bind("Keeper’s Cottage"))
 	else:
 		if phase == "waiting":
 			speech.set_hint({"Home":"A play bow! Drag the ball along the rug, or tap Roll the ball.","Recall":"Call warmly. Watch those paws follow the clear route around the cones.","Beach":"Momo caught a scent! Let's follow our little explorers.","Cottage":"There's something beside the old mosaic. Shall we follow that nose?","Lighthouse":"You helped bring this light back. There's a place here for all of us."}[kind])
-			primary = add_button({"Home":"Roll the ball","Recall":"Call Come","Beach":"Sniff together","Cottage":"Follow that scent","Lighthouse":"Share the light"}[kind],preload("res://assets/ui/heart.svg"),begin)
+			primary = add_button({"Home":"Roll the ball","Recall":"Call Come","Beach":"Sniff together","Cottage":"Follow that scent","Lighthouse":"Share the light"}[kind],preload("res://assets/manga/ui/heart.svg"),begin)
 			if kind == "Home":
 				add_button("Play tug",Goods.picture("TugRope"),host.request_page.bind("Tug"))
 			if kind in ["Home","Recall","Beach","Cottage"]:
@@ -301,6 +295,16 @@ func show_momo_sniff() -> void:
 func arrange() -> void:
 	if not is_instance_valid(panel): return
 	var safe = UI.safe_insets(20)
+	if size.y>size.x:
+		var width=size.x-safe.left-safe.right
+		panel.position=Vector2(safe.left,safe.top+90)
+		panel.custom_minimum_size.x=width
+		panel.size=Vector2(width,panel.get_combined_minimum_size().y)
+		bubble.position=Vector2(safe.left,panel.position.y+panel.size.y+16)
+		bubble.custom_minimum_size.x=width
+		speech.custom_minimum_size.x=width-40
+		bubble.size=Vector2(width,bubble.get_combined_minimum_size().y)
+		return
 	var width = clampf(size.x*0.28,290,350)
 	var controls_left = kind in ["Cottage","Lighthouse"]
 	panel.position = Vector2(safe.left if controls_left else size.x-safe.right-width,safe.top+95)

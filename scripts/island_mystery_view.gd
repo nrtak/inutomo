@@ -36,10 +36,10 @@ func _ready() -> void:
 	if step==3: pictures = ["club","shell","leaf"]
 	for i in 3:
 		var item = Sprite2D.new()
-		item.texture = load("res://assets/ui/"+pictures[i]+".svg")
+		item.texture = load("res://assets/manga/ui/"+pictures[i]+".svg")
 		if i==spec.spot:
-			item.texture = preload("res://assets/goods/welcome_star.svg") if step==2 else load("res://assets/ui/"+spec.icon+".svg")
-			if step==3: item.texture = preload("res://assets/goods/welcome_parcel.svg")
+			item.texture = preload("res://assets/manga/goods/welcome_star.svg") if step==2 else load("res://assets/manga/ui/"+spec.icon+".svg")
+			if step==3: item.texture = preload("res://assets/manga/goods/welcome_parcel.svg")
 		item.material = UI.art_cutout()
 		item.scale = Vector2.ONE*(42.0/item.texture.get_width())
 		item.position = points[i]+Vector2(30,-4)
@@ -57,6 +57,8 @@ func _ready() -> void:
 		var button = UI.location_button(captions[i],props[i].texture,search.bind(i),Color("c8eddd"))
 		button.custom_minimum_size = Vector2(0,62)
 		button.get_meta("caption").add_theme_font_size_override("font_size",21)
+		button.get_meta("picture").offset_right=65
+		button.get_meta("caption").offset_left=76
 		content.add_child(button)
 		searches.append(button)
 	recovery_button = UI.button("Rest at Home",host.request_page.bind("Home"),Color("e1d9f6"))
@@ -70,11 +72,13 @@ func _ready() -> void:
 	greeting.duration = 3600
 	add_child(greeting)
 	resized.connect(arrange)
+	content.minimum_size_changed.connect(func(): arrange.call_deferred())
 	arrange.call_deferred()
 
 func arrange() -> void:
 	var safe = UI.safe_insets(20)
 	var width = clampf(size.x*0.28,290,340)
+	if size.y>size.x: width=size.x-safe.left-safe.right
 	panel.position = Vector2(size.x-safe.right-width,safe.top+105)
 	panel.custom_minimum_size.x = width
 	feedback.custom_minimum_size.x = width-40

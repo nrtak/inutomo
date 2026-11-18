@@ -170,7 +170,7 @@ func run():
   await process_frame
   await process_frame
   check(main.page=="Lighthouse Room" and main.current_place=="Lighthouse","Interior keeps the map marker at the tower")
-  check(main.camera_button.visible,"The lighthouse view supports keepsake photos")
+  check(not main.camera_button.visible,"The lighthouse view keeps its photo action in Menu")
   main.open_photo_mode()
   check(main.page=="Lighthouse Room" and is_instance_valid(main.photo_overlay),"The special photo stays in the observation room")
   main.close_photo_mode()
