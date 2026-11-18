@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 env:
-  GODOT_VERSION: 4.5.1
+  GODOT_VERSION: 4.6.3
   IOS_APP_GROUP: ${{ vars.IOS_APP_GROUP || 'group.com.inujima.app.shared' }}
 
 jobs:
@@ -88,6 +88,15 @@ jobs:
         run: |
           mkdir -p build/ios
           Godot --headless --path . --export-release iOS build/ios/PuppyIsland.zip
+      - name: Open a new and a returning game from the exported iPhone content
+        run: |
+          set -euo pipefail
+          pack=$(find build/ios -type f -name '*.pck' -print -quit)
+          test -f "$pack"
+          log="$RUNNER_TEMP/iphone-content-launch.log"
+          Godot --headless --main-pack "$pack" --script "$GITHUB_WORKSPACE/tests/start_menu.gd" --quit-after 5000 2>&1 | tee "$log"
+          grep -Fxq 'Start menu checks: PASS' "$log"
+          if grep -E 'SCRIPT ERROR|Parse Error|^ERROR:' "$log"; then exit 1; fi
       - name: Set app display names
         run: python3 scripts/set_app_branding.py --ios build/ios --macos build/macos/PuppyIsland.zip
       - name: Add small and medium iPhone widgets
@@ -103,6 +112,7 @@ jobs:
             -derivedDataPath build/ios-derived \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY='' build
           app=build/ios-derived/Build/Products/Release-iphoneos/PuppyIsland.app
+          python3 scripts/check_ios_launch.py "$app/Info.plist"
           for bundle in "$app" "$app/PlugIns/InushimaWidgets.appex"; do
             sdk=$(plutil -extract DTPlatformVersion raw "$bundle/Info.plist")
             echo "$(basename "$bundle") built with iOS SDK $sdk" | tee -a "$GITHUB_STEP_SUMMARY"
@@ -187,6 +197,7 @@ jobs:
           import plistlib
           import re
           import zipfile
+          from scripts.check_ios_launch import check_scene_configuration
           packages = list(Path('build/export').glob('*.ipa'))
           if len(packages) != 1:
               raise RuntimeError('Expected exactly one exported iPhone package')
@@ -196,7 +207,10 @@ jobs:
               if not any('/PlugIns/' in p for p in bundles) or not any('/PlugIns/' not in p for p in bundles):
                   raise RuntimeError('Expected the app and widget in the signed package')
               for path in bundles:
-                  sdk = plistlib.loads(ipa.read(path)).get('DTSDKName', '')
+                  metadata = plistlib.loads(ipa.read(path))
+                  if '/PlugIns/' not in path:
+                      check_scene_configuration(metadata)
+                  sdk = metadata.get('DTSDKName', '')
                   version = re.fullmatch(r'iphoneos(\d+)(?:\.\d+)*', sdk)
                   if not version or int(version[1]) < 27:
                       raise RuntimeError(f'{path} requires iOS SDK 27 or later, found {sdk!r}')

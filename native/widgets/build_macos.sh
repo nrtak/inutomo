@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-version="${GODOT_VERSION:-4.5.1}"
+version="${GODOT_VERSION:-4.6.3}"
 source_dir="$RUNNER_TEMP/puppy-reminders/godot-${version}-stable"
 work="$RUNNER_TEMP/puppy-widgets"
 mkdir -p "$work"

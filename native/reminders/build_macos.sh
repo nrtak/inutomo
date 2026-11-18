@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 project="$(pwd)"
-version="${GODOT_VERSION:-4.5.1}"
+version="${GODOT_VERSION:-4.6.3}"
 work="$RUNNER_TEMP/puppy-reminders"
 mkdir -p "$work"
 curl --fail --location --retry 3 "https://github.com/godotengine/godot/archive/refs/tags/${version}-stable.tar.gz" -o "$work/godot.tar.gz"
