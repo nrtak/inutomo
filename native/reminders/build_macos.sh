@@ -10,7 +10,9 @@ source_dir="$work/godot-${version}-stable"
 python3 -m venv "$work/venv"
 "$work/venv/bin/pip" install scons==4.8.1
 cd "$source_dir"
-"$work/venv/bin/scons" platform=ios target=template_release arch=arm64 vulkan=no metal=no core/disabled_classes.gen.h core/version_generated.gen.h core/object/gdvirtual.gen.inc
+"$work/venv/bin/scons" platform=ios target=template_release arch=arm64 vulkan=no metal=no \
+  core/disabled_classes.gen.h core/version_generated.gen.h core/object/gdvirtual.gen.inc \
+  core/extension/gdextension_interface.gen.h
 cd "$project"
 sdk="$(xcrun --sdk iphoneos --show-sdk-path)"
 xcrun --sdk iphoneos clang++ -std=c++17 -arch arm64 -isysroot "$sdk" -miphoneos-version-min=15.0 -fobjc-arc -fmodules -fcxx-modules -fblocks -fno-exceptions -frtti -O2 -DPTRCALL_ENABLED -DTHREADS_ENABLED -DIOS_ENABLED -DUNIX_ENABLED -DNDEBUG -I"$source_dir" -I"$source_dir/platform/ios" -c native/reminders/puppy_reminders.mm -o "$work/reminders.o"
